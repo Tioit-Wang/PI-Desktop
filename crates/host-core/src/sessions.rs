@@ -51,6 +51,38 @@ pub struct SessionDetail {
     pub messages: Vec<UiMessage>,
 }
 
+fn is_default_title(title: &str) -> bool {
+    matches!(
+        title.trim(),
+        "" | "New task" | "New chat" | "新建任务" | "新对话"
+    )
+}
+
+fn first_user_title(db: &Database, session_id: &str) -> Result<Option<String>> {
+    let mut stmt = db.conn().prepare(
+        "SELECT content FROM messages
+         WHERE session_id = ?1 AND role = 'user'
+         ORDER BY sort_index ASC, created_at ASC
+         LIMIT 1",
+    )?;
+    let content: Option<String> = stmt
+        .query_row(params![session_id], |row| row.get(0))
+        .optional()?;
+    Ok(content.and_then(|c| {
+        let t = c.trim().replace('\n', " ");
+        let t = t.split_whitespace().collect::<Vec<_>>().join(" ");
+        if t.is_empty() {
+            None
+        } else {
+            let mut out = t.chars().take(48).collect::<String>();
+            if t.chars().count() > 48 {
+                out.push('…');
+            }
+            Some(out)
+        }
+    }))
+}
+
 pub fn list_sessions(db: &Database) -> Result<Vec<SessionSummary>> {
     let mut stmt = db.conn().prepare(
         "SELECT id, title, project_path, model_id, provider_id, mode, updated_at, created_at
@@ -68,7 +100,19 @@ pub fn list_sessions(db: &Database) -> Result<Vec<SessionSummary>> {
             created_at: row.get(7)?,
         })
     })?;
-    Ok(rows.filter_map(|r| r.ok()).collect())
+    let mut out = Vec::new();
+    for row in rows.filter_map(|r| r.ok()) {
+        let mut session = row;
+        if is_default_title(&session.title) {
+            if let Some(title) = first_user_title(db, &session.id)? {
+                // Persist so Recents stays stable across restarts.
+                let _ = rename_session(db, &session.id, &title);
+                session.title = title;
+            }
+        }
+        out.push(session);
+    }
+    Ok(out)
 }
 
 pub fn create_session(

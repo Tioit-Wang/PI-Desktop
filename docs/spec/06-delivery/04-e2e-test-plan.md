@@ -515,3 +515,11 @@ This test plan spec is accepted when:
 - Navigate Projects → Plugins → a recent task.
 - Expect back/forward controls near the traffic-light area to traverse that history.
 
+### US-UI-09 Recents title backfill
+- Open an older session that previously showed "New task"/"New chat" but has a first user message.
+- Expect Recents to display a truncated first-user-message title after session list load.
+
+### US-UI-10 Scheduled local tasks
+- Open Scheduled, create a task with prompt + cadence.
+- Expect it to appear in the list; Run now opens a chat session and sends the prompt.
+

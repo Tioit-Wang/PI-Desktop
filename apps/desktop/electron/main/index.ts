@@ -49,6 +49,39 @@ function wrap<T>(fn: () => Promise<T>): Promise<Result<T>> {
     );
 }
 
+
+type ScheduledTaskRecord = {
+  id: string;
+  title: string;
+  prompt: string;
+  cadence: "manual" | "hourly" | "daily" | "weekly";
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastRunAt?: string;
+};
+
+function scheduledPath() {
+  return join(dataDir, "scheduled-tasks.json");
+}
+
+async function readScheduled(): Promise<ScheduledTaskRecord[]> {
+  const { readFile } = await import("node:fs/promises");
+  try {
+    const raw = await readFile(scheduledPath(), "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeScheduled(tasks: ScheduledTaskRecord[]) {
+  const { writeFile } = await import("node:fs/promises");
+  mkdirSync(dataDir, { recursive: true });
+  await writeFile(scheduledPath(), JSON.stringify(tasks, null, 2), "utf8");
+}
+
 async function withGitBranch<T extends { path?: string; name?: string } | null | undefined>(
   workspace: T,
 ): Promise<T> {
@@ -404,6 +437,82 @@ function registerIpc() {
     } catch (e) {
       return { pulls: [], error: e instanceof Error ? e.message : String(e) };
     }
+  });
+
+  handle(IPC.invoke.scheduledList, async () => {
+    const tasks = await readScheduled();
+    tasks.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+    return { tasks };
+  });
+  handle(IPC.invoke.scheduledCreate, async (input: any = {}) => {
+    const tasks = await readScheduled();
+    const now = new Date().toISOString();
+    const title = String(input.title || input.prompt || "Scheduled task").slice(0, 80);
+    const prompt = String(input.prompt || "").trim();
+    if (!prompt) throw new Error("prompt required");
+    const task: ScheduledTaskRecord = {
+      id: crypto.randomUUID(),
+      title,
+      prompt,
+      cadence: (input.cadence as ScheduledTaskRecord["cadence"]) || "manual",
+      enabled: input.enabled !== false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    tasks.unshift(task);
+    await writeScheduled(tasks);
+    return { task };
+  });
+  handle(IPC.invoke.scheduledUpdate, async (input: any = {}) => {
+    const id = String(input.id || "");
+    const tasks = await readScheduled();
+    const idx = tasks.findIndex((t) => t.id === id);
+    if (idx < 0) throw new Error("task not found");
+    const now = new Date().toISOString();
+    const prev = tasks[idx];
+    const next: ScheduledTaskRecord = {
+      ...prev,
+      title: input.title != null ? String(input.title).slice(0, 80) : prev.title,
+      prompt: input.prompt != null ? String(input.prompt) : prev.prompt,
+      cadence: input.cadence || prev.cadence,
+      enabled: input.enabled != null ? Boolean(input.enabled) : prev.enabled,
+      updatedAt: now,
+      lastRunAt: input.lastRunAt != null ? String(input.lastRunAt) : prev.lastRunAt,
+    };
+    tasks[idx] = next;
+    await writeScheduled(tasks);
+    return { task: next };
+  });
+  handle(IPC.invoke.scheduledDelete, async (id: string) => {
+    const tasks = await readScheduled();
+    await writeScheduled(tasks.filter((t) => t.id !== id));
+    return { ok: true };
+  });
+  handle(IPC.invoke.scheduledRun, async (id: string) => {
+    if (!host) throw new Error("host unavailable");
+    const tasks = await readScheduled();
+    const task = tasks.find((t) => t.id === id);
+    if (!task) throw new Error("task not found");
+    const settings = (await host.call("settings.get")) as any;
+    const project = (await host.call("workspace.get")) as {
+      workspace?: { path?: string } | null;
+    };
+    const created = (await host.call("session.create", {
+      title: task.title,
+      mode: settings?.defaultMode || "chat",
+      providerId: settings?.defaultProviderId,
+      modelId: settings?.defaultModelId,
+      projectPath: project.workspace?.path,
+    })) as { session: { id: string } };
+    // mark last run
+    task.lastRunAt = new Date().toISOString();
+    task.updatedAt = task.lastRunAt;
+    await writeScheduled(tasks);
+    return {
+      sessionId: created.session.id,
+      prompt: task.prompt,
+      task,
+    };
   });
 
   handle(IPC.invoke.agentPrompt, async (req: {

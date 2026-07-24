@@ -214,3 +214,17 @@ export type OnboardingState = {
     action?: string;
   }>;
 };
+
+
+export type ScheduledTaskCadence = "manual" | "hourly" | "daily" | "weekly";
+
+export type ScheduledTask = {
+  id: string;
+  title: string;
+  prompt: string;
+  cadence: ScheduledTaskCadence;
+  enabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+  lastRunAt?: string;
+};

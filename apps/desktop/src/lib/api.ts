@@ -11,6 +11,7 @@ import type {
   PluginSummary,
   ProjectWorkspace,
   PullRequestSummary,
+  ScheduledTask,
   ProviderCreateInput,
   ProviderPublic,
   ProviderUpdateInput,
@@ -87,6 +88,22 @@ export const api = {
     invoke<{ workspace: ProjectWorkspace | null }>(IPC.invoke.projectSet, path),
   listPullRequests: () =>
     invoke<{ pulls: PullRequestSummary[]; error?: string }>(IPC.invoke.pullsList),
+  listScheduled: () =>
+    invoke<{ tasks: ScheduledTask[] }>(IPC.invoke.scheduledList),
+  createScheduled: (input: {
+    title?: string;
+    prompt: string;
+    cadence?: ScheduledTask["cadence"];
+    enabled?: boolean;
+  }) => invoke<{ task: ScheduledTask }>(IPC.invoke.scheduledCreate, input),
+  updateScheduled: (input: Partial<ScheduledTask> & { id: string }) =>
+    invoke<{ task: ScheduledTask }>(IPC.invoke.scheduledUpdate, input),
+  deleteScheduled: (id: string) => invoke(IPC.invoke.scheduledDelete, id),
+  runScheduled: (id: string) =>
+    invoke<{ sessionId: string; prompt: string; task: ScheduledTask }>(
+      IPC.invoke.scheduledRun,
+      id,
+    ),
   prompt: (req: AgentPromptRequest) =>
     invoke<AgentPromptResponse>(IPC.invoke.agentPrompt, req),
   abort: (sessionId: string) =>
