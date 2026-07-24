@@ -54,6 +54,7 @@ This log freezes previously open questions into concrete decisions.
 | D031 | Secrets backend | **OS safeStorage primary + encrypted file fallback** | Robust on macOS first release |
 | D032 | Workspace ignore | **security denylist + defaults + `.pi-desktopignore`** | Safe/predictable tool FS behavior |
 | D033 | Tool result limits | **256KB/4000 lines defaults with explicit truncation markers** | Protect context & UI |
+| D034 | Desktop visual baseline | **Codex electron-dark 1:1 shell (charcoal gray, floating composer, ~275px sidebar)** | Match local Codex usability and density; keep PI-Desktop product branding |
 
 ## C. Still deferred (not blocking M1)
 

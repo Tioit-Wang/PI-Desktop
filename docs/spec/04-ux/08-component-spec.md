@@ -4,6 +4,9 @@
 > Design tokens and foundations: [07-ui-design-system.md](07-ui-design-system.md)  
 > Interaction behavior: [09-interaction-patterns.md](09-interaction-patterns.md)
 
+
+> Shell layout is Codex-aligned: left thread sidebar (~275px), main transcript, floating bottom composer with project/model chips. Prefer neutral charcoal surfaces over blue-slate chrome.
+
 ## 1. AppShell
 
 ### 1.1 Purpose

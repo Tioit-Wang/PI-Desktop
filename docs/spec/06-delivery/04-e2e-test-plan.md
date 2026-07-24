@@ -475,3 +475,15 @@ This test plan spec is accepted when:
 - [ ] Scenario template is defined and all entries follow it.
 - [ ] AI update rules are documented and cross-linked to workflow spec.
 - [ ] Environment requirements match baseline (macOS arm64, clean profile).
+
+## UI shell visual scenarios
+
+### US-UI-01 Codex-aligned shell chrome
+- Open the desktop app on macOS dark theme.
+- Expect charcoal main surface (`#181818`), left sidebar with New task + Recents, and a floating bottom composer with project/model chips.
+- Expect no blue-slate marketing chrome; primary send control is a circular inverted button.
+
+### US-UI-02 Empty thread hero
+- Open or create a thread with zero messages.
+- Expect centered hero copy: "What should we build" with optional project name underline when a workspace is open.
+

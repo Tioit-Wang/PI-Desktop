@@ -7,6 +7,10 @@
 3. Map all design decisions to **Tailwind CSS tokens** so that spec → implementation is unambiguous
 4. Enable **future shadcn-like primitive extraction** without re-specifying foundations
 
+## Visual baseline (Codex-aligned)
+
+The desktop shell targets a 1:1 visual match with the local Codex desktop client (ChatGPT.app electron-dark): charcoal surfaces (`#181818`), neutral gray scale (not blue-slate), ~275px sidebar, 46px toolbar rhythm, and a floating pill composer. Semantic token names remain stable; values follow the Codex gray/blue system.
+
 ## 2. Non-goals
 
 1. A consumer-brand identity system with vibrant gradients or playful illustrations
@@ -54,17 +58,17 @@ All color references in components use **semantic token names**, never raw hex v
 
 | Token | Hex | Tailwind mapping | Usage |
 |---|---|---|---|
-| `--color-bg-primary` | `#0F172A` | `bg-slate-950` | Main background |
-| `--color-bg-secondary` | `#1E293B` | `bg-slate-800` | Sidebar, card surfaces |
-| `--color-bg-tertiary` | `#334155` | `bg-slate-700` | Hover, elevated |
-| `--color-bg-inset` | `#020617` | `bg-slate-950` (deeper) | Code blocks, inset |
-| `--color-text-primary` | `#F8FAFC` | `text-slate-50` | Body text |
-| `--color-text-secondary` | `#CBD5E1` | `text-slate-300` | Labels, secondary |
-| `--color-text-muted` | `#64748B` | `text-slate-500` | Disabled, hints |
-| `--color-border-default` | `#334155` | `border-slate-700` | Default borders |
-| `--color-border-subtle` | `#1E293B` | `border-slate-800` | Subtle separators |
-| `--color-accent` | `#3B82F6` | `text-blue-500` | Primary accent, CTA |
-| `--color-accent-hover` | `#60A5FA` | `text-blue-400` | Accent hover |
+| `--color-bg-primary` | `#181818` | Codex `gray-900` | Main background / sidebar |
+| `--color-bg-secondary` | `#212121` | Codex `gray-800` | Elevated surfaces, composer |
+| `--color-bg-tertiary` | `#282828` | Codex `gray-750` | Hover / opaque elevated |
+| `--color-bg-inset` | `#0d0d0d` | Codex `gray-1000` | Code blocks, deepest inset |
+| `--color-text-primary` | `#FFFFFF` | Codex `gray-0` | Body text |
+| `--color-text-secondary` | `rgba(255,255,255,0.70)` | Codex secondary | Labels, secondary |
+| `--color-text-muted` | `#5d5d5d` | Codex `gray-500` | Disabled, hints |
+| `--color-border-default` | `rgba(255,255,255,0.08)` | Codex border | Default borders |
+| `--color-border-subtle` | `rgba(255,255,255,0.05)` | Codex border subtle | Subtle separators |
+| `--color-accent` | `#0285FF` | `text-blue-500` | Primary accent, CTA |
+| `--color-accent-hover` | `#339CFF` | `text-blue-400` | Accent hover |
 | `--color-success` | `#22C55E` | `text-green-500` | Success, run complete |
 | `--color-warning` | `#F59E0B` | `text-amber-500` | Warning, caution |
 | `--color-error` | `#EF4444` | `text-red-500` | Error, denied |
@@ -75,15 +79,15 @@ All color references in components use **semantic token names**, never raw hex v
 | Token | Hex | Tailwind mapping | Usage |
 |---|---|---|---|
 | `--color-bg-primary` | `#FFFFFF` | `bg-white` | Main background |
-| `--color-bg-secondary` | `#F8FAFC` | `bg-slate-50` | Sidebar, card surfaces |
+| `--color-bg-secondary` | `#FFFFFF` | `bg-slate-50` | Sidebar, card surfaces |
 | `--color-bg-tertiary` | `#F1F5F9` | `bg-slate-100` | Hover, elevated |
 | `--color-bg-inset` | `#F1F5F9` | `bg-slate-100` | Code blocks, inset |
-| `--color-text-primary` | `#0F172A` | `text-slate-900` | Body text |
+| `--color-text-primary` | `#181818` | `text-slate-900` | Body text |
 | `--color-text-secondary` | `#475569` | `text-slate-600` | Labels, secondary |
 | `--color-text-muted` | `#94A3B8` | `text-slate-400` | Disabled, hints |
 | `--color-border-default` | `#E2E8F0` | `border-slate-200` | Default borders |
 | `--color-border-subtle` | `#F1F5F9` | `border-slate-100` | Subtle separators |
-| `--color-accent` | `#2563EB` | `text-blue-600` | Primary accent, CTA |
+| `--color-accent` | `#0285FF` | `text-blue-600` | Primary accent, CTA |
 | `--color-accent-hover` | `#1D4ED8` | `text-blue-700` | Accent hover |
 | `--color-success` | `#16A34A` | `text-green-600` | Success, run complete |
 | `--color-warning` | `#D97706` | `text-amber-600` | Warning, caution |
@@ -104,17 +108,17 @@ The following CSS custom properties stub is the canonical bridge between spec to
 /* === Design System Token Bridge (spec reference, not runtime file) === */
 /* Dark theme (default) */
 :root[data-theme="dark"] {
-  --color-bg-primary:       #0F172A;
-  --color-bg-secondary:     #1E293B;
-  --color-bg-tertiary:      #334155;
-  --color-bg-inset:         #020617;
-  --color-text-primary:     #F8FAFC;
-  --color-text-secondary:   #CBD5E1;
-  --color-text-muted:       #64748B;
-  --color-border-default:   #334155;
-  --color-border-subtle:    #1E293B;
-  --color-accent:           #3B82F6;
-  --color-accent-hover:     #60A5FA;
+  --color-bg-primary:       #181818;
+  --color-bg-secondary:     #212121;
+  --color-bg-tertiary:      #282828;
+  --color-bg-inset:         #0d0d0d;
+  --color-text-primary:     #FFFFFF;
+  --color-text-secondary:   rgba(255,255,255,0.70);
+  --color-text-muted:       #5d5d5d;
+  --color-border-default:   #282828;
+  --color-border-subtle:    #212121;
+  --color-accent:           #0285FF;
+  --color-accent-hover:     #339CFF;
   --color-success:          #22C55E;
   --color-warning:          #F59E0B;
   --color-error:            #EF4444;
@@ -124,15 +128,15 @@ The following CSS custom properties stub is the canonical bridge between spec to
 /* Light theme */
 :root[data-theme="light"] {
   --color-bg-primary:       #FFFFFF;
-  --color-bg-secondary:     #F8FAFC;
+  --color-bg-secondary:     #FFFFFF;
   --color-bg-tertiary:      #F1F5F9;
   --color-bg-inset:         #F1F5F9;
-  --color-text-primary:     #0F172A;
+  --color-text-primary:     #181818;
   --color-text-secondary:   #475569;
   --color-text-muted:       #94A3B8;
   --color-border-default:   #E2E8F0;
   --color-border-subtle:    #F1F5F9;
-  --color-accent:           #2563EB;
+  --color-accent:           #0285FF;
   --color-accent-hover:     #1D4ED8;
   --color-success:          #16A34A;
   --color-warning:          #D97706;
@@ -509,7 +513,7 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 
 ### Don't
 
-- Don't hardcode `#0F172A` or any hex value in component JSX — use tokens
+- Don't hardcode `#181818` or any hex value in component JSX — use tokens
 - Don't use emoji as icon substitutes (🚀, ✅, ❌ are text, not UI icons)
 - Don't add decorative gradients, glass-morphism, or neon effects
 - Don't use `z-index` values outside the defined layers
