@@ -51,10 +51,36 @@ export function Sidebar({
   };
 
   const filtered = useMemo(() => {
+    const isDefaultTitle = (title?: string | null) => {
+      const value = (title || "").trim();
+      return (
+        !value ||
+        value.toLowerCase() === "new task" ||
+        value.toLowerCase() === "new chat" ||
+        value === "新建任务"
+      );
+    };
+    // Keep one empty draft max (active preferred), hide the rest like Codex Recents.
+    let keptEmpty = false;
+    const cleaned: typeof sessions = [];
+    for (const s of sessions) {
+      if (!isDefaultTitle(s.title)) {
+        cleaned.push(s);
+        continue;
+      }
+      if (s.id === activeSessionId && page === "chat") {
+        if (!keptEmpty) cleaned.push(s);
+        keptEmpty = true;
+        continue;
+      }
+      if (keptEmpty) continue;
+      cleaned.push(s);
+      keptEmpty = true;
+    }
     const q = query.trim().toLowerCase();
-    if (!q) return sessions;
-    return sessions.filter((s) => taskTitle(s.title).toLowerCase().includes(q));
-  }, [sessions, query, t]);
+    if (!q) return cleaned;
+    return cleaned.filter((s) => taskTitle(s.title).toLowerCase().includes(q));
+  }, [sessions, query, t, activeSessionId, page]);
 
   if (collapsed) {
     return (
@@ -99,20 +125,20 @@ export function Sidebar({
       <div className="sidebar-drag">
         <div className="traffic-nav no-drag">
           <button
-            className="icon-btn"
+            className="title-nav-btn"
             title="Back"
             disabled={!canBack}
             onClick={() => navBack()}
           >
-            <IconChevronLeft size={15} />
+            <IconChevronLeft size={13} />
           </button>
           <button
-            className="icon-btn"
+            className="title-nav-btn"
             title="Forward"
             disabled={!canForward}
             onClick={() => navForward()}
           >
-            <IconChevronRight size={15} />
+            <IconChevronRight size={13} />
           </button>
         </div>
       </div>

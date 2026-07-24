@@ -37,11 +37,11 @@ export function PullRequestsPage() {
 
   return (
     <div className="thread-scroll">
-      <div className="mx-auto w-full max-w-[820px] px-8 py-10">
-        <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="page-frame">
+        <div className="page-header">
           <div>
-            <div className="text-[20px] font-medium tracking-tight">{t("pulls.title")}</div>
-            <div className="mt-1 text-[13px] text-text-secondary">{t("pulls.subtitle")}</div>
+            <h1 className="page-title">{t("pulls.title")}</h1>
+            <div className="page-subtitle">{t("pulls.subtitle")}</div>
           </div>
           <div className="flex gap-2">
             <Button variant="secondary" disabled={loading} onClick={() => void refresh()}>
@@ -65,8 +65,8 @@ export function PullRequestsPage() {
         </div>
 
         {!workspace?.path ? (
-          <Panel className="flex flex-col items-center px-6 py-16 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-bg-hover text-text-secondary">
+          <Panel className="page-card page-empty">
+            <div className="page-empty-icon">
               <IconPullRequest size={20} />
             </div>
             <div className="text-[15px] font-medium">{t("pulls.emptyTitle")}</div>
@@ -78,8 +78,8 @@ export function PullRequestsPage() {
             </Button>
           </Panel>
         ) : pulls.length === 0 ? (
-          <Panel className="flex flex-col items-center px-6 py-16 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-bg-hover text-text-secondary">
+          <Panel className="page-card page-empty">
+            <div className="page-empty-icon">
               <IconPullRequest size={20} />
             </div>
             <div className="text-[15px] font-medium">{t("pulls.emptyTitle")}</div>

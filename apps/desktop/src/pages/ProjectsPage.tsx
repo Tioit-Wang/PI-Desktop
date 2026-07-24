@@ -13,11 +13,11 @@ export function ProjectsPage() {
 
   return (
     <div className="thread-scroll">
-      <div className="mx-auto w-full max-w-[820px] px-8 py-10">
-        <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="page-frame">
+        <div className="page-header">
           <div>
-            <div className="text-[20px] font-medium tracking-tight">{t("project.title")}</div>
-            <div className="mt-1 text-[13px] text-text-secondary">{t("project.subtitle")}</div>
+            <h1 className="page-title">{t("project.title")}</h1>
+            <div className="page-subtitle">{t("project.subtitle")}</div>
           </div>
           <Button variant="primary" onClick={() => void openProject()}>
             <IconPlus size={14} />
@@ -26,7 +26,7 @@ export function ProjectsPage() {
         </div>
 
         {workspace?.path ? (
-          <Panel className="p-4">
+          <Panel className="page-card p-4">
             <div className="flex items-start justify-between gap-4">
               <div className="min-w-0">
                 <div className="mb-2 flex items-center gap-2 text-[13px] text-text-muted">
@@ -61,8 +61,8 @@ export function ProjectsPage() {
             </div>
           </Panel>
         ) : (
-          <Panel className="flex flex-col items-center px-6 py-16 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-bg-hover text-text-secondary">
+          <Panel className="page-card page-empty">
+            <div className="page-empty-icon">
               <IconFolder size={20} />
             </div>
             <div className="text-[15px] font-medium">{t("project.emptyTitle")}</div>

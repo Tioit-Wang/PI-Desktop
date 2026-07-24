@@ -112,9 +112,9 @@ export const useAppStore = create<AppState>((set, get) => ({
         onboarding,
         plugins: plugins.plugins,
       });
-      if (sessions.sessions[0]) {
-        await get().selectSession(sessions.sessions[0].id);
-      }
+      // Codex opens an empty draft home ("What should we build…") rather than
+      // restoring a prior transcript as the first paint.
+      await get().newSession();
     } catch (e) {
       set({
         ready: true,
@@ -157,20 +157,45 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   newSession: async () => {
+    const isDefaultTitle = (title?: string | null) => {
+      const t = (title || "").trim();
+      return !t || t === "New task" || t === "New chat" || t === "新建任务";
+    };
+    // Codex reuses an empty draft thread instead of stacking "New task" rows.
+    for (const session of get().sessions) {
+      if (!isDefaultTitle(session.title)) continue;
+      try {
+        const detail = await api.getSession(session.id);
+        const messages = detail.session?.messages ?? [];
+        if (messages.length === 0) {
+          await get().selectSession(session.id);
+          return;
+        }
+      } catch {
+        // fall through to create
+      }
+    }
     const settings = get().settings;
     const created = await api.createSession({
       title: "New task",
-      mode: settings?.defaultMode ?? "agent",
+      mode: settings?.defaultMode ?? "chat",
       providerId: settings?.defaultProviderId,
       modelId: settings?.defaultModelId,
       projectPath: get().workspace?.path,
     } as any);
     await get().refreshSessions();
     const detail = await api.getSession(created.session.id);
-    set({
-      activeSessionId: created.session.id,
-      messages: detail.session?.messages ?? [],
-      page: "chat",
+    const entry = { page: "chat" as const, sessionId: created.session.id };
+    set((s) => {
+      const stack = s.navStack.slice(0, s.navIndex + 1);
+      const nextStack = [...stack, entry].slice(-50);
+      return {
+        activeSessionId: created.session.id,
+        messages: detail.session?.messages ?? [],
+        page: "chat" as const,
+        navStack: nextStack,
+        navIndex: nextStack.length - 1,
+      };
     });
   },
 

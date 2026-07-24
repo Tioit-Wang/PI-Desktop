@@ -323,6 +323,10 @@ All motion tokens must respect `prefers-reduced-motion: reduce`:
 - No shimmer/skeleton animations longer than 1s loop — use simple fade-in for loading states
 - No bounce effects
 
+## 8.1 Composer workspace chips (Codex parity)
+
+The project / Local / branch controls share **one** capsule bar above the composer (not three independent pills). Internal 1px separators match Codex electron-dark chrome.
+
 ## 9. Z-index layers
 
 | Layer | Z-index | Usage |

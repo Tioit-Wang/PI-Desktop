@@ -523,3 +523,10 @@ This test plan spec is accepted when:
 - Open Scheduled, create a task with prompt + cadence.
 - Expect it to appear in the list; Run now opens a chat session and sends the prompt.
 
+
+### US-UI-11 Empty draft reuse
+- Click New task twice.
+- Expect only one empty "New task" draft in Recents and the home hero remains visible.
+
+### US-UI-12 Combined workspace chips
+- On chat home, expect project / Local / branch controls to share one capsule bar above the composer.

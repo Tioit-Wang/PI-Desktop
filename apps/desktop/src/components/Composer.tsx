@@ -80,7 +80,7 @@ export function Composer() {
   return (
     <div className="composer-dock">
       <div className="composer-stack">
-        <div className="composer-chips">
+        <div className="composer-chips" role="group" aria-label="Workspace context">
           <button
             className="chip"
             onClick={() => void openProject()}
@@ -91,6 +91,7 @@ export function Composer() {
               {projectName(workspace?.path, workspace?.name, t("project.none"))}
             </span>
           </button>
+          <span className="chip-sep" aria-hidden />
           <button
             className="chip"
             onClick={() =>
@@ -102,6 +103,7 @@ export function Composer() {
             <IconComputer size={14} />
             <span>{t("chat.local")}</span>
           </button>
+          <span className="chip-sep" aria-hidden />
           <button
             className="chip"
             title={workspace?.branch ? `${t("chat.branch")} ${workspace.branch}` : t("chat.branch")}
@@ -121,7 +123,7 @@ export function Composer() {
         <div className="composer-shell">
           <div className="composer-input-wrap">
             <div className="composer-thread-mark" aria-hidden>
-              ∞
+              <span className="infinity-mark">∞</span>
             </div>
             <textarea
               ref={ref}

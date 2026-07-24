@@ -19,7 +19,14 @@ export function ChatTranscript({
   return (
     <div className="thread-scroll">
       <div className="thread-content">
-        {messages.map((message) => {
+        {messages
+          .filter((message) => {
+            if (message.role === "assistant" && !(message.content || "").trim()) {
+              return false;
+            }
+            return true;
+          })
+          .map((message) => {
           if (message.role === "tool") {
             return (
               <div key={message.id} className="tool-card">

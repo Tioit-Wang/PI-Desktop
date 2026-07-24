@@ -44,13 +44,15 @@ export function ScheduledPage() {
 
   return (
     <div className="thread-scroll">
-      <div className="mx-auto w-full max-w-[820px] px-8 py-10">
-        <div className="mb-6">
-          <div className="text-[20px] font-medium tracking-tight">{t("scheduled.title")}</div>
-          <div className="mt-1 text-[13px] text-text-secondary">{t("scheduled.subtitle")}</div>
+      <div className="page-frame">
+        <div className="page-header">
+          <div>
+            <h1 className="page-title">{t("scheduled.title")}</h1>
+            <div className="page-subtitle">{t("scheduled.subtitle")}</div>
+          </div>
         </div>
 
-        <Panel className="mb-4 space-y-3 p-4">
+        <Panel className="page-card mb-4 space-y-3 p-4">
           <div className="text-[13.5px] font-medium">{t("scheduled.create")}</div>
           <Field label={t("nav.newTask")}>
             <Input
@@ -109,8 +111,8 @@ export function ScheduledPage() {
         {loading && tasks.length === 0 ? (
           <div className="py-10 text-center text-[13px] text-text-muted">…</div>
         ) : tasks.length === 0 ? (
-          <Panel className="flex flex-col items-center px-6 py-16 text-center">
-            <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-bg-hover text-text-secondary">
+          <Panel className="page-card page-empty">
+            <div className="page-empty-icon">
               <IconClock size={20} />
             </div>
             <div className="text-[15px] font-medium">{t("scheduled.emptyTitle")}</div>
@@ -121,7 +123,7 @@ export function ScheduledPage() {
         ) : (
           <div className="space-y-2">
             {tasks.map((task) => (
-              <Panel key={task.id} className="p-3">
+              <Panel key={task.id} className="page-card p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">

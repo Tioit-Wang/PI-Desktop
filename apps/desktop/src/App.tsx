@@ -126,6 +126,10 @@ function AppShell() {
   }
 
   const showComposer = page === "chat";
+  const hasTranscript = messages.some((m) => {
+    if (m.role === "assistant" && !(m.content || "").trim()) return false;
+    return Boolean((m.content || "").trim()) || m.role === "tool";
+  });
 
   return (
     <div className="app-shell">
@@ -135,14 +139,14 @@ function AppShell() {
       />
 
       <section className="main-pane">
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-[46px] items-center justify-end px-3">
-          <div className="pointer-events-auto no-drag flex items-center gap-1">
+        <div className="main-titlebar">
+          <div className="main-titlebar-right no-drag">
             <button
-              className={`icon-btn ${contextOpen ? "active" : ""}`}
+              className={`title-nav-btn ${contextOpen ? "active" : ""}`}
               title="Toggle context"
               onClick={() => setContextOpen((v) => !v)}
             >
-              <IconPanel size={15} />
+              <IconPanel size={14} />
             </button>
           </div>
         </div>
@@ -159,7 +163,7 @@ function AppShell() {
           <PluginsPage />
         ) : (
           <>
-            {messages.length === 0 ? (
+            {!hasTranscript ? (
               <div className="thread-scroll">
                 <div className="empty-hero">
                   <h1>

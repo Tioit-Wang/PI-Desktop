@@ -110,7 +110,7 @@ async function createWindow() {
     backgroundColor: "#181818",
     show: false,
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 14, y: 14 },
+    trafficLightPosition: { x: 16, y: 16 },
     webPreferences: {
       preload: join(__dirname, "../preload/index.mjs"),
       contextIsolation: true,
