@@ -1,0 +1,54 @@
+export const PROTOCOL_VERSION = 1 as const;
+export const APP_NAME = "PI-Desktop";
+export const APP_VERSION = "0.1.0";
+
+export const IPC = {
+  invoke: {
+    appGetVersion: "pi-desktop/app/getVersion",
+    appHealth: "pi-desktop/app/health",
+    appGetOnboarding: "pi-desktop/app/getOnboarding",
+    appDismissOnboarding: "pi-desktop/app/dismissOnboarding",
+    agentPrompt: "pi-desktop/agent/prompt",
+    agentAbort: "pi-desktop/agent/abort",
+    agentGetStatus: "pi-desktop/agent/getStatus",
+    sessionList: "pi-desktop/session/list",
+    sessionCreate: "pi-desktop/session/create",
+    sessionGet: "pi-desktop/session/get",
+    sessionDelete: "pi-desktop/session/delete",
+    sessionRename: "pi-desktop/session/rename",
+    settingsGet: "pi-desktop/settings/get",
+    settingsSet: "pi-desktop/settings/set",
+    secretsSet: "pi-desktop/secrets/set",
+    secretsDelete: "pi-desktop/secrets/delete",
+    secretsHas: "pi-desktop/secrets/has",
+    projectOpen: "pi-desktop/project/open",
+    projectGet: "pi-desktop/project/get",
+    projectSet: "pi-desktop/project/set",
+    projectClear: "pi-desktop/project/clear",
+    toolResolvePermission: "pi-desktop/tool/resolvePermission",
+    providersList: "pi-desktop/providers/list",
+    providersCreate: "pi-desktop/providers/create",
+    providersUpdate: "pi-desktop/providers/update",
+    providersDelete: "pi-desktop/providers/delete",
+    providersTest: "pi-desktop/providers/testConnection",
+    providersListModels: "pi-desktop/providers/listModels",
+    pluginList: "pi-desktop/plugin/list",
+    pluginLoadDev: "pi-desktop/plugin/loadDev",
+    pluginEnable: "pi-desktop/plugin/enable",
+    pluginDisable: "pi-desktop/plugin/disable",
+    pluginUninstall: "pi-desktop/plugin/uninstall",
+    commandPaletteSearch: "pi-desktop/commandPalette/search",
+    commandPaletteExecute: "pi-desktop/commandPalette/execute",
+    logOpenFolder: "pi-desktop/log/openFolder",
+  },
+  event: {
+    agentMessage: "pi-desktop/agent/event/message",
+    hostStatus: "pi-desktop/app/event/hostStatus",
+    toast: "pi-desktop/app/event/toast",
+  },
+} as const;
+
+export const IPC_WHITELIST = new Set<string>([
+  ...Object.values(IPC.invoke),
+  ...Object.values(IPC.event),
+]);

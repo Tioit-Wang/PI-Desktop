@@ -1,0 +1,51 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::time::Instant;
+
+use anyhow::Result;
+
+use crate::db::Database;
+use crate::permissions::PermissionManager;
+use crate::plugins::PluginManager;
+use crate::secrets::SecretStore;
+use crate::workspace::WorkspaceState;
+
+pub const PROTOCOL_VERSION: u32 = 1;
+pub const HOST_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+pub struct AppState {
+    pub data_dir: PathBuf,
+    pub db: Database,
+    pub secrets: SecretStore,
+    pub workspace: WorkspaceState,
+    pub permissions: PermissionManager,
+    pub plugins: PluginManager,
+    pub started_at: Instant,
+    pub handshook: bool,
+    /// session_id -> toolName grants
+    pub session_grants: HashMap<String, Vec<String>>,
+}
+
+impl AppState {
+    pub fn open(data_dir: &std::path::Path) -> Result<Self> {
+        let db_path = data_dir.join("settings.sqlite");
+        let db = Database::open(&db_path)?;
+        let secrets = SecretStore::open(data_dir)?;
+        let plugins = PluginManager::new(data_dir);
+        Ok(Self {
+            data_dir: data_dir.to_path_buf(),
+            db,
+            secrets,
+            workspace: WorkspaceState::default(),
+            permissions: PermissionManager::default(),
+            plugins,
+            started_at: Instant::now(),
+            handshook: false,
+            session_grants: HashMap::new(),
+        })
+    }
+
+    pub fn uptime_ms(&self) -> u64 {
+        self.started_at.elapsed().as_millis() as u64
+    }
+}

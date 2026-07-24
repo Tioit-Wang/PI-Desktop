@@ -1,67 +1,33 @@
-# OS
-.DS_Store
-Thumbs.db
 
-# Editors / IDE
-.idea/
-.vscode/
-*.swp
-*.swo
-
-# Logs
-logs/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Node / package managers
-node_modules/
-.pnpm-store/
-dist/
-out/
-build/
-coverage/
-.turbo/
-.cache/
-*.tsbuildinfo
-
+!.env.example
+# Build
+# Dependencies
+# Electron
 # Env / secrets
+# IDE / OS
+# Local runtime data
+*.local
+*.log
+*.swp
+*.tsbuildinfo
+.DS_Store
+.cache/
 .env
 .env.*
-!.env.example
-*.pem
-*.key
-
-# Electron / packaging
-release/
-dist-electron/
-apps/desktop/release/
-apps/desktop/out/
-apps/desktop/dist/
-*.dmg
-*.exe
-*.AppImage
-*.deb
-*.rpm
-*.blockmap
-*.snap
-
-# Native build
-*.node
-.vite/
-
-# Test / temp
-tmp/
-temp/
-.nyc_output/
-
-# Local agent / desktop data (never commit)
+.idea/
+.pi-desktop-test/
 .pi-desktop/
-.pi/
-
-# Local plugin install state
-plugins/installed/
-plugins/disabled/
-plugins/cache/
+.pnpm-store/
+.turbo/
+.vscode/
+apps/desktop/dist-electron/
+apps/desktop/out
+apps/desktop/out/
+apps/desktop/release/
+build/
+coverage/
+dist/
+node_modules/
+out/
+packages/*/dist/
+target/
