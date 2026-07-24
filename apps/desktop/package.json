@@ -1,0 +1,38 @@
+{
+  "name": "@pi-desktop/desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PI-Desktop Electron application",
+  "main": "./out/main/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "clean": "rm -rf out dist"
+  },
+  "dependencies": {
+    "@pi-desktop/agent-runtime": "workspace:*",
+    "@pi-desktop/i18n": "workspace:*",
+    "@pi-desktop/plugin-sdk": "workspace:*",
+    "@pi-desktop/shared": "workspace:*",
+    "i18next": "^25.3.2",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-i18next": "^15.6.0",
+    "react-markdown": "^10.1.0",
+    "zustand": "^5.0.6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.11",
+    "@types/react": "^19.1.8",
+    "@types/react-dom": "^19.1.6",
+    "@vitejs/plugin-react": "^4.6.0",
+    "electron": "^37.2.0",
+    "electron-vite": "^4.0.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.9.3",
+    "vite": "^7.0.4"
+  }
+}

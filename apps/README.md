@@ -1,2 +1,3 @@
 # apps
-Electron application packages will live here (`apps/desktop`).
+
+- `desktop` — Electron + React product shell
