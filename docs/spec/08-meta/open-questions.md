@@ -1,6 +1,6 @@
 # Open Questions
 
-> Updated for baseline `0.3.2`.  
+> Updated for baseline `0.3.4`.  
 > High-priority questions were frozen in `decisions-log.md`.
 
 ## Still open (non-blocking for M1)
@@ -20,6 +20,12 @@
 1. When to enforce strict separate-process plugin runtime (M4 vs later)
 2. Whether future plugin settings may include secret fields under special storage
 3. Optional “keep data on uninstall” UX copy/defaults beyond hard default delete
+
+### Provider / model
+1. Remote catalog distribution channel (signed app update vs dedicated catalog feed)
+2. Whether to ship large multi-vendor bundled catalog or slim + refresh-on-demand
+3. Azure deployment-name UX details vs raw model id
+4. Bedrock region/profile advanced UI beyond aws_sdk_default in MVP
 
 ### Product polish
 1. Exact app icon / brand system

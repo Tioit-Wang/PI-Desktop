@@ -27,3 +27,4 @@ Each ADR includes:
 | 0009 | English-first globalization | Accepted |
 | 0010 | Rust backend host core | Accepted |
 | 0011 | Freeze host RPC, storage ownership, and mode defaults | Accepted |
+| 0012 | Universal provider & model coverage | Accepted |

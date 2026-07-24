@@ -12,3 +12,9 @@
 | [08-error-codes.md](08-error-codes.md) | Shared error code registry |
 | [09-logging-and-observability.md](09-logging-and-observability.md) | Logging & audit |
 | [10-session-state-machine.md](10-session-state-machine.md) | Session/turn state machine |
+| [11-provider-model-system.md](11-provider-model-system.md) | Universal provider & model coverage |
+| [12-provider-config-schema.md](12-provider-config-schema.md) | Provider config / SQL / host methods |
+| [13-model-catalog-and-selection.md](13-model-catalog-and-selection.md) | Model catalog, picker, selection |
+| [14-secrets-storage.md](14-secrets-storage.md) | Secrets storage & redaction |
+| [15-workspace-ignore-rules.md](15-workspace-ignore-rules.md) | Workspace ignore & denylist |
+| [16-tool-result-limits.md](16-tool-result-limits.md) | Tool result size limits |

@@ -1,6 +1,6 @@
 # Decisions Log
 
-> Baseline delta: `0.3.0` → `0.3.2`  
+> Baseline delta: `0.3.0` → `0.3.4`  
 > Date: `2026-07-25`  
 > Status: Accepted for implementation
 
@@ -38,6 +38,23 @@ This log freezes previously open questions into concrete decisions.
 | D021 | First-run onboarding | **Inline checklist (not modal wizard)** |
 | D022 | Local telemetry | **Local logs only in MVP (no remote telemetry)** |
 
+
+## E. Provider & model coverage decisions (0.3.4)
+
+| ID | Topic | Decision | Rationale |
+|---|---|---|---|
+| D023 | Provider coverage goal | **Universal market coverage** (not a tiny fixed vendor list) | Globalization + real coding workflows |
+| D024 | Coverage strategy | **pi-ai native providers + first-class OpenAI-compatible + custom providers** | Maximum reach without rewriting every SDK |
+| D025 | Model allowlist | **No closed product allowlist** | Models churn; power users need free-form IDs |
+| D026 | Catalog sources | **bundled snapshot + discovery/refresh + user-defined** | Works offline and stays current |
+| D027 | Default identity | **Model selection is `(providerId, modelId)`** | Same model id can exist on many gateways |
+| D028 | Secrets | **OS safeStorage (or controlled fallback) via secretRef; never in provider JSON** | Security boundary with Rust host ownership |
+| D029 | Local models | **Supported through OpenAI-compatible local gateways** | Ollama/LM Studio/vLLM without special-case architecture |
+| D030 | Connection test | **First-class host method before trusting provider for runs** | Fail early, actionable setup UX |
+| D031 | Secrets backend | **OS safeStorage primary + encrypted file fallback** | Robust on macOS first release |
+| D032 | Workspace ignore | **security denylist + defaults + `.pi-desktopignore`** | Safe/predictable tool FS behavior |
+| D033 | Tool result limits | **256KB/4000 lines defaults with explicit truncation markers** | Protect context & UI |
+
 ## C. Still deferred (not blocking M1)
 
 1. Exact marketplace domain / provider IDs
@@ -45,6 +62,8 @@ This log freezes previously open questions into concrete decisions.
 3. Signature key distribution operational details
 4. Final Node sidecar packaging format for release builds
 5. Additional locales schedule (e.g. zh-CN)
+6. Remote catalog update channel details (URL/signature)
+7. Exact recommended default model per vendor preset
 
 ## D. Decision rules going forward
 

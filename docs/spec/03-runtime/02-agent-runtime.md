@@ -70,19 +70,33 @@ interface AgentRuntime {
 - Chat mode is available as a safer read-only profile
 - Mode is session-scoped and persisted with session metadata
 
-## 6. Providers (MVP)
+## 6. Providers & models
 
-- OpenAI-compatible
+> Full policy: `11-provider-model-system.md`, `12-provider-config-schema.md`, `13-model-catalog-and-selection.md`.
+
+Coverage strategy:
+
+1. **Native providers** exposed by pi-ai (OpenAI, Anthropic, Google, and others available at pin version)
+2. **OpenAI-compatible** first-class path for gateways and long-tail vendors
+3. **Custom providers** with protocol profiles
+4. **Refreshable model catalog** + **free-form model IDs** (no closed allowlist)
+
+MVP UI always includes at least:
+- OpenAI
 - Anthropic
 - Google Gemini
-- Custom base URL
+- OpenAI-Compatible (generic)
+- Custom provider entry
 
-Config fields:
-- providerId
-- baseUrl
-- modelId
-- apiKey ref
-- optional headers/proxy later
+Runtime responsibilities:
+- resolve `(providerId, modelId)`
+- fetch secrets via host (never cache raw secrets in logs)
+- translate vendor failures into provider AppError codes
+- stream tokens/events to orchestrator
+- support abort/cancel mid-stream
+
+Local models are supported through OpenAI-compatible endpoints (Ollama, LM Studio, vLLM, etc.).
+
 
 ## 7. System prompt composition
 

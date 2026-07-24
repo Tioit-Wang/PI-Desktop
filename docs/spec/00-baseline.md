@@ -1,8 +1,8 @@
 # PI-Desktop Baseline Freeze
 
-- Baseline Version: `0.3.2`
+- Baseline Version: `0.3.4`
 - Date: `2026-07-25`
-- Status: `Frozen for implementation details (expanded)`
+- Status: `Frozen for implementation details (provider + runtime safety)`
 - Language policy: **English-first**
 - Backend policy: **Rust host core + pi agent sidecar**
 
@@ -41,6 +41,12 @@
 31. Onboarding: **inline checklist**
 32. Observability MVP: **local logs only**
 33. Error model: **shared AppError code registry**
+34. Provider coverage: **universal via pi-ai native + OpenAI-compatible + custom**
+35. Model policy: **no closed allowlist; refreshable catalog + free-form model IDs**
+36. Provider storage: **Rust SQLite configs + OS secret store references**
+37. Secrets backend: **safeStorage primary + encrypted file fallback**
+38. Workspace ignore: **denylist + defaults + `.pi-desktopignore`**
+39. Tool result limits: **256KB / 4000 lines with truncation markers**
 
 ## Source of Truth
 
@@ -59,3 +65,4 @@ Start **M1** against these frozen details:
 3. English i18n source catalog
 4. shared protocol types (typebox)
 5. reserved plugin interfaces
+6. provider settings contracts + model catalog scaffolding

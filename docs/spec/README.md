@@ -1,6 +1,6 @@
 # PI-Desktop Spec
 
-> Baseline: `0.3.2` 
+> Baseline: `0.3.4` 
 > Updated: `2026-07-25` 
 > Language: **English-first** 
 > Stack: Electron + **Rust host core** + pi Agent Harness + user-installable plugins
@@ -47,6 +47,7 @@ docs/spec/
 3. `03-runtime/05-host-core-rust.md`
 4. `03-runtime/02-agent-runtime.md`
 5. `03-runtime/01-ipc-protocol.md`
+6. `03-runtime/11-provider-model-system.md`
 6. `07-plugins/01-plugin-system.md`
 
 ### Plugin authors
@@ -68,3 +69,4 @@ docs/spec/
 8. Permission timeout 120s deny
 9. Local user-installable plugins (market later)
 10. First release = macOS arm64 only
+11. Universal provider/model coverage (native + OpenAI-compatible + custom)

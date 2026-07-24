@@ -142,3 +142,29 @@ Examples:
 2. No raw untyped string-only failures on main paths
 3. Chat hard-denies use explicit mode codes
 4. Host numeric codes map to stable string codes
+
+## Provider / model errors
+
+| code | http-ish | retryable | notes |
+|---|---|---|---|
+| `PROVIDER_AUTH_FAILED` | 401/403 | no | bad/missing credentials |
+| `PROVIDER_BASE_URL_INVALID` | 400 | no | endpoint invalid |
+| `PROVIDER_PROTOCOL_MISMATCH` | 400 | no | wrong protocol profile |
+| `PROVIDER_MODEL_NOT_FOUND` | 404 | no | unknown model id |
+| `PROVIDER_RATE_LIMITED` | 429 | yes | quota/rate |
+| `PROVIDER_TIMEOUT` | 504 | yes | network/server timeout |
+| `PROVIDER_UNSUPPORTED_CAPABILITY` | 422 | no | tools/vision/etc unsupported |
+| `PROVIDER_STREAM_INTERRUPTED` | 503 | yes | mid-stream drop |
+| `PROVIDER_SECRET_MISSING` | 400 | no | enabled provider needs secret |
+| `PROVIDER_DISABLED` | 400 | no | provider disabled |
+
+## Workspace / tool output errors
+
+| code | retryable | notes |
+|---|---|---|
+| `WORKSPACE_PATH_DENIED` | no | ignore/denylist/security block |
+| `WORKSPACE_OUTSIDE_ROOT` | no | path escapes workspace |
+| `TOOL_RESULT_TRUNCATED` | n/a | informational marker path |
+| `TOOL_BINARY_CONTENT` | no | refused binary dump |
+| `TOOL_TIMEOUT` | maybe | bash/tool deadline |
+
