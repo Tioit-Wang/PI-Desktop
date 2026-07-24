@@ -38,6 +38,9 @@
 - [04-builtin-commands.md](04-ux/04-builtin-commands.md)
 - [05-onboarding.md](04-ux/05-onboarding.md)
 - [06-settings-ia.md](04-ux/06-settings-ia.md)
+- [07-ui-design-system.md](04-ux/07-ui-design-system.md)
+- [08-component-spec.md](04-ux/08-component-spec.md)
+- [09-interaction-patterns.md](04-ux/09-interaction-patterns.md)
 
 ## 5. Security
 - [01-security.md](05-security/01-security.md)
@@ -45,6 +48,9 @@
 ## 6. Delivery
 - [01-mvp-milestones.md](06-delivery/01-mvp-milestones.md)
 - [02-acceptance-criteria.md](06-delivery/02-acceptance-criteria.md)
+- [03-ai-development-workflow.md](06-delivery/03-ai-development-workflow.md)
+- [04-e2e-test-plan.md](06-delivery/04-e2e-test-plan.md)
+- [05-change-checklist.md](06-delivery/05-change-checklist.md)
 
 ## 7. Plugins
 - [01-plugin-system.md](07-plugins/01-plugin-system.md)

@@ -41,6 +41,10 @@ Start here:
 4. [Rust host core](docs/spec/03-runtime/05-host-core-rust.md)
 5. [Plugin system](docs/spec/07-plugins/01-plugin-system.md)
 6. [Milestones](docs/spec/06-delivery/01-mvp-milestones.md)
+7. [AI dev workflow](docs/spec/06-delivery/03-ai-development-workflow.md)
+8. [E2E test plan](docs/spec/06-delivery/04-e2e-test-plan.md)
+
+Agent instructions: [AGENTS.md](AGENTS.md)
 
 ## Repo layout
 

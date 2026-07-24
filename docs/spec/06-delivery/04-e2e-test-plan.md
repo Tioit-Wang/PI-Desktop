@@ -1,0 +1,477 @@
+# 04. E2E Test Plan
+
+> Scope: MVP acceptance scenarios for PI-Desktop  
+> Status: Accepted (documentation; automation deferred)  
+> Cross-references: [acceptance-criteria](02-acceptance-criteria.md) · [milestones](01-mvp-milestones.md) · [ai-development-workflow](03-ai-development-workflow.md) · [change-checklist](05-change-checklist.md)
+
+---
+
+## 1. Goals
+
+- Document every user-visible and protocol-visible behavior that MVP must verify.
+- Provide a scenario catalog that maps to acceptance criteria (A–H) and milestones (M1–M5).
+- Serve as the traceability backbone: scenario ID ↔ acceptance criterion ↔ spec.
+- Prepare for future automation without requiring implementation now.
+
+## 2. Non-goals
+
+- Full automated test suite in MVP phase (document scenarios first; automate later).
+- Performance / stress testing (post-MVP).
+- Cross-platform testing (macOS arm64 only for first release — D010).
+- Plugin marketplace scenarios (post-MVP).
+- Remote gateway / control-plane scenarios (post-MVP — D004).
+
+---
+
+## 3. Test Pyramid
+
+```
+        ╱  E2E  ╲           — few, high-value, cross-system
+       ╱ Integration ╲      — IPC/RPC contracts, host↔renderer
+      ╱    Unit       ╲     — per-module, fast, isolated
+```
+
+| Level | Scope | Count target | Tooling |
+|---|---|---|---|
+| **Unit** | Single module, no IPC | Many | Vitest / Rust #[test] |
+| **Integration** | IPC contract, host↔renderer, host↔sidecar | Moderate | Vitest + IPC mocks or live Electron |
+| **E2E** | Full user journey through the desktop app | Few (MVP: ~20) | Playwright / Spectron-like (future) |
+
+**Strategy**: document all E2E scenarios now; write unit/integration tests alongside code; automate E2E after M5.
+
+---
+
+## 4. Tooling Intent
+
+| Tool | Purpose | Status |
+|---|---|---|
+| **Vitest** | Unit + integration (TS side) | Planned (M1) |
+| **Rust #[test]** | Host-core unit tests | Planned (M1) |
+| **Playwright** | E2E browser-style testing in Electron | Planned (post-M5) |
+| **Spectron-like** | Electron-specific app-level testing | Investigate (post-M5) |
+
+> Decision: document scenarios now; pick concrete E2E runner when code is ready for M5 hardening.
+
+---
+
+## 5. Environment Requirements
+
+| Requirement | Detail |
+|---|---|
+| Platform | macOS arm64 (D010) |
+| Profile | Clean `~/.pi-desktop` profile (no prior config) |
+| Fixtures | Sample project directory (`examples/fixtures/sample-project/`) |
+| Sample plugin | `examples/plugins/hello` loaded from local path |
+| Provider | At least one provider with a valid key (test account) |
+| Display | Headless-capable Electron or real display |
+
+---
+
+## 6. Scenario Template
+
+Each scenario is documented in this format:
+
+```markdown
+### E2E-<ID>: <title>
+
+- **Preconditions**: what must be true before steps start
+- **Steps**: ordered list of user / system actions
+- **Expected**: observable outcome that proves correctness
+- **Specs linked**: relevant spec file(s)
+- **Acceptance criterion**: which A–H letter(s) this verifies
+- **Milestone**: M1–M5 target
+- **Status**: Draft | Documented | Automated | Passed
+```
+
+---
+
+## 7. MVP Scenario Catalog
+
+### Boot & Healthcheck
+
+#### E2E-001: App launches and shows main window
+
+- **Preconditions**: macOS arm64; no prior `~/.pi-desktop` profile.
+- **Steps**: 1) Launch PI-Desktop. 2) Observe main window appears.
+- **Expected**: Window renders in English; no crash; version info visible.
+- **Specs linked**: `03-runtime/07-process-model.md`, `04-ux/01-ui-ia.md`
+- **Acceptance**: A (app startup)
+- **Milestone**: M1
+- **Status**: Draft
+
+#### E2E-002: IPC bridge is functional
+
+- **Preconditions**: App is running.
+- **Steps**: 1) Trigger an action that calls preload IPC (e.g. version query). 2) Observe result in renderer.
+- **Expected**: Main↔renderer IPC returns expected data; no error.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`
+- **Acceptance**: A (bridge normal)
+- **Milestone**: M1
+- **Status**: Draft
+
+#### E2E-003: Rust host healthcheck responds
+
+- **Preconditions**: App is running; Rust host-core sidecar started.
+- **Steps**: 1) Electron calls host healthcheck RPC. 2) Observe response in logs.
+- **Expected**: Host returns `ok` with protocol version; handshake logged.
+- **Specs linked**: `03-runtime/05-host-core-rust.md`, `03-runtime/06-host-rpc-protocol.md`
+- **Acceptance**: A (bridge normal)
+- **Milestone**: M1
+- **Status**: Draft
+
+#### E2E-004: First-run inline checklist appears
+
+- **Preconditions**: Fresh profile (no `~/.pi-desktop`).
+- **Steps**: 1) Launch app on fresh profile. 2) Observe onboarding checklist.
+- **Expected**: Inline checklist is displayed; items are actionable.
+- **Specs linked**: `04-ux/05-onboarding.md`
+- **Acceptance**: A (first-run checklist)
+- **Milestone**: M2
+- **Status**: Draft
+
+### Provider & Key
+
+#### E2E-005: Add a provider and save API key
+
+- **Preconditions**: App running; no provider configured.
+- **Steps**: 1) Open settings. 2) Add a provider. 3) Enter API key. 4) Save.
+- **Expected**: Provider appears in list; key stored securely (not in plaintext config).
+- **Specs linked**: `03-runtime/12-provider-config-schema.md`, `03-runtime/14-secrets-storage.md`
+- **Acceptance**: B (add provider, save key)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-006: Key survives restart
+
+- **Preconditions**: Provider + key configured.
+- **Steps**: 1) Quit app. 2) Relaunch. 3) Open settings → provider list.
+- **Expected**: Provider still listed; key usable (no re-entry needed).
+- **Specs linked**: `03-runtime/14-secrets-storage.md`
+- **Acceptance**: B (key survives restart)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-007: No-provider blocking prompt
+
+- **Preconditions**: App running; no provider configured.
+- **Steps**: 1) Attempt to start a chat.
+- **Expected**: Clear blocking prompt explaining that a provider must be configured.
+- **Specs linked**: `04-ux/06-settings-ia.md`
+- **Acceptance**: B (blocking prompt)
+- **Milestone**: M2
+- **Status**: Draft
+
+### Chat Stream & Abort
+
+#### E2E-008: New session and send message
+
+- **Preconditions**: Provider configured.
+- **Steps**: 1) Create new session. 2) Type a message. 3) Send.
+- **Expected**: Message sent; assistant begins streaming response.
+- **Specs linked**: `03-runtime/02-agent-runtime.md`, `03-runtime/10-session-state-machine.md`
+- **Acceptance**: C (new session, send message)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-009: Streamed tokens visible in UI
+
+- **Preconditions**: Session active; message sent.
+- **Steps**: 1) Observe assistant response as it streams.
+- **Expected**: Tokens appear progressively in chat UI; final response complete.
+- **Specs linked**: `03-runtime/02-agent-runtime.md`
+- **Acceptance**: C (streamed output)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-010: Abort generation
+
+- **Preconditions**: Assistant is streaming a response.
+- **Steps**: 1) Click abort/stop button during streaming. 2) Observe result.
+- **Expected**: Stream stops; partial response preserved; session remains usable.
+- **Specs linked**: `03-runtime/02-agent-runtime.md`
+- **Acceptance**: C (abort)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-011: Switch between history sessions
+
+- **Preconditions**: Two or more sessions exist.
+- **Steps**: 1) Switch to a different session in history. 2) Observe chat content.
+- **Expected**: Previous session content loads; current session preserved.
+- **Specs linked**: `03-runtime/10-session-state-machine.md`
+- **Acceptance**: C (switch sessions)
+- **Milestone**: M2
+- **Status**: Draft
+
+### Workspace Open
+
+#### E2E-012: Open a project directory
+
+- **Preconditions**: App running; no project open.
+- **Steps**: 1) Open project directory via UI. 2) Select a local folder.
+- **Expected**: Project path displayed; tool paths resolve relative to project root.
+- **Specs linked**: `03-runtime/15-workspace-ignore-rules.md`
+- **Acceptance**: D (open project, show path)
+- **Milestone**: M3
+- **Status**: Draft
+
+#### E2E-013: Read-only tools work in project
+
+- **Preconditions**: Project directory open.
+- **Steps**: 1) Ask agent to read a file in the project. 2) Observe result.
+- **Expected**: `Read`/`Glob`/`Grep` return correct results within project scope.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md`
+- **Acceptance**: E (Read/Glob/Grep work), D (tools based on project)
+- **Milestone**: M3
+- **Status**: Draft
+
+### Permission Allow / Deny / Timeout
+
+#### E2E-014: Write/Edit/Bash triggers permission card
+
+- **Preconditions**: Agent mode; project open.
+- **Steps**: 1) Ask agent to write a file. 2) Observe permission card.
+- **Expected**: Permission card appears with tool name, arguments preview, and allow/deny options.
+- **Specs linked**: `04-ux/03-permission-ux.md`, `03-runtime/03-tools-and-permissions.md`
+- **Acceptance**: E (Write/Edit/Bash trigger confirmation)
+- **Milestone**: M3
+- **Status**: Draft
+
+#### E2E-015: Denied permission blocks execution
+
+- **Preconditions**: Permission card displayed.
+- **Steps**: 1) Click deny on permission card. 2) Observe agent response.
+- **Expected**: Tool not executed; agent receives denied result; no file changed.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md`
+- **Acceptance**: E (denied → not executed)
+- **Milestone**: M3
+- **Status**: Draft
+
+#### E2E-016: Allowed permission executes tool
+
+- **Preconditions**: Permission card displayed.
+- **Steps**: 1) Click allow on permission card. 2) Observe agent response and UI.
+- **Expected**: Tool executed; result returned to model and displayed in UI; file modified.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md`
+- **Acceptance**: E (allowed → result returned)
+- **Milestone**: M3
+- **Status**: Draft
+
+#### E2E-017: Permission timeout defaults to deny
+
+- **Preconditions**: Permission card displayed; no user action.
+- **Steps**: 1) Wait 120 seconds without responding to permission card. 2) Observe outcome.
+- **Expected**: Permission auto-denied after timeout; tool not executed.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md`
+- **Acceptance**: E (timeout → deny)
+- **Milestone**: M3
+- **Status**: Draft
+
+#### E2E-018: Chat mode cannot run Write/Edit/Bash
+
+- **Preconditions**: Chat mode active.
+- **Steps**: 1) Ask agent to write a file in Chat mode. 2) Observe behavior.
+- **Expected**: Write/Edit/Bash not available in Chat mode; only Read/Glob/Grep work.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md`
+- **Acceptance**: E (Chat read-only)
+- **Milestone**: M3
+- **Status**: Draft
+
+#### E2E-019: Workspace-outside paths are rejected
+
+- **Preconditions**: Agent mode; project open.
+- **Steps**: 1) Ask agent to read a file outside the project root. 2) Observe result.
+- **Expected**: Tool rejects out-of-scope path; no data returned from outside workspace.
+- **Specs linked**: `03-runtime/15-workspace-ignore-rules.md`
+- **Acceptance**: E (workspace-outside rejected)
+- **Milestone**: M3
+- **Status**: Draft
+
+### Session Persistence
+
+#### E2E-020: Session survives restart
+
+- **Preconditions**: Session with message history exists.
+- **Steps**: 1) Quit app. 2) Relaunch. 3) Open session list.
+- **Expected**: Previous session appears; messages recoverable.
+- **Specs linked**: `03-runtime/04-data-storage.md`, `03-runtime/10-session-state-machine.md`
+- **Acceptance**: F (session survives restart)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-021: Delete session works
+
+- **Preconditions**: Session exists.
+- **Steps**: 1) Delete a session. 2) Observe session list.
+- **Expected**: Session removed from list; data gone.
+- **Specs linked**: `03-runtime/04-data-storage.md`
+- **Acceptance**: F (delete session)
+- **Milestone**: M2
+- **Status**: Draft
+
+### Plugin Load / Command / Disable
+
+#### E2E-022: Load local plugin
+
+- **Preconditions**: App running; sample plugin available at local path.
+- **Steps**: 1) Open settings → plugins. 2) Add plugin from local directory. 3) Enable.
+- **Expected**: Plugin loads; manifest validated; contributions registered.
+- **Specs linked**: `07-plugins/01-plugin-system.md`, `07-plugins/05-plugin-lifecycle.md`
+- **Acceptance**: G (load local plugin)
+- **Milestone**: M4
+- **Status**: Draft
+
+#### E2E-023: Plugin command in palette and executes
+
+- **Preconditions**: Plugin loaded and enabled.
+- **Steps**: 1) Open command palette. 2) Find plugin command. 3) Execute.
+- **Expected**: Command appears in palette; execution produces expected result.
+- **Specs linked**: `07-plugins/09-plugin-command-palette.md`
+- **Acceptance**: G (plugin command appears and executes)
+- **Milestone**: M4
+- **Status**: Draft
+
+#### E2E-024: Plugin registers and calls agent tool
+
+- **Preconditions**: Plugin loaded; plugin declares an agent tool.
+- **Steps**: 1) Ask agent to use the plugin's tool. 2) Observe permission card if required. 3) Allow.
+- **Expected**: Tool registered with forced prefix (`plugin_<id>_<name>`); call succeeds.
+- **Specs linked**: `07-plugins/03-plugin-api.md`, `07-plugins/13-plugin-permissions-matrix.md`
+- **Acceptance**: G (plugin agent tool)
+- **Milestone**: M4
+- **Status**: Draft
+
+#### E2E-025: Disable plugin removes contributions
+
+- **Preconditions**: Plugin enabled and contributions visible.
+- **Steps**: 1) Disable plugin in settings. 2) Check command palette and agent tools.
+- **Expected**: Commands and tools disappear; no leftover contributions.
+- **Specs linked**: `07-plugins/05-plugin-lifecycle.md`
+- **Acceptance**: G (disable removes contributions)
+- **Milestone**: M4
+- **Status**: Draft
+
+#### E2E-026: Plugin error does not crash app
+
+- **Preconditions**: Plugin loaded.
+- **Steps**: 1) Trigger a scenario where plugin throws an error. 2) Observe app behavior.
+- **Expected**: App remains running; error is captured and reported; no crash.
+- **Specs linked**: `07-plugins/04-plugin-security.md`
+- **Acceptance**: G (plugin error → no crash)
+- **Milestone**: M4
+- **Status**: Draft
+
+### Security — No Secret Leakage
+
+#### E2E-027: Secrets not in logs for normal flows
+
+- **Preconditions**: Provider configured with API key.
+- **Steps**: 1) Perform a chat session. 2) Inspect log files.
+- **Expected**: API keys / tokens not present in any log output for normal flows.
+- **Specs linked**: `05-security/01-security.md`, `03-runtime/09-logging-and-observability.md`
+- **Acceptance**: H (secrets not in logs)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-028: Renderer has no Node integration
+
+- **Preconditions**: App running.
+- **Steps**: 1) Inspect renderer process flags.
+- **Expected**: `nodeIntegration: false`; `contextIsolation: true`; preload is the only bridge.
+- **Specs linked**: `05-security/01-security.md`
+- **Acceptance**: Security (no Node in renderer)
+- **Milestone**: M1
+- **Status**: Draft
+
+#### E2E-029: Unwhitelisted IPC cannot be called
+
+- **Preconditions**: App running.
+- **Steps**: 1) Attempt to invoke an IPC method not on the whitelist from renderer.
+- **Expected**: Call blocked; no data returned; error or no response.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`, `05-security/01-security.md`
+- **Acceptance**: Security (IPC whitelist enforced)
+- **Milestone**: M1
+- **Status**: Draft
+
+#### E2E-030: Plugin cannot read API key
+
+- **Preconditions**: Plugin loaded; provider configured.
+- **Steps**: 1) Plugin attempts to access provider secret via any API. 2) Observe result.
+- **Expected**: Access denied; no secret data returned to plugin.
+- **Specs linked**: `07-plugins/04-plugin-security.md`, `03-runtime/14-secrets-storage.md`
+- **Acceptance**: Security (plugin cannot read API key)
+- **Milestone**: M4
+- **Status**: Draft
+
+#### E2E-031: Error codes are stable and readable
+
+- **Preconditions**: Trigger an error condition.
+- **Steps**: 1) Cause a known error (e.g. invalid provider key). 2) Observe error display.
+- **Expected**: Error shows a stable `AppError` code; human-readable message present.
+- **Specs linked**: `03-runtime/08-error-codes.md`
+- **Acceptance**: H (errors expose stable codes)
+- **Milestone**: M2
+- **Status**: Draft
+
+---
+
+## 8. Traceability Matrix
+
+| Acceptance | Scenarios |
+|---|---|
+| A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
+| B — Model config | E2E-005, E2E-006, E2E-007 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011 |
+| D — Workspace | E2E-012, E2E-013 |
+| E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019 |
+| F — Persistence | E2E-020, E2E-021 |
+| G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
+| H — Diagnostics | E2E-027, E2E-031 |
+| Security | E2E-028, E2E-029, E2E-030 |
+
+| Milestone | Scenarios |
+|---|---|
+| M1 | E2E-001, E2E-002, E2E-003, E2E-028, E2E-029 |
+| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031 |
+| M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019 |
+| M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030 |
+| M5 | (Packaging, polish — scenarios TBD) |
+
+---
+
+## 9. How AI Must Update This Doc
+
+When adding or changing a feature that affects user-visible or protocol-visible behavior:
+
+1. **Add a new scenario** using the template in §6. Assign the next available ID (`E2E-<N>`).
+2. **Link it** to the relevant acceptance criterion (A–H) and milestone (M1–M5).
+3. **Set status** to `Draft` unless an automated test already exists.
+4. **Update the traceability matrix** in §8.
+5. **Commit** the update as part of the change (per [ai-development-workflow](03-ai-development-workflow.md) R3).
+
+---
+
+## 10. Future Automation Mapping
+
+When E2E automation is implemented (post-M5):
+
+- Each `Draft` scenario → Playwright test file.
+- Scenario ID becomes test case name: `e2e-001-app-launches`.
+- Fixtures and test data paths defined in a `tests/e2e/fixtures/` directory.
+- CI gate: all E2E scenarios must pass before release.
+
+Automation section will be expanded in a future ADR when the tooling decision is finalized.
+
+---
+
+## 11. Acceptance Criteria
+
+This test plan spec is accepted when:
+
+- [ ] All MVP acceptance criteria (A–H) have at least one E2E scenario.
+- [ ] All security acceptance items have at least one E2E scenario.
+- [ ] Every scenario links to at least one spec document.
+- [ ] Traceability matrix is complete (scenarios ↔ acceptance ↔ milestones).
+- [ ] Scenario template is defined and all entries follow it.
+- [ ] AI update rules are documented and cross-linked to workflow spec.
+- [ ] Environment requirements match baseline (macOS arm64, clean profile).

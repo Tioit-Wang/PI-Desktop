@@ -16,7 +16,11 @@
 | [02-architecture/01-architecture.md](02-architecture/01-architecture.md) | Architecture |
 | [03-runtime/05-host-core-rust.md](03-runtime/05-host-core-rust.md) | Rust host core |
 | [04-ux/02-i18n-english-first.md](04-ux/02-i18n-english-first.md) | i18n policy |
+| [04-ux/07-ui-design-system.md](04-ux/07-ui-design-system.md) | Design system (tokens, motion, density) |
 | [07-plugins/01-plugin-system.md](07-plugins/01-plugin-system.md) | Plugin system |
+| [06-delivery/03-ai-development-workflow.md](06-delivery/03-ai-development-workflow.md) | AI dev workflow rules |
+| [06-delivery/04-e2e-test-plan.md](06-delivery/04-e2e-test-plan.md) | E2E test plan & scenarios |
+| [06-delivery/05-change-checklist.md](06-delivery/05-change-checklist.md) | Change checklist |
 
 ## Directory map
 

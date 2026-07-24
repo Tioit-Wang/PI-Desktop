@@ -24,6 +24,11 @@ Until that is enabled, track delivery with:
 - English-first policy
 - Rust host-core architecture decision
 - Private repo initialization
+- UX design system spec (07/08/09)
+- AI development workflow spec (03)
+- E2E test plan spec (04)
+- Change checklist spec (05)
+- AGENTS.md agent instruction file
 
 ### Ready
 - M1 App Skeleton
