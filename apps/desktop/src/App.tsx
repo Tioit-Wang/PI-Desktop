@@ -1,41 +1,100 @@
-import { useEffect, useState } from "react";
+import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import { Sidebar } from "./components/Sidebar";
+import { ContextPanel } from "./components/ContextPanel";
 import { ChatTranscript } from "./components/ChatTranscript";
 import { Composer } from "./components/Composer";
-import { OnboardingChecklist } from "./components/OnboardingChecklist";
 import { PermissionDialog } from "./components/PermissionDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { SettingsPage } from "./pages/SettingsPage";
 import { useAppStore } from "./stores/app-store";
 import { api } from "./lib/api";
+import { IconPanel, IconSidebar } from "./components/icons";
 
-export default function App() {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    console.error("UI crash", error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex h-full items-center justify-center bg-bg-primary p-8 text-text-primary">
+          <div className="max-w-lg rounded-[16px] border border-border-default bg-bg-secondary p-5">
+            <div className="mb-2 text-[15px] font-semibold">PI-Desktop UI crashed</div>
+            <pre className="whitespace-pre-wrap text-[12.5px] text-error">
+              {this.state.error.message}
+            </pre>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function projectName(path?: string | null) {
+  if (!path) return null;
+  const parts = path.split(/[/\\]/).filter(Boolean);
+  return parts[parts.length - 1] || path;
+}
+
+function AppShell() {
   const bootstrap = useAppStore((s) => s.bootstrap);
   const ready = useAppStore((s) => s.ready);
   const page = useAppStore((s) => s.page);
   const messages = useAppStore((s) => s.messages);
-  const healthOk = useAppStore((s) => s.healthOk);
-  const version = useAppStore((s) => s.version);
   const error = useAppStore((s) => s.error);
   const toast = useAppStore((s) => s.toast);
   const setToast = useAppStore((s) => s.setToast);
   const handleAgentEvent = useAppStore((s) => s.handleAgentEvent);
-  const workspace = useAppStore((s) => s.workspace);
-  const settings = useAppStore((s) => s.settings);
   const isRunning = useAppStore((s) => s.isRunning);
+  const abort = useAppStore((s) => s.abort);
+  const settings = useAppStore((s) => s.settings);
+  const workspace = useAppStore((s) => s.workspace);
+  const openProject = useAppStore((s) => s.openProject);
+
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [contextOpen, setContextOpen] = useState(false);
+
+  useEffect(() => {
+    const theme = settings?.theme ?? "dark";
+    if (theme === "system") {
+      document.documentElement.dataset.theme = window.matchMedia(
+        "(prefers-color-scheme: light)",
+      ).matches
+        ? "light"
+        : "dark";
+    } else {
+      document.documentElement.dataset.theme = theme;
+    }
+  }, [settings?.theme]);
 
   useEffect(() => {
     void bootstrap();
     const offEvent = api.onAgentEvent(handleAgentEvent);
     const offToast = api.onToast((message) => {
       setToast(message);
-      setTimeout(() => setToast(null), 2500);
+      window.setTimeout(() => setToast(null), 2500);
     });
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === ".") {
+        e.preventDefault();
+        void abort();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setSidebarCollapsed((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -44,86 +103,104 @@ export default function App() {
       offToast();
       window.removeEventListener("keydown", onKey);
     };
-  }, [bootstrap, handleAgentEvent, setToast]);
+  }, [bootstrap, handleAgentEvent, setToast, abort]);
+
+  const heroProject = useMemo(() => projectName(workspace?.path), [workspace?.path]);
 
   if (!ready) {
     return (
-      <div className="flex h-full items-center justify-center text-sm text-slate-400">
+      <div className="flex h-full items-center justify-center bg-bg-primary text-sm text-text-muted">
         Starting PI-Desktop…
       </div>
     );
   }
 
   return (
-    <div className="flex h-full">
-      <Sidebar />
-      <main className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-slate-800 px-4 py-2 text-xs text-slate-400">
-          <div className="flex items-center gap-3">
-            <span
-              className={`inline-flex items-center gap-1 ${
-                healthOk ? "text-green-400" : "text-red-400"
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  healthOk ? "bg-green-400" : "bg-red-400"
-                }`}
-              />
-              {healthOk ? "Host connected" : "Host unavailable"}
-            </span>
-            <span>{workspace?.name ?? "No project"}</span>
-            <span>{settings?.defaultModelId ?? "No model"}</span>
-            <span className="uppercase">{settings?.defaultMode ?? "agent"}</span>
-            {isRunning && <span className="text-blue-400">Running…</span>}
-          </div>
-          <div className="flex items-center gap-3">
+    <div className="app-shell">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onOpenPalette={() => setPaletteOpen(true)}
+      />
+
+      <section className="main-pane">
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-[46px] items-center justify-end px-3">
+          <div className="pointer-events-auto no-drag flex items-center gap-1">
             <button
-              className="rounded border border-slate-700 px-2 py-1 hover:bg-slate-800"
-              onClick={() => setPaletteOpen(true)}
+              className="icon-btn"
+              title="Toggle sidebar"
+              onClick={() => setSidebarCollapsed((v) => !v)}
             >
-              ⌘K
+              <IconSidebar size={15} />
             </button>
-            <span>
-              {version?.name} {version?.version}
-            </span>
+            <button
+              className={`icon-btn ${contextOpen ? "active" : ""}`}
+              title="Toggle context"
+              onClick={() => setContextOpen((v) => !v)}
+            >
+              <IconPanel size={15} />
+            </button>
           </div>
-        </header>
+        </div>
+        <div className="sidebar-drag pointer-events-none absolute inset-x-0 top-0 h-[52px]" />
 
         {page === "settings" ? (
           <SettingsPage />
         ) : (
           <>
-            {messages.length === 0 && <OnboardingChecklist />}
             {messages.length === 0 ? (
-              <div className="flex flex-1 flex-col items-center justify-center px-6 text-center">
-                <h2 className="text-xl font-semibold text-slate-100">
-                  Start a conversation
-                </h2>
-                <p className="mt-2 max-w-md text-sm text-slate-500">
-                  Configure a provider, open a project, then send your first prompt.
-                </p>
+              <div className="thread-scroll">
+                <div className="empty-hero">
+                  <h1>
+                    What should we build
+                    {heroProject ? (
+                      <>
+                        {" "}
+                        in{" "}
+                        <button
+                          className="project-underline"
+                          onClick={() => void openProject()}
+                          title={workspace?.path || "Open project"}
+                        >
+                          {heroProject}
+                        </button>
+                        ?
+                      </>
+                    ) : (
+                      "?"
+                    )}
+                  </h1>
+                </div>
               </div>
             ) : (
-              <ChatTranscript messages={messages} />
+              <ChatTranscript messages={messages} isRunning={isRunning} />
             )}
+
             {error && (
-              <div className="mx-4 mb-2 rounded-md border border-red-800 bg-red-950/40 px-3 py-2 text-sm text-red-200">
-                {error}
+              <div className="absolute inset-x-0 bottom-[150px] z-10 flex justify-center px-4">
+                <div className="max-w-[820px] rounded-[12px] border border-error/30 bg-bg-secondary px-3 py-2 text-[13px] text-error">
+                  {error}
+                </div>
               </div>
             )}
+
             <Composer />
           </>
         )}
-      </main>
+
+        {contextOpen && <ContextPanel onClose={() => setContextOpen(false)} />}
+      </section>
 
       <PermissionDialog />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      {toast && (
-        <div className="fixed bottom-4 right-4 rounded-lg bg-slate-100 px-3 py-2 text-sm text-slate-900 shadow-lg">
-          {toast}
-        </div>
-      )}
+      {toast && <div className="toast">{toast}</div>}
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ErrorBoundary>
+      <AppShell />
+    </ErrorBoundary>
   );
 }

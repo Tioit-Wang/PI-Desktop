@@ -22,7 +22,7 @@ import { IPC } from "@pi-desktop/shared";
 
 declare global {
   interface Window {
-    piDesktop: {
+    piDesktop?: {
       invoke: <T = unknown>(channel: string, ...args: unknown[]) => Promise<Result<T>>;
       on: (channel: string, listener: (...args: unknown[]) => void) => () => void;
       channels: typeof IPC;
@@ -31,6 +31,9 @@ declare global {
 }
 
 async function invoke<T>(channel: string, ...args: unknown[]): Promise<T> {
+  if (!window.piDesktop?.invoke) {
+    throw new Error("piDesktop preload bridge unavailable");
+  }
   const result = await window.piDesktop.invoke<T>(channel, ...args);
   if (!result.ok) {
     const error = new Error(result.error.message) as Error & {
@@ -101,12 +104,16 @@ export const api = {
   executeCommand: (commandId: string) =>
     invoke(IPC.invoke.commandPaletteExecute, commandId),
   openLogs: () => invoke(IPC.invoke.logOpenFolder),
-  onAgentEvent: (listener: (event: AgentEventEnvelope) => void) =>
-    window.piDesktop.on(IPC.event.agentMessage, (payload) =>
+  onAgentEvent: (listener: (event: AgentEventEnvelope) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.agentMessage, (payload) =>
       listener(payload as AgentEventEnvelope),
-    ),
-  onToast: (listener: (message: string) => void) =>
-    window.piDesktop.on(IPC.event.toast, (payload) =>
+    );
+  },
+  onToast: (listener: (message: string) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.toast, (payload) =>
       listener((payload as { message: string }).message),
-    ),
+    );
+  },
 };

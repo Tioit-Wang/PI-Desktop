@@ -1,4 +1,5 @@
 import { useAppStore } from "../stores/app-store";
+import { Button } from "./ui";
 
 export function PermissionDialog() {
   const permission = useAppStore((s) => s.permission);
@@ -6,40 +7,28 @@ export function PermissionDialog() {
   if (!permission) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-slate-900 p-5 shadow-2xl">
-        <div className="mb-1 text-xs uppercase tracking-wide text-amber-400">
-          {permission.risk} risk
+    <div className="overlay">
+      <div className="dialog">
+        <div className="mb-1 text-[15px] font-medium">Tool permission</div>
+        <div className="mb-1 text-[13px] text-text-secondary">
+          Allow <span className="text-text-primary">{permission.toolName}</span> to run?
         </div>
-        <h2 className="mb-2 text-lg font-semibold text-slate-50">
-          Permission required
-        </h2>
-        <p className="mb-3 text-sm text-slate-300">{permission.reason}</p>
-        <div className="mb-2 text-sm text-slate-400">
-          Tool: <span className="text-slate-200">{permission.toolName}</span>
-        </div>
-        <pre className="mb-4 max-h-48 overflow-auto rounded-lg bg-slate-950 p-3 text-xs text-slate-300">
+        {permission.reason ? (
+          <div className="mb-3 text-[12px] text-text-muted">{permission.reason}</div>
+        ) : null}
+        <pre className="mb-4 max-h-40 overflow-auto rounded-[12px] border border-border-subtle bg-bg-inset p-3 font-mono text-[11.5px] text-text-secondary">
           {JSON.stringify(permission.argsPreview, null, 2)}
         </pre>
-        <div className="flex flex-wrap justify-end gap-2">
-          <button
-            className="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
-            onClick={() => void resolvePermission("deny")}
-          >
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={() => void resolvePermission("deny")}>
             Deny
-          </button>
-          <button
-            className="rounded-lg border border-slate-600 px-3 py-2 text-sm text-slate-200 hover:bg-slate-800"
-            onClick={() => void resolvePermission("allow-session")}
-          >
-            Allow for session
-          </button>
-          <button
-            className="rounded-lg bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-400"
-            onClick={() => void resolvePermission("allow-once")}
-          >
+          </Button>
+          <Button variant="secondary" onClick={() => void resolvePermission("allow-once")}>
             Allow once
-          </button>
+          </Button>
+          <Button variant="primary" onClick={() => void resolvePermission("allow-session")}>
+            Allow for session
+          </Button>
         </div>
       </div>
     </div>

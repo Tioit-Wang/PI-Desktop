@@ -65,7 +65,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   bootstrap: async () => {
     try {
-      const [version, health, settings, sessions, providers, project, onboarding, plugins] =
+      const [version, health, settingsRaw, sessions, providers, project, onboarding, plugins] =
         await Promise.all([
           api.getVersion(),
           api.health(),
@@ -76,6 +76,15 @@ export const useAppStore = create<AppState>((set, get) => ({
           api.getOnboarding(),
           api.listPlugins(),
         ]);
+      let settings = settingsRaw;
+      if (settings && settings.theme !== "dark") {
+        try {
+          await api.setSettings({ ...settings, theme: "dark" });
+          settings = { ...settings, theme: "dark" };
+        } catch {
+          settings = { ...settings, theme: "dark" };
+        }
+      }
       set({
         ready: true,
         version,

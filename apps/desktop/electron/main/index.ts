@@ -56,7 +56,10 @@ async function createWindow() {
     minWidth: 960,
     minHeight: 640,
     title: APP_NAME,
-    backgroundColor: "#0F172A",
+    backgroundColor: "#181818",
+    show: false,
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 14, y: 14 },
     webPreferences: {
       preload: join(__dirname, "../preload/index.mjs"),
       contextIsolation: true,
@@ -65,9 +68,16 @@ async function createWindow() {
     },
   });
 
+  mainWindow.once("ready-to-show", () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+  });
+
   if (process.env.ELECTRON_RENDERER_URL) {
     await mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
-    mainWindow.webContents.openDevTools({ mode: "detach" });
+    if (process.env.PI_DESKTOP_DEVTOOLS === "1") {
+      mainWindow.webContents.openDevTools({ mode: "detach" });
+    }
   } else {
     await mainWindow.loadFile(join(__dirname, "../renderer/index.html"));
   }
@@ -296,10 +306,10 @@ function registerIpc() {
     // Persist user message
     const userMessage = {
       id: crypto.randomUUID(),
-      role: "user",
+      role: "user" as const,
       content: req.content,
       createdAt: new Date().toISOString(),
-      status: "complete",
+      status: "complete" as const,
     };
     await host.call("session.appendMessage", {
       sessionId: req.sessionId,

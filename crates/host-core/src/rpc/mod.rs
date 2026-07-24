@@ -254,7 +254,7 @@ async fn handle_request(
             Ok(stored.unwrap_or_else(|| {
                 json!({
                     "defaultMode": "agent",
-                    "theme": "system",
+                    "theme": "dark",
                     "enterToSend": true,
                     "onboardingDismissed": false
                 })

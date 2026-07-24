@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
+import { Badge, Button, Field, Input, Panel, Select, cx } from "../components/ui";
 
 export function SettingsPage() {
   const tab = useAppStore((s) => s.settingsTab);
@@ -14,10 +15,11 @@ export function SettingsPage() {
   const refreshPlugins = useAppStore((s) => s.refreshPlugins);
   const setToast = useAppStore((s) => s.setToast);
 
-  const [name, setName] = useState("OJ Compatible");
+  const [name, setName] = useState("Compatible");
   const [baseUrl, setBaseUrl] = useState("https://api.oj.ink/v1");
   const [modelId, setModelId] = useState("mimo-v2.5");
   const [apiKey, setApiKey] = useState("");
+  const [saving, setSaving] = useState(false);
 
   const tabs = [
     ["providers", "Providers"],
@@ -27,27 +29,24 @@ export function SettingsPage() {
   ] as const;
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b border-slate-800 px-6 py-4">
-        <div>
-          <h1 className="text-lg font-semibold">Settings</h1>
-          <p className="text-xs text-slate-500">Providers, plugins, and app preferences</p>
-        </div>
-        <button
-          className="rounded-md border border-slate-700 px-3 py-1.5 text-sm hover:bg-slate-800"
-          onClick={() => setPage("chat")}
-        >
-          Back to chat
-        </button>
+    <div className="flex h-full min-h-0 flex-col bg-bg-primary">
+      <div className="flex h-[46px] shrink-0 items-center justify-between border-b border-border-subtle px-4 pt-1">
+        <div className="text-[14px] font-medium">Settings</div>
+        <Button size="sm" variant="ghost" onClick={() => setPage("chat")}>
+          Back
+        </Button>
       </div>
 
-      <div className="flex gap-2 border-b border-slate-800 px-6 py-2">
+      <div className="flex gap-1 border-b border-border-subtle px-4">
         {tabs.map(([id, label]) => (
           <button
             key={id}
-            className={`rounded-md px-3 py-1.5 text-sm ${
-              tab === id ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-900"
-            }`}
+            className={cx(
+              "relative px-3 py-2.5 text-[13px] transition-colors",
+              tab === id
+                ? "text-text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-px after:bg-text-primary"
+                : "text-text-secondary hover:text-text-primary",
+            )}
             onClick={() => setSettingsTab(id)}
           >
             {label}
@@ -55,220 +54,275 @@ export function SettingsPage() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-auto px-6 py-5">
+      <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
         {tab === "providers" && (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
-              <h2 className="mb-3 text-sm font-semibold">Add provider</h2>
+          <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
+            <Panel className="p-4">
+              <div className="mb-3 text-[13.5px] font-medium">Add provider</div>
               <div className="space-y-3">
-                <label className="block text-xs text-slate-400">
-                  Name
-                  <input
-                    className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                  />
-                </label>
-                <label className="block text-xs text-slate-400">
-                  Base URL
-                  <input
-                    className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                <Field label="Name">
+                  <Input value={name} onChange={(e) => setName(e.target.value)} />
+                </Field>
+                <Field label="Base URL">
+                  <Input
                     value={baseUrl}
                     onChange={(e) => setBaseUrl(e.target.value)}
+                    className="font-mono text-[12.5px]"
                   />
-                </label>
-                <label className="block text-xs text-slate-400">
-                  Default model
-                  <input
-                    className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                </Field>
+                <Field label="Default model">
+                  <Input
                     value={modelId}
                     onChange={(e) => setModelId(e.target.value)}
+                    className="font-mono text-[12.5px]"
                   />
-                </label>
-                <label className="block text-xs text-slate-400">
-                  API key
-                  <input
+                </Field>
+                <Field label="API key">
+                  <Input
                     type="password"
-                    className="mt-1 w-full rounded-md border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="sk-…"
+                    className="font-mono text-[12.5px]"
                   />
-                </label>
-                <button
-                  className="rounded-md bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-400"
+                </Field>
+                <Button
+                  variant="primary"
+                  disabled={saving || !name.trim()}
                   onClick={async () => {
-                    const created = await api.createProvider({
-                      name,
-                      vendorKey: "custom",
-                      type: "openai_compatible",
-                      protocol: "openai_compatible",
-                      baseUrl,
-                      authKind: "api_key_and_base_url",
-                      defaultModelId: modelId,
-                      secretValue: apiKey || undefined,
-                      apiStyle: "chat_completions",
-                    });
-                    await api.setSettings({
-                      ...(settings as any),
-                      defaultProviderId: created.provider.id,
-                      defaultModelId: modelId,
-                      defaultMode: settings?.defaultMode ?? "agent",
-                      theme: settings?.theme ?? "system",
-                      enterToSend: settings?.enterToSend ?? true,
-                      onboardingDismissed: settings?.onboardingDismissed ?? false,
-                    });
-                    setApiKey("");
-                    await refreshProviders();
-                    setToast("Provider saved");
+                    setSaving(true);
+                    try {
+                      const created = await api.createProvider({
+                        name,
+                        vendorKey: "custom",
+                        type: "openai_compatible",
+                        protocol: "openai_compatible",
+                        baseUrl,
+                        authKind: "api_key_and_base_url",
+                        defaultModelId: modelId,
+                        secretValue: apiKey || undefined,
+                        apiStyle: "chat_completions",
+                      });
+                      await api.setSettings({
+                        ...(settings as any),
+                        defaultProviderId: created.provider.id,
+                        defaultModelId: modelId,
+                        defaultMode: settings?.defaultMode ?? "agent",
+                        theme: settings?.theme ?? "dark",
+                        enterToSend: settings?.enterToSend ?? true,
+                        onboardingDismissed: settings?.onboardingDismissed ?? false,
+                      });
+                      setApiKey("");
+                      await refreshProviders();
+                      setToast("Provider saved");
+                    } catch (e) {
+                      setToast(e instanceof Error ? e.message : String(e));
+                    } finally {
+                      setSaving(false);
+                    }
                   }}
                 >
-                  Save provider
-                </button>
+                  {saving ? "Saving…" : "Save provider"}
+                </Button>
               </div>
-            </div>
+            </Panel>
 
-            <div className="space-y-3">
-              <h2 className="text-sm font-semibold">Configured providers</h2>
-              {providers.length === 0 && (
-                <div className="rounded-xl border border-dashed border-slate-700 p-6 text-sm text-slate-500">
-                  No providers yet
-                </div>
-              )}
-              {providers.map((p) => (
-                <div
-                  key={p.id}
-                  className="rounded-xl border border-slate-800 bg-slate-900/40 p-4"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-xs text-slate-500">
-                        {p.baseUrl || "no base url"} · {p.defaultModelId || "no model"}
+            <Panel className="p-4">
+              <div className="mb-3 text-[13.5px] font-medium">Configured</div>
+              <div className="space-y-2">
+                {providers.length === 0 ? (
+                  <div className="text-[13px] text-text-muted">No providers yet</div>
+                ) : (
+                  providers.map((p) => (
+                    <div
+                      key={p.id}
+                      className="flex items-start justify-between gap-3 rounded-[12px] border border-border-subtle px-3 py-2.5"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-[13.5px] font-medium">{p.name}</div>
+                        <div className="truncate font-mono text-[11.5px] text-text-muted">
+                          {p.baseUrl || "—"} · {p.defaultModelId || "no model"}
+                        </div>
                       </div>
-                      <div className="mt-1 text-xs">
-                        {p.hasSecret ? (
-                          <span className="text-green-400">API key saved</span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        {settings?.defaultProviderId === p.id ? (
+                          <Badge tone="success">default</Badge>
                         ) : (
-                          <span className="text-amber-400">No API key</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={async () => {
+                              if (!settings) return;
+                              await api.setSettings({
+                                ...settings,
+                                defaultProviderId: p.id,
+                                defaultModelId: p.defaultModelId || settings.defaultModelId,
+                              });
+                              await refreshProviders();
+                              setToast("Default provider updated");
+                            }}
+                          >
+                            Make default
+                          </Button>
                         )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            await api.deleteProvider(p.id);
+                            await refreshProviders();
+                            setToast("Provider removed");
+                          }}
+                        >
+                          Delete
+                        </Button>
                       </div>
                     </div>
-                    <button
-                      className="text-xs text-red-400 hover:text-red-300"
-                      onClick={async () => {
-                        await api.deleteProvider(p.id);
-                        await refreshProviders();
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  ))
+                )}
+              </div>
+            </Panel>
           </div>
         )}
 
         {tab === "plugins" && (
-          <div className="space-y-4">
-            <button
-              className="rounded-md bg-blue-500 px-3 py-2 text-sm font-medium text-white hover:bg-blue-400"
-              onClick={async () => {
-                await api.loadDevPlugin();
-                await refreshPlugins();
-                setToast("Plugin loaded");
-              }}
-            >
-              Load dev plugin…
-            </button>
-            {plugins.length === 0 && (
-              <div className="rounded-xl border border-dashed border-slate-700 p-6 text-sm text-slate-500">
-                No plugins installed. Try examples/plugins/hello
-              </div>
-            )}
-            {plugins.map((p) => (
-              <div
-                key={p.id}
-                className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/40 p-4"
+          <div className="mx-auto max-w-3xl space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="text-[13.5px] font-medium">Plugins</div>
+              <Button
+                variant="secondary"
+                onClick={async () => {
+                  try {
+                    await api.loadDevPlugin();
+                    await refreshPlugins();
+                    setToast("Dev plugin loaded");
+                  } catch (e) {
+                    setToast(e instanceof Error ? e.message : String(e));
+                  }
+                }}
               >
-                <div>
-                  <div className="font-medium">
-                    {p.name}{" "}
-                    <span className="text-xs text-slate-500">v{p.version}</span>
+                Load dev plugin
+              </Button>
+            </div>
+            {plugins.length === 0 ? (
+              <Panel className="p-4 text-[13px] text-text-muted">No plugins installed</Panel>
+            ) : (
+              plugins.map((plugin) => (
+                <Panel key={plugin.id} className="flex items-center justify-between gap-3 p-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-[13.5px] font-medium">{plugin.name}</div>
+                    <div className="truncate text-[12px] text-text-muted">
+                      {plugin.id} · {plugin.version || "dev"}
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-500">
-                    {p.source} · {p.status} · {p.id}
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  {p.enabled ? (
-                    <button
-                      className="rounded-md border border-slate-700 px-2 py-1 text-xs"
+                  <div className="flex items-center gap-2">
+                    <Badge tone={plugin.enabled ? "success" : "neutral"}>
+                      {plugin.enabled ? "enabled" : "disabled"}
+                    </Badge>
+                    <Button
+                      size="sm"
+                      variant="secondary"
                       onClick={async () => {
-                        await api.disablePlugin(p.id);
+                        if (plugin.enabled) await api.disablePlugin(plugin.id);
+                        else await api.enablePlugin(plugin.id);
                         await refreshPlugins();
                       }}
                     >
-                      Disable
-                    </button>
-                  ) : (
-                    <button
-                      className="rounded-md border border-slate-700 px-2 py-1 text-xs"
+                      {plugin.enabled ? "Disable" : "Enable"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
                       onClick={async () => {
-                        await api.enablePlugin(p.id);
+                        await api.uninstallPlugin(plugin.id);
                         await refreshPlugins();
                       }}
                     >
-                      Enable
-                    </button>
-                  )}
-                  <button
-                    className="rounded-md border border-red-900 px-2 py-1 text-xs text-red-300"
-                    onClick={async () => {
-                      await api.uninstallPlugin(p.id);
-                      await refreshPlugins();
-                    }}
-                  >
-                    Uninstall
-                  </button>
-                </div>
-              </div>
-            ))}
+                      Remove
+                    </Button>
+                  </div>
+                </Panel>
+              ))
+            )}
           </div>
         )}
 
-        {tab === "appearance" && (
-          <div className="max-w-md space-y-3 text-sm text-slate-300">
-            <p>MVP uses a dark developer theme by default.</p>
-            <p>System/light/dark preference is stored in settings for future polish.</p>
+        {tab === "appearance" && settings && (
+          <div className="mx-auto max-w-xl space-y-4">
+            <Panel className="space-y-4 p-4">
+              <Field label="Theme">
+                <Select
+                  value={settings.theme}
+                  onChange={async (e) => {
+                    const theme = e.target.value as "system" | "light" | "dark";
+                    await api.setSettings({ ...settings, theme });
+                    await refreshProviders();
+                    document.documentElement.dataset.theme =
+                      theme === "system"
+                        ? window.matchMedia("(prefers-color-scheme: light)").matches
+                          ? "light"
+                          : "dark"
+                        : theme;
+                    setToast(`Theme: ${theme}`);
+                  }}
+                >
+                  <option value="dark">Dark (Codex)</option>
+                  <option value="light">Light</option>
+                  <option value="system">System</option>
+                </Select>
+              </Field>
+              <Field label="Enter to send">
+                <Select
+                  value={settings.enterToSend ? "yes" : "no"}
+                  onChange={async (e) => {
+                    await api.setSettings({
+                      ...settings,
+                      enterToSend: e.target.value === "yes",
+                    });
+                    await refreshProviders();
+                  }}
+                >
+                  <option value="yes">Yes</option>
+                  <option value="no">No (⌘/Ctrl+Enter)</option>
+                </Select>
+              </Field>
+              <Field label="Default mode">
+                <Select
+                  value={settings.defaultMode}
+                  onChange={async (e) => {
+                    await api.setSettings({
+                      ...settings,
+                      defaultMode: e.target.value as "chat" | "agent",
+                    });
+                    await refreshProviders();
+                  }}
+                >
+                  <option value="agent">Agent</option>
+                  <option value="chat">Chat</option>
+                </Select>
+              </Field>
+            </Panel>
           </div>
         )}
 
         {tab === "about" && (
-          <div className="max-w-lg space-y-2 text-sm text-slate-300">
-            <div>
-              <span className="text-slate-500">App:</span> {version?.name}{" "}
-              {version?.version}
-            </div>
-            <div>
-              <span className="text-slate-500">Protocol:</span>{" "}
-              {version?.protocolVersion}
-            </div>
-            <div>
-              <span className="text-slate-500">Host:</span> {version?.hostVersion}{" "}
-              (protocol {version?.hostProtocolVersion})
-            </div>
-            <div>
-              <span className="text-slate-500">Platform:</span> {version?.platform}/
-              {version?.arch}
-            </div>
-            <button
-              className="mt-3 rounded-md border border-slate-700 px-3 py-2 text-sm hover:bg-slate-800"
-              onClick={() => void api.openLogs()}
-            >
-              Open logs folder
-            </button>
+          <div className="mx-auto max-w-xl">
+            <Panel className="space-y-2 p-4 text-[13px]">
+              <div className="text-[15px] font-medium">
+                {version?.name || "PI-Desktop"} {version?.version}
+              </div>
+              <div className="text-text-secondary">
+                Local-first coding agent desktop client with Codex-aligned workstation UI.
+              </div>
+              <div className="font-mono text-[11.5px] text-text-muted">
+                protocol {version?.protocolVersion} · host {version?.hostVersion}
+              </div>
+              <div className="pt-2">
+                <Button variant="secondary" onClick={() => void api.openLogs()}>
+                  Open logs
+                </Button>
+              </div>
+            </Panel>
           </div>
         )}
       </div>

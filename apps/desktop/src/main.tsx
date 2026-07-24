@@ -6,6 +6,8 @@ import { en, flattenCatalog } from "@pi-desktop/i18n";
 import App from "./App";
 import "./styles/globals.css";
 
+document.documentElement.dataset.theme = "dark";
+
 void i18n.use(initReactI18next).init({
   lng: "en",
   fallbackLng: "en",
@@ -15,8 +17,20 @@ void i18n.use(initReactI18next).init({
   interpolation: { escapeValue: false },
 });
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+const rootEl = document.getElementById("root");
+if (!rootEl) {
+  throw new Error("root element missing");
+}
+
+try {
+  ReactDOM.createRoot(rootEl).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+} catch (error) {
+  rootEl.innerHTML = `<div style="padding:24px;font:14px/1.4 -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;background:#181818;color:#fff;height:100%">
+    <h1 style="margin:0 0 8px;font-size:16px">PI-Desktop failed to start UI</h1>
+    <pre style="white-space:pre-wrap;color:#fca5a5">${String(error)}</pre>
+  </div>`;
+}
