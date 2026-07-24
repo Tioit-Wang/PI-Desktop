@@ -35,7 +35,10 @@ Until that is enabled, track delivery with:
 - M4 Plugin Foundation (dev load, command palette, plugin tool registration)
 
 ### In Progress
-- M5 Desktop Hardening / packaging polish
+- M5 polish (code signing, custom icon, full DMG notarization)
+
+### Done (continued)
+- M5 packaging scaffold (electron-builder macOS arm64 --dir, host/sidecar resources)
 
 ### Backlog
 - Playwright automated desktop e2e

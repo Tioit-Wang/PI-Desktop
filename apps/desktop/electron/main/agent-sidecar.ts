@@ -9,11 +9,12 @@ export type SidecarNotificationHandler = (method: string, params: unknown) => vo
 
 function resolveSidecarEntry(): string {
   const candidates = [
+    join(process.resourcesPath || "", "agent-runtime/sidecar.js"),
     join(__dirname, "../../../agent-runtime/dist/sidecar.js"),
     join(__dirname, "../../../../packages/agent-runtime/dist/sidecar.js"),
   ];
   for (const c of candidates) {
-    if (existsSync(c)) return c;
+    if (c && existsSync(c)) return c;
   }
   return join(__dirname, "../../../../packages/agent-runtime/dist/sidecar.js");
 }

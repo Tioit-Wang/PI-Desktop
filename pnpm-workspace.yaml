@@ -6,6 +6,7 @@ allowBuilds:
   esbuild: true
   '@google/genai': true
   protobufjs: true
+  electron-winstaller: true
 minimumReleaseAgeExclude:
   - '@earendil-works/pi-agent-core@0.82.0'
   - '@earendil-works/pi-ai@0.82.0'

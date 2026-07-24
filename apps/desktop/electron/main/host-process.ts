@@ -11,13 +11,15 @@ function resolveHostBinary(): string {
   if (process.env.PI_DESKTOP_HOST_BIN && existsSync(process.env.PI_DESKTOP_HOST_BIN)) {
     return process.env.PI_DESKTOP_HOST_BIN;
   }
-  const root = join(__dirname, "../../../../");
   const candidates = [
-    join(root, "target/debug/pi-desktop-host-core"),
-    join(root, "target/release/pi-desktop-host-core"),
+    // packaged resources
+    join(process.resourcesPath || "", "bin/pi-desktop-host-core"),
+    // monorepo dev/build
+    join(__dirname, "../../../../target/debug/pi-desktop-host-core"),
+    join(__dirname, "../../../../target/release/pi-desktop-host-core"),
   ];
   for (const c of candidates) {
-    if (existsSync(c)) return c;
+    if (c && existsSync(c)) return c;
   }
   throw new Error(
     "host-core binary not found. Run `cargo build -p host-core` first.",

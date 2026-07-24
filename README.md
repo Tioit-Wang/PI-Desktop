@@ -72,7 +72,7 @@ PI-Desktop/
 - [x] M2 pi chat runtime (streaming + provider settings + secrets)
 - [x] M3 workspace tools (Read/Glob/Grep/Write/Edit/Bash + permissions)
 - [x] M4 plugin foundation (local/dev load, commands, tool registration)
-- [ ] M5 packaging/hardening
+- [x] M5 packaging scaffold (macOS arm64 dir build; signing/notarization later)
 
 ### Quick start
 

@@ -10,7 +10,9 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "clean": "rm -rf out dist"
+    "clean": "rm -rf out dist",
+    "pack": "electron-vite build && electron-builder --mac --arm64 --dir",
+    "dist": "electron-vite build && electron-builder --mac --arm64"
   },
   "dependencies": {
     "@pi-desktop/agent-runtime": "workspace:*",
@@ -30,9 +32,45 @@
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.6.0",
     "electron": "^37.2.0",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^4.0.0",
     "tailwindcss": "^4.1.11",
     "typescript": "^5.9.3",
     "vite": "^7.0.4"
+  },
+  "build": {
+    "appId": "com.pi-desktop.app",
+    "productName": "PI-Desktop",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../../target/release/pi-desktop-host-core",
+        "to": "bin/pi-desktop-host-core"
+      },
+      {
+        "from": "../../packages/agent-runtime/dist",
+        "to": "agent-runtime"
+      }
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools",
+      "identity": null,
+      "hardenedRuntime": false
+    },
+    "asar": true
   }
 }
