@@ -1,0 +1,303 @@
+# 09. Interaction Patterns
+
+> Design system tokens: [07-ui-design-system.md](07-ui-design-system.md)  
+> Component anatomy: [08-component-spec.md](08-component-spec.md)  
+> Permission UX: [03-permission-ux.md](03-permission-ux.md)  
+> Command palette: [04-builtin-commands.md](04-builtin-commands.md)
+
+## 1. Keyboard shortcuts baseline
+
+### 1.1 Global shortcuts
+
+| Shortcut | Action | Context |
+|---|---|---|
+| `Cmd/Ctrl + Shift + P` | Open command palette | Global (D014) |
+| `Cmd/Ctrl + N` | New chat/session | Global |
+| `Cmd/Ctrl + W` | Close/delete current session | Global (with confirm) |
+| `Cmd/Ctrl + ,` | Open settings | Global |
+| `Cmd/Ctrl + B` | Toggle sidebar | Global |
+| `Cmd/Ctrl + E` | Toggle context panel | Global |
+| `Cmd/Ctrl + .` | Abort active turn | Global (same as abort button) |
+| `Cmd/Ctrl + K` | Focus model selector | Topbar context |
+
+### 1.2 Chat context shortcuts
+
+| Shortcut | Action | Context |
+|---|---|---|
+| `Enter` | Send message | Composer focused |
+| `Shift + Enter` | Newline | Composer focused |
+| `Escape` | Clear input / blur composer | Composer focused |
+| `Cmd/Ctrl + ↑` | Scroll to top of transcript | Transcript focused |
+| `Cmd/Ctrl + ↓` | Scroll to bottom of transcript | Transcript focused |
+
+### 1.3 Command palette shortcuts (within palette)
+
+| Shortcut | Action | Context |
+|---|---|---|
+| `↑ / ↓` | Navigate results | Palette open |
+| `Enter` | Execute selected command | Palette open |
+| `Escape` | Close palette | Palette open |
+
+### 1.4 Shortcut rules
+
+- All shortcuts are discoverable via command palette search (keyword "shortcut" or "keybinding")
+- Shortcuts must not conflict with macOS system shortcuts or common browser shortcuts
+- Never override `Cmd/Ctrl + C`, `Cmd/Ctrl + V`, `Cmd/Ctrl + A`, `Cmd/Ctrl + S`
+- Shortcuts are consistent across macOS (Cmd) and Windows/Linux (Ctrl)
+- Shortcut changes require updating the command palette metadata
+
+## 2. Streaming message behavior
+
+### 2.1 Token rendering
+
+- Tokens append to the current assistant MessageBubble as they arrive
+- Rendering uses incremental markdown parse — do not re-render the entire message on each token
+- Cursor indicator: subtle pulsing accent dot or line at the end of streaming content
+- When stream completes: cursor indicator replaced by success state (2s fade)
+
+### 2.2 Auto-scroll
+
+- Auto-scroll to bottom on each new token group (throttled: check every 100ms, not every token)
+- User manual scroll up: pause auto-scroll
+- "Scroll to bottom" floating button appears when user is >200px from bottom during stream
+- Click "Scroll to bottom" button: resumes auto-scroll and snaps to bottom
+- Stream completion: if user was auto-scrolling, keep at bottom; if manual, stay at position
+
+### 2.3 Stream interruption
+
+- If connection drops mid-stream: show error state on partial message
+- Partial message is preserved — not deleted
+- User sees "Stream interrupted" with retry option
+
+## 3. Abort running agent
+
+### 3.1 Trigger methods
+
+- Topbar abort button (visible during running state)
+- Keyboard shortcut: `Cmd/Ctrl + .`
+- Command palette: `builtin.agent.abort`
+
+### 3.2 Abort behavior
+
+1. Cancel the current agent turn immediately
+2. Cancel any pending permission request (per [03-permission-ux.md](03-permission-ux.md) §7)
+3. Partial assistant message is preserved with "(aborted)" label
+4. Any running tool calls show "(aborted)" status
+5. Composer re-activates (unblocked)
+6. Abort is idempotent — pressing abort when already aborting does nothing
+
+### 3.3 Abort UX
+
+- Abort button changes to "Aborting..." briefly (100ms), then disappears
+- No confirmation dialog for abort — it is always immediate
+- Aborted message gets a muted "(aborted)" suffix, not deleted
+
+## 4. Long content collapse / expand
+
+### 4.1 Collapse thresholds
+
+| Content type | Default state | Collapse threshold | Expand limit |
+|---|---|---|---|
+| Assistant markdown message | Expanded | 50 lines → collapsed to 20 lines visible | Full |
+| Tool call args | Collapsed | 10 lines → collapsed to 3 lines visible | Full |
+| Tool call result | Collapsed | 20 lines → collapsed to 5 lines visible | Full (per D033: 256KB/4000 lines max) |
+| Bash output | Collapsed | 20 lines → collapsed to 5 lines visible | Full |
+| Error messages | Expanded | No collapse | — |
+
+### 4.2 Collapse indicator
+
+- Collapsed section shows: "… (N more lines)" link at bottom
+- Click "… (N more lines)" → expands to full content
+- Expanded section shows: "Collapse" link at bottom
+- Click "Collapse" → returns to collapsed state
+- No smooth animation for expand/collapse in MVP (instant toggle; respect reduced-motion)
+
+### 4.3 Tool result truncation
+
+- Per D033: tool results exceeding 256KB or 4000 lines are truncated with explicit markers
+- Truncation marker: `--- Result truncated (showing first 4000 lines / 256KB) ---`
+- User can request "Show full result" which loads the complete result from session data
+- Truncated content is never silently omitted — always marked
+
+## 5. Permission interrupt flow
+
+### 5.1 Flow sequence
+
+```text
+Agent calls high-risk tool
+  → PermissionCard inserted inline in transcript
+  → Composer disabled (cannot send new prompt)
+  → Countdown starts (120s)
+  → User responds: Allow once / Allow session / Deny
+  → Card transitions to resolved state
+  → Composer re-enabled
+  → Agent continues or receives denial result
+```
+
+### 5.2 Multiple pending permissions
+
+- Only one permission card is active at a time (agent loop is paused)
+- If abort is triggered: all pending permissions are cancelled
+- If timeout (120s): auto-deny, card transitions to "Denied (timeout)"
+
+### 5.3 Focus management during permission
+
+- Permission card receives focus when inserted (`aria-live` announcement)
+- Action buttons are tab-reachable within the card
+- After resolution: focus returns to composer
+- Full spec: [03-permission-ux.md](03-permission-ux.md)
+
+## 6. Toast vs inline error
+
+### 6.1 Toast notifications (use for)
+
+| Scenario | Toast type | Duration | Rationale |
+|---|---|---|---|
+| Provider connection test result | Success/Error | 4s/8s | Transient feedback, not blocking workflow |
+| Plugin load/unload success | Success | 4s | Confirmation of background action |
+| Settings saved | Success | 4s | Quick confirmation |
+| Auto-update available (post-MVP) | Info | persistent | Requires user attention but not blocking |
+
+### 6.2 Inline errors (use for)
+
+| Scenario | Inline placement | Rationale |
+|---|---|---|
+| Tool call failure | Error state on ToolCallCard | Context-dependent, user needs to see which tool failed |
+| Permission denial | Resolved state on PermissionCard | Already inline, part of conversation flow |
+| Stream interruption | Error state on MessageBubble | Belongs to the message that failed |
+| Provider configuration validation error | Inline in settings form | User needs to see which field is wrong |
+| Composer validation (no model) | Disabled state + tooltip on send button | Immediate context |
+
+### 6.3 Rules
+
+- Never use toast for errors that are tied to a specific message or tool call
+- Never use inline error for transient background operations (plugin load, connection test)
+- Toasts stack vertically, newest on top, at bottom-right
+- Error toasts require manual dismiss or timeout at 8s (longer than success)
+- Success toasts auto-dismiss at 4s
+
+## 7. Focus management
+
+### 7.1 Focus flow on page load
+
+1. Composer textarea receives initial focus in main chat view
+2. Settings pages: first interactive element receives focus
+3. Command palette: search input receives focus on open
+
+### 7.2 Focus flow after actions
+
+| Action | Focus target |
+|---|---|
+| New session created | Composer textarea |
+| Session switched | Composer textarea |
+| Message sent | Composer textarea (cleared, ready for next) |
+| Stream completed | Composer textarea (re-enabled) |
+| Permission resolved | Composer textarea |
+| Abort completed | Composer textarea |
+| Command palette closed | Previously focused element |
+| Dialog closed | Previously focused element |
+
+### 7.3 Focus trap
+
+- Command palette: focus trapped within palette while open
+- Permission dialog (if rendered as dialog): focus trapped
+- Settings modals: focus trapped
+- Escape always closes the trapped surface and returns focus
+
+### 7.4 Focus ring rules
+
+- Only show focus ring on `focus-visible` (keyboard focus), not on click/mouse focus
+- Focus ring: 2px accent color border, 2px offset from element edge
+- Per [07-ui-design-system.md](07-ui-design-system.md) §6.4
+- Never remove focus rings globally — accessibility requirement
+
+## 8. Drag / drop (reserved)
+
+### 8.1 MVP status
+
+**Not implemented in MVP.** Reserved for future milestones:
+
+- Drag session items to reorder sidebar
+- Drag files into composer for attachment
+- Drag panels to resize widths
+
+### 8.2 Spec reservation
+
+When drag/drop is implemented, these patterns should apply:
+
+- Drag handle must be visible on hover (no invisible drag affordance)
+- Drop targets highlight with accent border during hover
+- Cancel drag with Escape
+- Drag feedback: opacity 0.5 on source, accent outline on target
+
+## 9. Scroll behavior
+
+### 9.1 Transcript scrolling
+
+- Default: auto-scroll to bottom on new content during stream
+- User scroll up: pauses auto-scroll, shows "↓ Scroll to bottom" button
+- Scroll-to-bottom button: position fixed at bottom-right of transcript area, offset 12px
+- Button appears when viewport bottom is >200px from transcript bottom
+- Click button: scrolls to bottom, resumes auto-scroll
+- Button disappears when at bottom
+
+### 9.2 Sidebar scrolling
+
+- Session list scrolls independently within sidebar
+- No horizontal scroll in sidebar
+- Scroll indicator: subtle fade at top/bottom edges (gradient mask, not scrollbar thumb)
+
+### 9.3 Settings scrolling
+
+- Settings content scrolls independently within main area
+- Left nav (settings sections) is sticky, does not scroll
+
+## 10. Reduced motion
+
+### 10.1 Policy
+
+All animations must respect `prefers-reduced-motion: reduce`:
+
+1. **Suppress:** streaming pulse, expand/collapse transitions, dropdown slide, hover color transitions
+2. **Keep (instant):** state changes still occur (card status changes, loading → complete) but with no transition duration
+3. **Never remove:** focus rings, status colors, layout positioning — these are structural, not decorative
+
+### 10.2 Implementation
+
+```css
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+```
+
+This does not prevent state changes — it makes them instant.
+
+### 10.3 Affected patterns from this doc
+
+| Pattern | Normal | Reduced motion |
+|---|---|---|
+| Streaming pulse | accent pulse on left border | static accent border (no pulse) |
+| Tool card expand/collapse | 200ms transition | instant toggle |
+| Hover state transition | 150ms background change | instant color change |
+| Scroll-to-bottom button fade-in | 150ms opacity | instant appear |
+| Toast slide-in | 200ms slide | instant appear |
+| Modal/dialog enter | 300ms fade+scale | instant appear |
+
+## 11. Acceptance criteria
+
+1. All keyboard shortcuts in §1 are functional and do not conflict with system shortcuts
+2. Enter sends message; Shift+Enter inserts newline in composer
+3. Abort immediately cancels running turn and pending permissions without confirmation dialog
+4. Long content (>50 lines for messages, >10 for args, >20 for results) is collapsed by default with expand link
+5. Tool results exceeding 256KB/4000 lines show truncation marker per D033
+6. Permission interrupt inserts inline card, disables composer, shows countdown, and re-enables after resolution
+7. Toasts used for transient background operations; inline errors used for context-specific failures
+8. Focus returns to composer after session switch, message send, permission resolution, and abort
+9. Focus rings visible on `focus-visible` only, 2px accent offset 2px
+10. Command palette traps focus; Escape returns to previous focus
+11. All animations respect `prefers-reduced-motion: reduce` — state changes are instant, no decorative motion
+12. Drag/drop is not implemented in MVP; patterns reserved for future spec
