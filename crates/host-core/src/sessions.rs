@@ -82,7 +82,7 @@ pub fn create_session(
     let now = Utc::now().to_rfc3339();
     let session = SessionSummary {
         id: Uuid::new_v4().to_string(),
-        title: title.unwrap_or_else(|| "New chat".into()),
+        title: title.unwrap_or_else(|| "New task".into()),
         project_path,
         model_id,
         provider_id,

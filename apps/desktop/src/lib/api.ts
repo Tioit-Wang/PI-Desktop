@@ -10,6 +10,7 @@ import type {
   OnboardingState,
   PluginSummary,
   ProjectWorkspace,
+  PullRequestSummary,
   ProviderCreateInput,
   ProviderPublic,
   ProviderUpdateInput,
@@ -84,6 +85,8 @@ export const api = {
   clearProject: () => invoke(IPC.invoke.projectClear),
   setProject: (path: string) =>
     invoke<{ workspace: ProjectWorkspace | null }>(IPC.invoke.projectSet, path),
+  listPullRequests: () =>
+    invoke<{ pulls: PullRequestSummary[]; error?: string }>(IPC.invoke.pullsList),
   prompt: (req: AgentPromptRequest) =>
     invoke<AgentPromptResponse>(IPC.invoke.agentPrompt, req),
   abort: (sessionId: string) =>

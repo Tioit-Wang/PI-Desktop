@@ -194,3 +194,29 @@ export function IconDot(props: IconProps) {
     </svg>
   );
 }
+
+export function IconChevronLeft(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m15 6-6 6 6 6" />
+    </svg>
+  );
+}
+
+export function IconChevronRight(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="m9 6 6 6-6 6" />
+    </svg>
+  );
+}
+
+export function IconExternal(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M14 5h5v5" />
+      <path d="M10 14 19 5" />
+      <path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" />
+    </svg>
+  );
+}

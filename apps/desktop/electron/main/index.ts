@@ -86,6 +86,11 @@ async function createWindow() {
     },
   });
 
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url);
+    return { action: "deny" };
+  });
+
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
     mainWindow?.focus();
@@ -95,9 +100,23 @@ async function createWindow() {
           try {
             if (!mainWindow) return;
             const { writeFileSync } = await import("node:fs");
-            const img = await mainWindow.webContents.capturePage();
-            writeFileSync("/tmp/codex-screens/pi-final.png", img.toPNG());
-            console.log("CAPTURE pi-final", img.getSize());
+            const shot = async (name: string) => {
+              const img = await mainWindow!.webContents.capturePage();
+              writeFileSync(`/tmp/codex-screens/${name}.png`, img.toPNG());
+              console.log("CAPTURE", name, img.getSize());
+            };
+            const clickNav = async (nav: string) => {
+              await mainWindow!.webContents.executeJavaScript(
+                `document.querySelector('[data-nav="${nav}"]')?.dispatchEvent(new MouseEvent('click',{bubbles:true}))`,
+              );
+            };
+            await shot("pi-final");
+            await clickNav("pulls");
+            await new Promise((r) => setTimeout(r, 900));
+            await shot("pi-pulls-live");
+            await clickNav("projects");
+            await new Promise((r) => setTimeout(r, 500));
+            await shot("pi-projects-live");
           } catch (e) {
             console.error(e);
           }
@@ -327,6 +346,64 @@ function registerIpc() {
   handle(IPC.invoke.projectClear, async () => {
     if (!host) throw new Error("host unavailable");
     return host.call("workspace.clear");
+  });
+
+  handle(IPC.invoke.pullsList, async () => {
+    if (!host) throw new Error("host unavailable");
+    const res = (await host.call("workspace.get")) as {
+      workspace: { path: string; name: string } | null;
+    };
+    const cwd = res.workspace?.path;
+    if (!cwd) {
+      return { pulls: [], error: "NO_WORKSPACE" as const };
+    }
+    const { spawn } = await import("node:child_process");
+    const run = (cmd: string, args: string[]) =>
+      new Promise<{ code: number; stdout: string; stderr: string }>((resolve) => {
+        const child = spawn(cmd, args, { cwd, env: process.env });
+        let stdout = "";
+        let stderr = "";
+        child.stdout.on("data", (d) => (stdout += String(d)));
+        child.stderr.on("data", (d) => (stderr += String(d)));
+        child.on("close", (code) => resolve({ code: code ?? 1, stdout, stderr }));
+        child.on("error", (err) =>
+          resolve({ code: 1, stdout: "", stderr: String(err) }),
+        );
+      });
+    const result = await run("gh", [
+      "pr",
+      "list",
+      "--limit",
+      "30",
+      "--json",
+      "number,title,url,author,headRefName,baseRefName,updatedAt,isDraft",
+    ]);
+    if (result.code !== 0) {
+      return {
+        pulls: [],
+        error: result.stderr.trim() || result.stdout.trim() || "GH_FAILED",
+      };
+    }
+    try {
+      const pulls = JSON.parse(result.stdout || "[]") as Array<Record<string, unknown>>;
+      return {
+        pulls: pulls.map((p) => ({
+          number: Number(p.number),
+          title: String(p.title || ""),
+          url: String(p.url || ""),
+          author:
+            typeof p.author === "object" && p.author
+              ? String((p.author as any).login || "")
+              : undefined,
+          headRefName: p.headRefName ? String(p.headRefName) : undefined,
+          baseRefName: p.baseRefName ? String(p.baseRefName) : undefined,
+          updatedAt: p.updatedAt ? String(p.updatedAt) : undefined,
+          isDraft: Boolean(p.isDraft),
+        })),
+      };
+    } catch (e) {
+      return { pulls: [], error: e instanceof Error ? e.message : String(e) };
+    }
   });
 
   handle(IPC.invoke.agentPrompt, async (req: {

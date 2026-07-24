@@ -106,6 +106,17 @@ export type ProjectWorkspace = {
   branch?: string;
 };
 
+export type PullRequestSummary = {
+  number: number;
+  title: string;
+  url: string;
+  author?: string;
+  headRefName?: string;
+  baseRefName?: string;
+  updatedAt?: string;
+  isDraft?: boolean;
+};
+
 export type ProviderPublic = {
   id: string;
   name: string;

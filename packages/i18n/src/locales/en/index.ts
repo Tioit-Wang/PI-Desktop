@@ -87,6 +87,7 @@ export const en = {
   pulls: {
     title: "Pull requests",
     subtitle: "Review and act on pull requests in the active project.",
+    refresh: "Refresh",
     emptyTitle: "No pull requests",
     emptyBody:
       "Open a project first, then ask the agent to list or review pull requests.",

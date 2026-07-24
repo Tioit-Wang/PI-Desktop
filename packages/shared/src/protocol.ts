@@ -25,6 +25,7 @@ export const IPC = {
     projectGet: "pi-desktop/project/get",
     projectSet: "pi-desktop/project/set",
     projectClear: "pi-desktop/project/clear",
+    pullsList: "pi-desktop/pulls/list",
     toolResolvePermission: "pi-desktop/tool/resolvePermission",
     providersList: "pi-desktop/providers/list",
     providersCreate: "pi-desktop/providers/create",

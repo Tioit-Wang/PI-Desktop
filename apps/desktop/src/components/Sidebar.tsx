@@ -3,6 +3,8 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import {
   IconAt,
+  IconChevronLeft,
+  IconChevronRight,
   IconClock,
   IconCompose,
   IconFolder,
@@ -26,6 +28,12 @@ export function Sidebar({
   const newSession = useAppStore((s) => s.newSession);
   const setPage = useAppStore((s) => s.setPage);
   const page = useAppStore((s) => s.page);
+  const navBack = useAppStore((s) => s.navBack);
+  const navForward = useAppStore((s) => s.navForward);
+  const navIndex = useAppStore((s) => s.navIndex);
+  const navStack = useAppStore((s) => s.navStack);
+  const canBack = navIndex > 0;
+  const canForward = navIndex < navStack.length - 1;
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -88,7 +96,26 @@ export function Sidebar({
 
   return (
     <aside className="sidebar">
-      <div className="sidebar-drag" />
+      <div className="sidebar-drag">
+        <div className="traffic-nav no-drag">
+          <button
+            className="icon-btn"
+            title="Back"
+            disabled={!canBack}
+            onClick={() => navBack()}
+          >
+            <IconChevronLeft size={15} />
+          </button>
+          <button
+            className="icon-btn"
+            title="Forward"
+            disabled={!canForward}
+            onClick={() => navForward()}
+          >
+            <IconChevronRight size={15} />
+          </button>
+        </div>
+      </div>
       <div className="no-drag flex min-h-0 flex-1 flex-col px-2.5 pb-2">
         <div className="sidebar-header">
           <div className="brand">{t("app.shellName")}</div>

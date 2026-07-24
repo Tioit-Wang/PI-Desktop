@@ -502,3 +502,16 @@ This test plan spec is accepted when:
 - Empty-thread hero remains English Codex copy: "What should we build?".
 - Composer shows 本地, 请求批准 (chat mode), and 自定义 + effort on the right.
 
+### US-UI-06 Session auto-title
+- Create a new task and send a first prompt such as "同步代码".
+- Expect the Recents item title to become a truncated form of that prompt instead of remaining "New task".
+
+### US-UI-07 Pull requests list
+- Open a git workspace with `gh` authenticated.
+- Open Pull requests sidebar destination.
+- Expect either real open PRs from `gh pr list`, or an empty-state with the gh error/empty message (not only a toast).
+
+### US-UI-08 Titlebar history
+- Navigate Projects → Plugins → a recent task.
+- Expect back/forward controls near the traffic-light area to traverse that history.
+

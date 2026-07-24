@@ -89,6 +89,7 @@ export const zhCN = {
   pulls: {
     title: "拉取请求",
     subtitle: "在当前项目中查看和处理拉取请求。",
+    refresh: "刷新",
     emptyTitle: "暂无拉取请求",
     emptyBody: "请先打开项目，然后让助手列出或审查拉取请求。",
     emptyBodyWithProject:
