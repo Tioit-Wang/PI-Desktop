@@ -1,0 +1,28 @@
+# Architecture Decision Records
+
+ADRs record decisions that should not silently change.
+
+## Format
+
+Each ADR includes:
+
+- Status
+- Context
+- Decision
+- Consequences
+- Alternatives (optional)
+
+## Index
+
+| ID | Title | Status |
+|---|---|---|
+| 0001 | Use Electron as desktop shell | Accepted |
+| 0002 | Use pi Agent Harness as agent engine | Accepted |
+| 0003 | Hybrid runtime (historical main-process note) | Superseded in part |
+| 0004 | No remote Gateway in MVP | Accepted |
+| 0005 | User-installable plugin system | Accepted |
+| 0006 | Marketplace postponed after local plugin runtime | Accepted |
+| 0007 | Plugin package format `.piplug` (zip) | Accepted |
+| 0008 | Plugin runtime isolation target = separate process | Accepted (Target) |
+| 0009 | English-first globalization | Accepted |
+| 0010 | Rust backend host core | Accepted |

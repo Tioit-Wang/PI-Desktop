@@ -1,0 +1,127 @@
+# 01. Architecture
+
+## 1. Overview
+
+PI-Desktop uses a layered desktop architecture:
+
+```text
+┌──────────────────────────────────────────────────────────┐
+│ Renderer (React UI, English-first i18n) │
+│ - chat / sessions / settings / plugins / command palette│
+│ - no Node integration │
+└───────────────────────────▲──────────────────────────────┘
+ │ preload IPC
+┌───────────────────────────┴──────────────────────────────┐
+│ Electron Main (thin orchestrator) │
+│ - window lifecycle │
+│ - IPC routing │
+│ - process supervision │
+└───────────────▲─────────────────────────────▲────────────┘
+ │ local RPC │ process bridge
+┌───────────────┴──────────────┐ ┌──────────┴────────────┐
+│ Rust Host Core │ │ Node pi Agent Sidecar │
+│ - tools + sandbox │ │ - pi-ai │
+│ - permission gateway │ │ - pi-agent-core │
+│ - plugin host services │◄─►│ - turn orchestration │
+│ - persistence adapters │ │ - provider streaming │
+│ - secrets adapter │ └───────────────────────┘
+└──────────────────────────────┘
+```
+
+## 2. Design principles
+
+1. **UI and privileged runtime are separated**
+2. **Rust owns host/system capabilities**
+3. **pi owns model/agent loop semantics**
+4. **Renderer is unprivileged**
+5. **All cross-boundary contracts are typed**
+6. **English is the product source language**
+
+## 3. Subsystems
+
+### 3.1 App Shell (Electron)
+- windows/menus
+- app lifecycle
+- updater placeholder
+- process boot order
+
+### 3.2 UI (React)
+- session UX
+- streaming transcript
+- permission cards
+- settings
+- plugin manager UI
+- command palette
+
+### 3.3 Rust Host Core
+- workspace path enforcement
+- builtin tool execution
+- permission policy evaluation
+- plugin install/registry/lifecycle services
+- sqlite adapters / secure storage glue
+- audit logs
+
+### 3.4 Node pi Agent Runtime
+- model catalog/provider setup
+- `Agent.prompt/abort`
+- event normalization from pi events
+- tool call requests emitted to host core
+
+### 3.5 Plugin System
+- manifest validation
+- contribution registry (commands/tools/skills)
+- plugin panels
+- permission grants
+
+## 4. Request path (chat + tool)
+
+```text
+1. UI submits prompt
+2. Electron main routes to agent sidecar
+3. pi runtime starts turn and streams events
+4. UI renders text deltas
+5. On tool call:
+ 5.1 pi requests tool execution via host bridge
+ 5.2 Rust permission gateway evaluates risk
+ 5.3 UI confirms if required
+ 5.4 Rust executes tool in workspace sandbox
+ 5.5 result returns to pi runtime
+6. turn ends; session persistence updates
+```
+
+## 5. Why hybrid Rust + pi
+
+| Approach | Verdict |
+|---|---|
+| Pure TS Electron main for everything | simpler, weaker systems boundary |
+| Full Rust rewrite of agent loop | too expensive, loses pi leverage |
+| **Rust host + pi sidecar** | chosen: strong host + mature agent engine |
+
+## 6. Process model
+
+MVP target processes:
+
+1. Electron main
+2. Electron renderer
+3. Rust host core sidecar
+4. Node pi agent sidecar
+
+Dev mode may colocate some services, but contracts stay the same.
+
+## 7. Extension points
+
+- Tool providers (builtin / plugin / MCP later)
+- Session backends
+- Model catalog sources
+- Permission policy packs
+- Locale packs
+- Market providers (post-MVP)
+
+## 8. Packaging implications
+
+Desktop package must ship:
+
+- Electron app
+- Rust host binary
+- Node runtime assets for pi sidecar (strategy implementation-defined)
+- English locale pack (default)
