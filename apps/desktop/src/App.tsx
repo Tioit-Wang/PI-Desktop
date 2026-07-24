@@ -13,7 +13,7 @@ import { ScheduledPage } from "./pages/ScheduledPage";
 import { PluginsPage } from "./pages/PluginsPage";
 import { useAppStore } from "./stores/app-store";
 import { api } from "./lib/api";
-import { IconPanel, IconSidebar } from "./components/icons";
+import { IconPanel } from "./components/icons";
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -138,13 +138,6 @@ function AppShell() {
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex h-[46px] items-center justify-end px-3">
           <div className="pointer-events-auto no-drag flex items-center gap-1">
             <button
-              className="icon-btn"
-              title="Toggle sidebar"
-              onClick={() => setSidebarCollapsed((v) => !v)}
-            >
-              <IconSidebar size={15} />
-            </button>
-            <button
               className={`icon-btn ${contextOpen ? "active" : ""}`}
               title="Toggle context"
               onClick={() => setContextOpen((v) => !v)}
@@ -153,7 +146,6 @@ function AppShell() {
             </button>
           </div>
         </div>
-        <div className="sidebar-drag pointer-events-none absolute inset-x-0 top-0 h-[52px]" />
 
         {page === "settings" ? (
           <SettingsPage />

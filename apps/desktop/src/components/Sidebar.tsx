@@ -31,7 +31,12 @@ export function Sidebar({
 
   const taskTitle = (title?: string | null) => {
     const value = (title || "").trim();
-    if (!value || value.toLowerCase() === "new chat" || value.toLowerCase() === "new task") {
+    if (
+      !value ||
+      value.toLowerCase() === "new chat" ||
+      value.toLowerCase() === "new task" ||
+      value === "新建任务"
+    ) {
       return t("chat.untitledTask");
     }
     return value;
@@ -70,7 +75,7 @@ export function Sidebar({
           <div className="flex-1" />
           <button
             className="icon-btn"
-            title={t("nav.settings")}
+            title={t("nav.custom")}
             data-nav="settings"
             onClick={() => setPage("settings")}
           >
@@ -84,9 +89,9 @@ export function Sidebar({
   return (
     <aside className="sidebar">
       <div className="sidebar-drag" />
-      <div className="no-drag flex min-h-0 flex-1 flex-col px-3 pb-3">
+      <div className="no-drag flex min-h-0 flex-1 flex-col px-2.5 pb-2">
         <div className="sidebar-header">
-          <div className="brand">{t("app.name")}</div>
+          <div className="brand">{t("app.shellName")}</div>
           <button
             className="icon-btn"
             title={t("nav.search")}
@@ -95,12 +100,12 @@ export function Sidebar({
               onOpenPalette();
             }}
           >
-            <IconSearch size={16} />
+            <IconSearch size={15} />
           </button>
         </div>
 
         <button
-          className="new-task-btn mb-2"
+          className="new-task-btn mb-1.5"
           data-nav="new-task"
           onClick={() => void newSession()}
         >
@@ -108,7 +113,7 @@ export function Sidebar({
           <span>{t("nav.newTask")}</span>
         </button>
 
-        <nav className="mb-1 space-y-0.5">
+        <nav className="mb-1 space-y-0.5 px-0.5">
           <button
             className={`nav-item ${page === "projects" ? "active" : ""}`}
             data-nav="projects"
@@ -156,7 +161,7 @@ export function Sidebar({
           </div>
         )}
 
-        <div className="min-h-0 flex-1 space-y-0.5 overflow-auto pr-1">
+        <div className="min-h-0 flex-1 space-y-0.5 overflow-auto px-0.5">
           {filtered.length === 0 ? (
             <div className="px-2 py-3 text-[12.5px] text-text-muted">
               {t("nav.noRecentTasks")}
@@ -177,18 +182,18 @@ export function Sidebar({
           )}
         </div>
 
-        <div className="mt-2 flex items-center justify-between border-t border-border-subtle pt-2">
+        <div className="mt-1 flex items-center gap-1 border-t border-border-subtle pt-1">
           <button
-            className={`nav-item flex-1 ${page === "settings" ? "active" : ""}`}
+            className={`nav-item min-w-0 flex-1 ${page === "settings" ? "active" : ""}`}
             data-nav="settings"
             onClick={() => setPage("settings")}
           >
             <IconSettings size={15} />
-            <span>{t("nav.settings")}</span>
+            <span>{t("nav.custom")}</span>
           </button>
           <button
             className="icon-btn"
-            title="Logs"
+            title="Help / logs"
             onClick={async () => {
               try {
                 await (await import("../lib/api")).api.openLogs();

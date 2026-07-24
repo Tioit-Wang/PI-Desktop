@@ -82,6 +82,8 @@ export const api = {
       IPC.invoke.projectOpen,
     ),
   clearProject: () => invoke(IPC.invoke.projectClear),
+  setProject: (path: string) =>
+    invoke<{ workspace: ProjectWorkspace | null }>(IPC.invoke.projectSet, path),
   prompt: (req: AgentPromptRequest) =>
     invoke<AgentPromptResponse>(IPC.invoke.agentPrompt, req),
   abort: (sessionId: string) =>

@@ -55,6 +55,7 @@ This log freezes previously open questions into concrete decisions.
 | D032 | Workspace ignore | **security denylist + defaults + `.pi-desktopignore`** | Safe/predictable tool FS behavior |
 | D033 | Tool result limits | **256KB/4000 lines defaults with explicit truncation markers** | Protect context & UI |
 | D034 | Desktop visual baseline | **Codex electron-dark 1:1 shell (charcoal gray, floating composer, ~275px sidebar)** | Match local Codex usability and density; keep PI-Desktop product branding |
+| D035 | Shell display name | **UI chrome uses shellName "Codex"; product/about remains PI-Desktop** | Satisfy visual 1:1 replica goal while preserving product identity in about/settings |
 
 ## C. Still deferred (not blocking M1)
 

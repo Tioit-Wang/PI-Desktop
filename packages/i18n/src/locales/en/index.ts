@@ -1,6 +1,7 @@
 export const en = {
   app: {
     name: "PI-Desktop",
+    shellName: "Codex",
     tagline: "Local-first AI coding agent",
     starting: "Starting PI-Desktop…",
   },
@@ -12,6 +13,7 @@ export const en = {
     plugins: "Plugins",
     recents: "Recents",
     settings: "Settings",
+    custom: "Custom",
     search: "Search",
     noRecentTasks: "No recent tasks",
     newChat: "New chat",

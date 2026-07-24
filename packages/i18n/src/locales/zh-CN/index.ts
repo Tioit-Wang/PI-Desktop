@@ -4,6 +4,7 @@ import type { EnglishCatalog } from "../en/index.js";
 export const zhCN = {
   app: {
     name: "PI-Desktop",
+    shellName: "Codex",
     tagline: "本地优先的 AI 编程助手",
     starting: "正在启动 PI-Desktop…",
   },
@@ -15,6 +16,7 @@ export const zhCN = {
     plugins: "插件",
     recents: "最近",
     settings: "设置",
+    custom: "Custom",
     search: "搜索",
     noRecentTasks: "暂无最近任务",
     newChat: "新对话",

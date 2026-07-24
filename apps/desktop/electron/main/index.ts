@@ -286,9 +286,22 @@ function registerIpc() {
 
   handle(IPC.invoke.projectGet, async () => {
     if (!host) throw new Error("host unavailable");
-    const res = (await host.call("workspace.get")) as {
+    let res = (await host.call("workspace.get")) as {
       workspace: { path: string; name: string } | null;
     };
+    const seed =
+      process.env.PI_DESKTOP_SEED_WORKSPACE ||
+      process.env.PI_DESKTOP_WORKSPACE ||
+      join(__dirname, "../../..");
+    if (!res.workspace && seed) {
+      try {
+        res = (await host.call("workspace.set", { path: seed })) as {
+          workspace: { path: string; name: string } | null;
+        };
+      } catch {
+        // ignore seed failures
+      }
+    }
     return { workspace: await withGitBranch(res.workspace) };
   });
   handle(IPC.invoke.projectOpen, async () => {

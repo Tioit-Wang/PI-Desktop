@@ -32,7 +32,7 @@ export function Composer() {
   const openProject = useAppStore((s) => s.openProject);
   const setToast = useAppStore((s) => s.setToast);
   const [value, setValue] = useState("");
-  const [mode, setMode] = useState<"chat" | "agent">(settings?.defaultMode ?? "agent");
+  const [mode, setMode] = useState<"chat" | "agent">(settings?.defaultMode ?? "chat");
   const [effort, setEffort] = useState<Effort>(() => {
     const saved = localStorage.getItem("pi.desktop.effort");
     return saved === "low" || saved === "mid" || saved === "high" || saved === "max"
@@ -42,7 +42,7 @@ export function Composer() {
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    setMode(settings?.defaultMode ?? "agent");
+    setMode(settings?.defaultMode ?? "chat");
   }, [settings?.defaultMode]);
 
   useEffect(() => {
@@ -74,12 +74,7 @@ export function Composer() {
     const content = value.trim();
     if (!content || isRunning) return;
     setValue("");
-    // Prefix effort as soft instruction only for high/max agent runs.
-    const decorated =
-      effort === "max" || effort === "high"
-        ? content
-        : content;
-    await sendPrompt(decorated);
+    await sendPrompt(content);
   };
 
   return (
@@ -125,6 +120,9 @@ export function Composer() {
 
         <div className="composer-shell">
           <div className="composer-input-wrap">
+            <div className="composer-thread-mark" aria-hidden>
+              ∞
+            </div>
             <textarea
               ref={ref}
               className="composer-input"
@@ -151,7 +149,7 @@ export function Composer() {
                 <IconPlus size={15} />
               </button>
               <button
-                className={`icon-btn ${mode === "chat" ? "active" : ""}`}
+                className="icon-btn mode-chip"
                 title={t("settings.mode")}
                 onClick={async () => {
                   const next = mode === "agent" ? "chat" : "agent";
