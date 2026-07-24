@@ -253,7 +253,7 @@ async fn handle_request(
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(stored.unwrap_or_else(|| {
                 json!({
-                    "defaultMode": "agent",
+                    "defaultMode": "chat",
                     "theme": "dark",
                     "enterToSend": true,
                     "onboardingDismissed": false

@@ -1,4 +1,5 @@
 import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Sidebar } from "./components/Sidebar";
 import { ContextPanel } from "./components/ContextPanel";
 import { ChatTranscript } from "./components/ChatTranscript";
@@ -50,6 +51,7 @@ function projectName(path?: string | null, name?: string | null) {
 }
 
 function AppShell() {
+  const { t } = useTranslation();
   const bootstrap = useAppStore((s) => s.bootstrap);
   const ready = useAppStore((s) => s.ready);
   const page = useAppStore((s) => s.page);
@@ -118,7 +120,7 @@ function AppShell() {
   if (!ready) {
     return (
       <div className="flex h-full items-center justify-center bg-bg-primary text-sm text-text-muted">
-        Starting PI-Desktop…
+        {t("app.starting")}
       </div>
     );
   }
@@ -175,14 +177,14 @@ function AppShell() {
                         <button
                           className="project-underline"
                           onClick={() => void openProject()}
-                          title={workspace?.path || "Open project"}
+                          title={workspace?.path || t("project.open")}
                         >
                           {heroProject}
                         </button>
                         ?
                       </>
                     ) : (
-                      "What should we build?"
+                      t("chat.emptyTitle")
                     )}
                   </h1>
                 </div>

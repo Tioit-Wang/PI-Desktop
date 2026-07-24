@@ -1,8 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import { Button, Panel } from "../components/ui";
 import { IconFolder, IconPlus } from "../components/icons";
 
 export function ProjectsPage() {
+  const { t } = useTranslation();
   const workspace = useAppStore((s) => s.workspace);
   const openProject = useAppStore((s) => s.openProject);
   const clearProject = useAppStore((s) => s.clearProject);
@@ -14,14 +16,12 @@ export function ProjectsPage() {
       <div className="mx-auto w-full max-w-[820px] px-8 py-10">
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
-            <div className="text-[20px] font-medium tracking-tight">Projects</div>
-            <div className="mt-1 text-[13px] text-text-secondary">
-              Open a local folder as the active coding workspace.
-            </div>
+            <div className="text-[20px] font-medium tracking-tight">{t("project.title")}</div>
+            <div className="mt-1 text-[13px] text-text-secondary">{t("project.subtitle")}</div>
           </div>
           <Button variant="primary" onClick={() => void openProject()}>
             <IconPlus size={14} />
-            Add project
+            {t("project.add")}
           </Button>
         </div>
 
@@ -31,14 +31,14 @@ export function ProjectsPage() {
               <div className="min-w-0">
                 <div className="mb-2 flex items-center gap-2 text-[13px] text-text-muted">
                   <IconFolder size={14} />
-                  Active project
+                  {t("project.active")}
                 </div>
                 <div className="truncate text-[16px] font-medium">{workspace.name}</div>
                 <div className="mt-1 truncate font-mono text-[12px] text-text-muted">
                   {workspace.path}
                 </div>
                 <div className="mt-2 text-[12px] text-text-secondary">
-                  Branch: {workspace.branch || "—"}
+                  {t("project.branch")}: {workspace.branch || "—"}
                 </div>
               </div>
               <div className="flex shrink-0 flex-col gap-2">
@@ -49,13 +49,13 @@ export function ProjectsPage() {
                     setPage("chat");
                   }}
                 >
-                  New task
+                  {t("nav.newTask")}
                 </Button>
                 <Button variant="ghost" onClick={() => void openProject()}>
-                  Switch
+                  {t("project.switch")}
                 </Button>
                 <Button variant="ghost" onClick={() => void clearProject()}>
-                  Close
+                  {t("project.close")}
                 </Button>
               </div>
             </div>
@@ -65,13 +65,12 @@ export function ProjectsPage() {
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-bg-hover text-text-secondary">
               <IconFolder size={20} />
             </div>
-            <div className="text-[15px] font-medium">No projects</div>
+            <div className="text-[15px] font-medium">{t("project.emptyTitle")}</div>
             <div className="mt-2 max-w-md text-[13px] text-text-secondary">
-              Add a local project folder to ground tools, composer context, and the home hero
-              in a real workspace.
+              {t("project.emptyBody")}
             </div>
             <Button className="mt-5" variant="primary" onClick={() => void openProject()}>
-              Add project
+              {t("project.add")}
             </Button>
           </Panel>
         )}

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import {
   IconAt,
@@ -11,12 +12,6 @@ import {
   IconSettings,
 } from "./icons";
 
-function taskTitle(title?: string | null) {
-  const t = (title || "").trim();
-  if (!t || t.toLowerCase() === "new chat") return "New task";
-  return t;
-}
-
 export function Sidebar({
   collapsed,
   onOpenPalette,
@@ -24,6 +19,7 @@ export function Sidebar({
   collapsed: boolean;
   onOpenPalette: () => void;
 }) {
+  const { t } = useTranslation();
   const sessions = useAppStore((s) => s.sessions);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const selectSession = useAppStore((s) => s.selectSession);
@@ -33,28 +29,51 @@ export function Sidebar({
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
 
+  const taskTitle = (title?: string | null) => {
+    const value = (title || "").trim();
+    if (!value || value.toLowerCase() === "new chat" || value.toLowerCase() === "new task") {
+      return t("chat.untitledTask");
+    }
+    return value;
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return sessions;
     return sessions.filter((s) => taskTitle(s.title).toLowerCase().includes(q));
-  }, [sessions, query]);
+  }, [sessions, query, t]);
 
   if (collapsed) {
     return (
       <aside className="flex w-[56px] shrink-0 flex-col border-r border-border-subtle bg-bg-primary">
         <div className="sidebar-drag" />
         <div className="no-drag flex flex-1 flex-col items-center gap-2 px-2 py-2">
-          <button className="icon-btn" title="New task" onClick={() => void newSession()}>
+          <button
+            className="icon-btn"
+            title={t("nav.newTask")}
+            data-nav="new-task"
+            onClick={() => void newSession()}
+          >
             <IconCompose size={16} />
           </button>
-          <button className="icon-btn" title="Search" onClick={onOpenPalette}>
+          <button className="icon-btn" title={t("nav.search")} onClick={onOpenPalette}>
             <IconSearch size={16} />
           </button>
-          <button className="icon-btn" title="Projects" onClick={() => setPage("projects")}>
+          <button
+            className="icon-btn"
+            title={t("nav.projects")}
+            data-nav="projects"
+            onClick={() => setPage("projects")}
+          >
             <IconFolder size={16} />
           </button>
           <div className="flex-1" />
-          <button className="icon-btn" title="Settings" onClick={() => setPage("settings")}>
+          <button
+            className="icon-btn"
+            title={t("nav.settings")}
+            data-nav="settings"
+            onClick={() => setPage("settings")}
+          >
             <IconSettings size={16} />
           </button>
         </div>
@@ -67,10 +86,10 @@ export function Sidebar({
       <div className="sidebar-drag" />
       <div className="no-drag flex min-h-0 flex-1 flex-col px-3 pb-3">
         <div className="sidebar-header">
-          <div className="brand">PI-Desktop</div>
+          <div className="brand">{t("app.name")}</div>
           <button
             className="icon-btn"
-            title="Search tasks"
+            title={t("nav.search")}
             onClick={() => {
               setSearchOpen((v) => !v);
               onOpenPalette();
@@ -86,7 +105,7 @@ export function Sidebar({
           onClick={() => void newSession()}
         >
           <IconCompose size={15} />
-          <span>New task</span>
+          <span>{t("nav.newTask")}</span>
         </button>
 
         <nav className="mb-1 space-y-0.5">
@@ -96,7 +115,7 @@ export function Sidebar({
             onClick={() => setPage("projects")}
           >
             <IconFolder size={15} />
-            <span>Projects</span>
+            <span>{t("nav.projects")}</span>
           </button>
           <button
             className={`nav-item ${page === "pulls" ? "active" : ""}`}
@@ -104,7 +123,7 @@ export function Sidebar({
             onClick={() => setPage("pulls")}
           >
             <IconPullRequest size={15} />
-            <span>Pull requests</span>
+            <span>{t("nav.pullRequests")}</span>
           </button>
           <button
             className={`nav-item ${page === "scheduled" ? "active" : ""}`}
@@ -112,7 +131,7 @@ export function Sidebar({
             onClick={() => setPage("scheduled")}
           >
             <IconClock size={15} />
-            <span>Scheduled</span>
+            <span>{t("nav.scheduled")}</span>
           </button>
           <button
             className={`nav-item ${page === "plugins" ? "active" : ""}`}
@@ -120,16 +139,16 @@ export function Sidebar({
             onClick={() => setPage("plugins")}
           >
             <IconAt size={15} />
-            <span>Plugins</span>
+            <span>{t("nav.plugins")}</span>
           </button>
         </nav>
 
-        <div className="section-label">Recents</div>
+        <div className="section-label">{t("nav.recents")}</div>
         {searchOpen && (
           <div className="mb-2 px-1">
             <input
               className="field-input"
-              placeholder="Search tasks"
+              placeholder={t("nav.search")}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
@@ -139,7 +158,9 @@ export function Sidebar({
 
         <div className="min-h-0 flex-1 space-y-0.5 overflow-auto pr-1">
           {filtered.length === 0 ? (
-            <div className="px-2 py-3 text-[12.5px] text-text-muted">No recent tasks</div>
+            <div className="px-2 py-3 text-[12.5px] text-text-muted">
+              {t("nav.noRecentTasks")}
+            </div>
           ) : (
             filtered.map((session) => (
               <button
@@ -163,11 +184,11 @@ export function Sidebar({
             onClick={() => setPage("settings")}
           >
             <IconSettings size={15} />
-            <span>Settings</span>
+            <span>{t("nav.settings")}</span>
           </button>
           <button
             className="icon-btn"
-            title="Open logs"
+            title="Logs"
             onClick={async () => {
               try {
                 await (await import("../lib/api")).api.openLogs();

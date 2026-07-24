@@ -89,6 +89,21 @@ async function createWindow() {
   mainWindow.once("ready-to-show", () => {
     mainWindow?.show();
     mainWindow?.focus();
+    if (process.env.PI_DESKTOP_CAPTURE === "1") {
+      setTimeout(() => {
+        void (async () => {
+          try {
+            if (!mainWindow) return;
+            const { writeFileSync } = await import("node:fs");
+            const img = await mainWindow.webContents.capturePage();
+            writeFileSync("/tmp/codex-screens/pi-final.png", img.toPNG());
+            console.log("CAPTURE pi-final", img.getSize());
+          } catch (e) {
+            console.error(e);
+          }
+        })();
+      }, 1800);
+    }
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {

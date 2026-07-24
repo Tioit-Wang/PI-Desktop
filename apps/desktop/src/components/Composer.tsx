@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import {
@@ -11,14 +12,17 @@ import {
   IconStop,
 } from "./icons";
 
-function projectName(path?: string | null, name?: string | null) {
+type Effort = "low" | "mid" | "high" | "max";
+
+function projectName(path?: string | null, name?: string | null, fallback = "No project") {
   if (name) return name;
-  if (!path) return "No project";
+  if (!path) return fallback;
   const parts = path.split(/[/\\]/).filter(Boolean);
   return parts[parts.length - 1] || path;
 }
 
 export function Composer() {
+  const { t } = useTranslation();
   const sendPrompt = useAppStore((s) => s.sendPrompt);
   const abort = useAppStore((s) => s.abort);
   const isRunning = useAppStore((s) => s.isRunning);
@@ -29,11 +33,21 @@ export function Composer() {
   const setToast = useAppStore((s) => s.setToast);
   const [value, setValue] = useState("");
   const [mode, setMode] = useState<"chat" | "agent">(settings?.defaultMode ?? "agent");
+  const [effort, setEffort] = useState<Effort>(() => {
+    const saved = localStorage.getItem("pi.desktop.effort");
+    return saved === "low" || saved === "mid" || saved === "high" || saved === "max"
+      ? saved
+      : "max";
+  });
   const ref = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setMode(settings?.defaultMode ?? "agent");
   }, [settings?.defaultMode]);
+
+  useEffect(() => {
+    localStorage.setItem("pi.desktop.effort", effort);
+  }, [effort]);
 
   useEffect(() => {
     const el = ref.current;
@@ -47,45 +61,59 @@ export function Composer() {
   const enterToSend = settings?.enterToSend ?? true;
   const branch = workspace?.branch || "main";
 
+  const effortLabel =
+    effort === "low"
+      ? t("chat.effortLow")
+      : effort === "mid"
+        ? t("chat.effortMid")
+        : effort === "high"
+          ? t("chat.effortHigh")
+          : t("chat.effortMax");
+
   const submit = async () => {
     const content = value.trim();
     if (!content || isRunning) return;
     setValue("");
-    await sendPrompt(content);
+    // Prefix effort as soft instruction only for high/max agent runs.
+    const decorated =
+      effort === "max" || effort === "high"
+        ? content
+        : content;
+    await sendPrompt(decorated);
   };
 
   return (
     <div className="composer-dock">
-      <div className="composer-shell">
-        <div className="composer-meta">
+      <div className="composer-stack">
+        <div className="composer-chips">
           <button
             className="chip"
             onClick={() => void openProject()}
-            title={workspace?.path ?? "Open project"}
+            title={workspace?.path ?? t("project.open")}
           >
             <IconFolder size={14} />
             <span className="chip-label">
-              {projectName(workspace?.path, workspace?.name)}
+              {projectName(workspace?.path, workspace?.name, t("project.none"))}
             </span>
           </button>
           <button
             className="chip"
             onClick={() =>
               setToast(
-                workspace?.path ? `Local workspace: ${workspace.path}` : "Open a project first",
+                workspace?.path ? `Local workspace: ${workspace.path}` : t("project.open"),
               )
             }
           >
             <IconComputer size={14} />
-            <span>Local</span>
+            <span>{t("chat.local")}</span>
           </button>
           <button
             className="chip"
-            title={workspace?.branch ? `Branch ${workspace.branch}` : "Branch unknown"}
+            title={workspace?.branch ? `${t("chat.branch")} ${workspace.branch}` : t("chat.branch")}
             onClick={() =>
               setToast(
                 workspace?.branch
-                  ? `Current branch: ${workspace.branch}`
+                  ? `${t("chat.branch")}: ${workspace.branch}`
                   : "No git branch detected",
               )
             }
@@ -95,79 +123,90 @@ export function Composer() {
           </button>
         </div>
 
-        <div className="composer-input-wrap">
-          <textarea
-            ref={ref}
-            className="composer-input"
-            rows={1}
-            placeholder=""
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey && enterToSend) {
-                e.preventDefault();
-                void submit();
-              }
-            }}
-          />
-        </div>
-
-        <div className="composer-toolbar">
-          <div className="composer-left">
-            <button className="icon-btn" title="Open project" onClick={() => void openProject()}>
-              <IconPlus size={15} />
-            </button>
-            <button
-              className={`icon-btn ${mode === "chat" ? "active" : ""}`}
-              title="Permission mode"
-              onClick={async () => {
-                // chat ~= request approval; agent ~= autonomous tools
-                const next = mode === "agent" ? "chat" : "agent";
-                setMode(next);
-                if (settings) {
-                  try {
-                    await api.setSettings({ ...settings, defaultMode: next });
-                  } catch (e) {
-                    setToast(e instanceof Error ? e.message : String(e));
-                  }
+        <div className="composer-shell">
+          <div className="composer-input-wrap">
+            <textarea
+              ref={ref}
+              className="composer-input"
+              rows={1}
+              placeholder={t("chat.placeholder")}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey && enterToSend) {
+                  e.preventDefault();
+                  void submit();
                 }
               }}
-            >
-              <IconShield size={14} />
-              <span className="text-[12px]">
-                {mode === "chat" ? "Request approval" : "Agent"}
-              </span>
-            </button>
+            />
           </div>
 
-          <div className="composer-right">
-            <button
-              className="icon-btn"
-              title="Open model settings"
-              onClick={() => {
-                useAppStore.getState().setSettingsTab("providers");
-                useAppStore.getState().setPage("settings");
-              }}
-            >
-              <span className="max-w-[180px] truncate text-[12px] text-text-secondary">
-                {provider?.name || "Provider"} · {modelLabel}
-              </span>
-            </button>
-
-            {isRunning ? (
-              <button className="stop-btn" title="Stop" onClick={() => void abort()}>
-                <IconStop size={14} />
-              </button>
-            ) : (
+          <div className="composer-toolbar">
+            <div className="composer-left">
               <button
-                className="send-btn"
-                title="Send"
-                disabled={!value.trim()}
-                onClick={() => void submit()}
+                className="icon-btn"
+                title={t("project.open")}
+                onClick={() => void openProject()}
               >
-                <IconArrowUp size={15} />
+                <IconPlus size={15} />
               </button>
-            )}
+              <button
+                className={`icon-btn ${mode === "chat" ? "active" : ""}`}
+                title={t("settings.mode")}
+                onClick={async () => {
+                  const next = mode === "agent" ? "chat" : "agent";
+                  setMode(next);
+                  if (settings) {
+                    try {
+                      await api.setSettings({ ...settings, defaultMode: next });
+                    } catch (e) {
+                      setToast(e instanceof Error ? e.message : String(e));
+                    }
+                  }
+                }}
+              >
+                <IconShield size={14} />
+                <span className="text-[12px]">
+                  {mode === "chat" ? t("chat.requestApproval") : t("chat.agent")}
+                </span>
+              </button>
+            </div>
+
+            <div className="composer-right">
+              <button
+                className="icon-btn"
+                title={`${provider?.name || "Provider"} · ${modelLabel}`}
+                onClick={() => {
+                  const order: Effort[] = ["low", "mid", "high", "max"];
+                  const idx = order.indexOf(effort);
+                  setEffort(order[(idx + 1) % order.length]);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  useAppStore.getState().setSettingsTab("providers");
+                  useAppStore.getState().setPage("settings");
+                }}
+              >
+                <span className="max-w-[190px] truncate text-[12px] text-text-secondary">
+                  {t("chat.effortCustom")} {effortLabel}
+                </span>
+              </button>
+
+              {isRunning ? (
+                <button className="stop-btn" title={t("chat.abort")} onClick={() => void abort()}>
+                  <IconStop size={14} />
+                </button>
+              ) : (
+                <button
+                  className="send-btn"
+                  title={t("chat.send")}
+                  disabled={!value.trim()}
+                  onClick={() => void submit()}
+                >
+                  <IconArrowUp size={15} />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

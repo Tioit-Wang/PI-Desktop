@@ -78,12 +78,19 @@ export const useAppStore = create<AppState>((set, get) => ({
           api.listPlugins(),
         ]);
       let settings = settingsRaw;
-      if (settings && settings.theme !== "dark") {
-        try {
-          await api.setSettings({ ...settings, theme: "dark" });
-          settings = { ...settings, theme: "dark" };
-        } catch {
-          settings = { ...settings, theme: "dark" };
+      if (settings) {
+        const next = {
+          ...settings,
+          theme: "dark" as const,
+          defaultMode: "chat" as const,
+        };
+        if (settings.theme !== "dark" || settings.defaultMode !== "chat") {
+          try {
+            await api.setSettings(next);
+            settings = next;
+          } catch {
+            settings = next;
+          }
         }
       }
       set({

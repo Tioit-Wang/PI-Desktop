@@ -497,3 +497,8 @@ This test plan spec is accepted when:
 - With a git workspace open, composer shows project name, Local, and detected branch.
 - Permission toggle switches between Agent and Request approval (chat mode).
 
+### US-UI-05 Locale chrome
+- On a zh-CN system locale, sidebar labels render in Chinese (新建任务 / 项目 / 拉取请求 / 已安排 / 插件 / 最近).
+- Empty-thread hero remains English Codex copy: "What should we build?".
+- Composer shows 本地, 请求批准 (chat mode), and 自定义 + effort on the right.
+

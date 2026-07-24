@@ -1,7 +1,15 @@
 export { en, type EnglishCatalog } from "./locales/en/index.js";
 export { default as enDefault } from "./locales/en/index.js";
+export { zhCN } from "./locales/zh-CN/index.js";
+export { default as zhCNDefault } from "./locales/zh-CN/index.js";
 
 export const defaultLocale = "en";
+
+export function resolveLocale(input?: string | null): "en" | "zh-CN" {
+  const value = (input || "").toLowerCase();
+  if (value.startsWith("zh")) return "zh-CN";
+  return "en";
+}
 
 export function flattenCatalog(
   obj: Record<string, unknown>,

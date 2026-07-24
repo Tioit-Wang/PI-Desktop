@@ -1,9 +1,11 @@
+import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import { Badge, Button, Panel } from "../components/ui";
 import { IconAt } from "../components/icons";
 
 export function PluginsPage() {
+  const { t } = useTranslation();
   const plugins = useAppStore((s) => s.plugins);
   const refreshPlugins = useAppStore((s) => s.refreshPlugins);
   const setToast = useAppStore((s) => s.setToast);
@@ -15,10 +17,8 @@ export function PluginsPage() {
       <div className="mx-auto w-full max-w-[820px] px-8 py-10">
         <div className="mb-6 flex items-center justify-between gap-3">
           <div>
-            <div className="text-[20px] font-medium tracking-tight">Plugins</div>
-            <div className="mt-1 text-[13px] text-text-secondary">
-              Extend the desktop agent with local development plugins.
-            </div>
+            <div className="text-[20px] font-medium tracking-tight">{t("plugins.title")}</div>
+            <div className="mt-1 text-[13px] text-text-secondary">{t("plugins.subtitle")}</div>
           </div>
           <div className="flex gap-2">
             <Button
@@ -27,13 +27,13 @@ export function PluginsPage() {
                 try {
                   await api.loadDevPlugin();
                   await refreshPlugins();
-                  setToast("Dev plugin loaded");
+                  setToast(t("plugins.loadDev"));
                 } catch (e) {
                   setToast(e instanceof Error ? e.message : String(e));
                 }
               }}
             >
-              Load dev plugin
+              {t("plugins.loadDev")}
             </Button>
             <Button
               variant="ghost"
@@ -42,7 +42,7 @@ export function PluginsPage() {
                 setPage("settings");
               }}
             >
-              Settings
+              {t("nav.settings")}
             </Button>
           </div>
         </div>
@@ -52,9 +52,9 @@ export function PluginsPage() {
             <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-bg-hover text-text-secondary">
               <IconAt size={20} />
             </div>
-            <div className="text-[15px] font-medium">No plugins installed</div>
+            <div className="text-[15px] font-medium">{t("plugins.empty")}</div>
             <div className="mt-2 max-w-md text-[13px] text-text-secondary">
-              Load a local plugin folder to register commands and tool contributions.
+              {t("plugins.emptyBody")}
             </div>
           </Panel>
         ) : (
@@ -69,7 +69,7 @@ export function PluginsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge tone={plugin.enabled ? "success" : "neutral"}>
-                    {plugin.enabled ? "enabled" : "disabled"}
+                    {plugin.enabled ? t("plugins.enable") : t("plugins.disable")}
                   </Badge>
                   <Button
                     size="sm"
@@ -80,7 +80,7 @@ export function PluginsPage() {
                       await refreshPlugins();
                     }}
                   >
-                    {plugin.enabled ? "Disable" : "Enable"}
+                    {plugin.enabled ? t("plugins.disable") : t("plugins.enable")}
                   </Button>
                 </div>
               </Panel>

@@ -2,21 +2,41 @@ export const en = {
   app: {
     name: "PI-Desktop",
     tagline: "Local-first AI coding agent",
+    starting: "Starting PI-Desktop…",
   },
   nav: {
-    newChat: "New chat",
+    newTask: "New task",
+    projects: "Projects",
+    pullRequests: "Pull requests",
+    scheduled: "Scheduled",
+    plugins: "Plugins",
+    recents: "Recents",
     settings: "Settings",
+    search: "Search",
+    noRecentTasks: "No recent tasks",
+    newChat: "New chat",
     sessions: "Sessions",
     commandPalette: "Command palette",
   },
   chat: {
-    emptyTitle: "Start a conversation",
+    emptyTitle: "What should we build?",
+    emptyTitleInProject: "What should we build in {{project}}?",
     emptyHint: "Configure a provider, open a project, then send your first prompt.",
-    placeholder: "Message PI-Desktop…",
+    placeholder: "",
     send: "Send",
-    abort: "Abort",
-    running: "Running…",
+    abort: "Stop",
+    running: "Working…",
     noModel: "Configure a model in Settings before chatting.",
+    local: "Local",
+    branch: "Branch",
+    agent: "Agent",
+    requestApproval: "Request approval",
+    effortCustom: "Custom",
+    effortLow: "Low",
+    effortMid: "Standard",
+    effortHigh: "High",
+    effortMax: "Max",
+    untitledTask: "New task",
   },
   onboarding: {
     title: "Get started",
@@ -45,11 +65,40 @@ export const en = {
     delete: "Delete",
     theme: "Theme",
     mode: "Default mode",
+    back: "Back",
   },
   project: {
     open: "Open project",
     none: "No project",
     clear: "Clear project",
+    title: "Projects",
+    subtitle: "Open a local folder as the active coding workspace.",
+    add: "Add project",
+    emptyTitle: "No projects",
+    emptyBody:
+      "Add a local project folder to ground tools, composer context, and the home hero in a real workspace.",
+    active: "Active project",
+    switch: "Switch",
+    close: "Close",
+    branch: "Branch",
+  },
+  pulls: {
+    title: "Pull requests",
+    subtitle: "Review and act on pull requests in the active project.",
+    emptyTitle: "No pull requests",
+    emptyBody:
+      "Open a project first, then ask the agent to list or review pull requests.",
+    emptyBodyWithProject:
+      "No open pull requests detected for {{project}}. Start a task to inspect git status, branches, or draft a PR.",
+    review: "Review with agent",
+  },
+  scheduled: {
+    title: "Scheduled",
+    subtitle: "Automations and recurring tasks.",
+    emptyTitle: "No scheduled tasks",
+    emptyBody:
+      "Create a task to draft an automation. Hosted schedule runners are not enabled in this build; the agent can still design the workflow and scripts.",
+    create: "Create task",
   },
   permission: {
     title: "Permission required",
@@ -61,11 +110,14 @@ export const en = {
     riskLow: "Low risk",
   },
   plugins: {
+    title: "Plugins",
+    subtitle: "Extend the desktop agent with local development plugins.",
     loadDev: "Load dev plugin",
     enable: "Enable",
     disable: "Disable",
     uninstall: "Uninstall",
     empty: "No plugins installed",
+    emptyBody: "Load a local plugin folder to register commands and tool contributions.",
   },
   status: {
     ready: "Ready",
@@ -81,5 +133,9 @@ export const en = {
   },
 } as const;
 
-export type EnglishCatalog = typeof en;
+type DeepStringify<T> = {
+  [K in keyof T]: T[K] extends string ? string : DeepStringify<T[K]>;
+};
+
+export type EnglishCatalog = DeepStringify<typeof en>;
 export default en;
