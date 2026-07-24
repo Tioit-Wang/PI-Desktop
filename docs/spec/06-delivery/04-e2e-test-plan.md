@@ -487,3 +487,13 @@ This test plan spec is accepted when:
 - Open or create a thread with zero messages.
 - Expect centered hero copy: "What should we build" with optional project name underline when a workspace is open.
 
+### US-UI-03 Sidebar destinations
+- Click Projects, Pull requests, Scheduled, and Plugins in the left sidebar.
+- Expect each destination to replace the main pane with a dedicated page (not only a toast).
+- From Projects, open/switch/close a local folder workspace.
+- From Pull requests with an active workspace, "Review with agent" creates a chat turn.
+
+### US-UI-04 Composer context chips
+- With a git workspace open, composer shows project name, Local, and detected branch.
+- Permission toggle switches between Agent and Request approval (chat mode).
+

@@ -6,6 +6,10 @@ import { Composer } from "./components/Composer";
 import { PermissionDialog } from "./components/PermissionDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { SettingsPage } from "./pages/SettingsPage";
+import { ProjectsPage } from "./pages/ProjectsPage";
+import { PullRequestsPage } from "./pages/PullRequestsPage";
+import { ScheduledPage } from "./pages/ScheduledPage";
+import { PluginsPage } from "./pages/PluginsPage";
 import { useAppStore } from "./stores/app-store";
 import { api } from "./lib/api";
 import { IconPanel, IconSidebar } from "./components/icons";
@@ -38,7 +42,8 @@ class ErrorBoundary extends Component<
   }
 }
 
-function projectName(path?: string | null) {
+function projectName(path?: string | null, name?: string | null) {
+  if (name) return name;
   if (!path) return null;
   const parts = path.split(/[/\\]/).filter(Boolean);
   return parts[parts.length - 1] || path;
@@ -105,7 +110,10 @@ function AppShell() {
     };
   }, [bootstrap, handleAgentEvent, setToast, abort]);
 
-  const heroProject = useMemo(() => projectName(workspace?.path), [workspace?.path]);
+  const heroProject = useMemo(
+    () => projectName(workspace?.path, workspace?.name),
+    [workspace?.path, workspace?.name],
+  );
 
   if (!ready) {
     return (
@@ -114,6 +122,8 @@ function AppShell() {
       </div>
     );
   }
+
+  const showComposer = page === "chat";
 
   return (
     <div className="app-shell">
@@ -145,17 +155,23 @@ function AppShell() {
 
         {page === "settings" ? (
           <SettingsPage />
+        ) : page === "projects" ? (
+          <ProjectsPage />
+        ) : page === "pulls" ? (
+          <PullRequestsPage />
+        ) : page === "scheduled" ? (
+          <ScheduledPage />
+        ) : page === "plugins" ? (
+          <PluginsPage />
         ) : (
           <>
             {messages.length === 0 ? (
               <div className="thread-scroll">
                 <div className="empty-hero">
                   <h1>
-                    What should we build
                     {heroProject ? (
                       <>
-                        {" "}
-                        in{" "}
+                        What should we build in{" "}
                         <button
                           className="project-underline"
                           onClick={() => void openProject()}
@@ -166,7 +182,7 @@ function AppShell() {
                         ?
                       </>
                     ) : (
-                      "?"
+                      "What should we build?"
                     )}
                   </h1>
                 </div>
@@ -182,11 +198,10 @@ function AppShell() {
                 </div>
               </div>
             )}
-
-            <Composer />
           </>
         )}
 
+        {showComposer && <Composer />}
         {contextOpen && <ContextPanel onClose={() => setContextOpen(false)} />}
       </section>
 

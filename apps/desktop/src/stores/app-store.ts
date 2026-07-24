@@ -28,7 +28,7 @@ type AppState = {
   plugins: PluginSummary[];
   permission?: ToolPermissionRequest | null;
   toast?: string | null;
-  page: "chat" | "settings";
+  page: "chat" | "projects" | "pulls" | "scheduled" | "plugins" | "settings";
   settingsTab: "providers" | "plugins" | "appearance" | "about";
   error?: string | null;
   bootstrap: () => Promise<void>;
@@ -38,10 +38,11 @@ type AppState = {
   sendPrompt: (content: string) => Promise<void>;
   abort: () => Promise<void>;
   openProject: () => Promise<void>;
+  clearProject: () => Promise<void>;
   refreshProviders: () => Promise<void>;
   refreshPlugins: () => Promise<void>;
   handleAgentEvent: (envelope: AgentEventEnvelope) => void;
-  setPage: (page: "chat" | "settings") => void;
+  setPage: (page: AppState["page"]) => void;
   setSettingsTab: (tab: AppState["settingsTab"]) => void;
   resolvePermission: (
     decision: "allow-once" | "allow-session" | "deny",
@@ -125,13 +126,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   newSession: async () => {
     const settings = get().settings;
     const created = await api.createSession({
+      title: "New task",
       mode: settings?.defaultMode ?? "agent",
       providerId: settings?.defaultProviderId,
       modelId: settings?.defaultModelId,
       projectPath: get().workspace?.path,
     } as any);
     await get().refreshSessions();
-    await get().selectSession(created.session.id);
+    const detail = await api.getSession(created.session.id);
+    set({
+      activeSessionId: created.session.id,
+      messages: detail.session?.messages ?? [],
+      page: "chat",
+    });
   },
 
   sendPrompt: async (content) => {
@@ -164,8 +171,15 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!result.canceled) {
       set({ workspace: result.workspace });
       const onboarding = await api.getOnboarding();
-      set({ onboarding });
+      set({ onboarding, page: "chat" });
     }
+  },
+
+  clearProject: async () => {
+    await api.clearProject();
+    set({ workspace: null });
+    const onboarding = await api.getOnboarding();
+    set({ onboarding });
   },
 
   refreshProviders: async () => {

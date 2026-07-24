@@ -11,6 +11,12 @@ import {
   IconSettings,
 } from "./icons";
 
+function taskTitle(title?: string | null) {
+  const t = (title || "").trim();
+  if (!t || t.toLowerCase() === "new chat") return "New task";
+  return t;
+}
+
 export function Sidebar({
   collapsed,
   onOpenPalette,
@@ -22,18 +28,15 @@ export function Sidebar({
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const selectSession = useAppStore((s) => s.selectSession);
   const newSession = useAppStore((s) => s.newSession);
-  const openProject = useAppStore((s) => s.openProject);
   const setPage = useAppStore((s) => s.setPage);
-  const setSettingsTab = useAppStore((s) => s.setSettingsTab);
   const page = useAppStore((s) => s.page);
-  const setToast = useAppStore((s) => s.setToast);
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return sessions;
-    return sessions.filter((s) => (s.title || "New chat").toLowerCase().includes(q));
+    return sessions.filter((s) => taskTitle(s.title).toLowerCase().includes(q));
   }, [sessions, query]);
 
   if (collapsed) {
@@ -47,18 +50,11 @@ export function Sidebar({
           <button className="icon-btn" title="Search" onClick={onOpenPalette}>
             <IconSearch size={16} />
           </button>
-          <button className="icon-btn" title="Open project" onClick={() => void openProject()}>
+          <button className="icon-btn" title="Projects" onClick={() => setPage("projects")}>
             <IconFolder size={16} />
           </button>
           <div className="flex-1" />
-          <button
-            className="icon-btn"
-            title="Settings"
-            onClick={() => {
-              setSettingsTab("appearance");
-              setPage("settings");
-            }}
-          >
+          <button className="icon-btn" title="Settings" onClick={() => setPage("settings")}>
             <IconSettings size={16} />
           </button>
         </div>
@@ -74,46 +70,54 @@ export function Sidebar({
           <div className="brand">PI-Desktop</div>
           <button
             className="icon-btn"
-            title="Search"
+            title="Search tasks"
             onClick={() => {
               setSearchOpen((v) => !v);
-              if (!searchOpen) onOpenPalette();
+              onOpenPalette();
             }}
           >
             <IconSearch size={16} />
           </button>
         </div>
 
-        <button className="new-task-btn mb-2" onClick={() => void newSession()}>
+        <button
+          className="new-task-btn mb-2"
+          data-nav="new-task"
+          onClick={() => void newSession()}
+        >
           <IconCompose size={15} />
           <span>New task</span>
         </button>
 
         <nav className="mb-1 space-y-0.5">
-          <button className="nav-item" onClick={() => void openProject()}>
+          <button
+            className={`nav-item ${page === "projects" ? "active" : ""}`}
+            data-nav="projects"
+            onClick={() => setPage("projects")}
+          >
             <IconFolder size={15} />
             <span>Projects</span>
           </button>
           <button
-            className="nav-item"
-            onClick={() => setToast("Pull requests view is not available yet")}
+            className={`nav-item ${page === "pulls" ? "active" : ""}`}
+            data-nav="pulls"
+            onClick={() => setPage("pulls")}
           >
             <IconPullRequest size={15} />
             <span>Pull requests</span>
           </button>
           <button
-            className="nav-item"
-            onClick={() => setToast("Scheduled tasks view is not available yet")}
+            className={`nav-item ${page === "scheduled" ? "active" : ""}`}
+            data-nav="scheduled"
+            onClick={() => setPage("scheduled")}
           >
             <IconClock size={15} />
             <span>Scheduled</span>
           </button>
           <button
-            className={`nav-item ${page === "settings" ? "active" : ""}`}
-            onClick={() => {
-              setSettingsTab("plugins");
-              setPage("settings");
-            }}
+            className={`nav-item ${page === "plugins" ? "active" : ""}`}
+            data-nav="plugins"
+            onClick={() => setPage("plugins")}
           >
             <IconAt size={15} />
             <span>Plugins</span>
@@ -125,7 +129,7 @@ export function Sidebar({
           <div className="mb-2 px-1">
             <input
               className="field-input"
-              placeholder="Search threads"
+              placeholder="Search tasks"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               autoFocus
@@ -135,16 +139,18 @@ export function Sidebar({
 
         <div className="min-h-0 flex-1 space-y-0.5 overflow-auto pr-1">
           {filtered.length === 0 ? (
-            <div className="px-2 py-3 text-[12.5px] text-text-muted">No recent threads</div>
+            <div className="px-2 py-3 text-[12.5px] text-text-muted">No recent tasks</div>
           ) : (
             filtered.map((session) => (
               <button
                 key={session.id}
-                className={`thread-item ${activeSessionId === session.id ? "active" : ""}`}
+                className={`thread-item ${
+                  page === "chat" && activeSessionId === session.id ? "active" : ""
+                }`}
                 onClick={() => void selectSession(session.id)}
-                title={session.title || "New chat"}
+                title={taskTitle(session.title)}
               >
-                {session.title || "New chat"}
+                {taskTitle(session.title)}
               </button>
             ))
           )}
@@ -152,23 +158,21 @@ export function Sidebar({
 
         <div className="mt-2 flex items-center justify-between border-t border-border-subtle pt-2">
           <button
-            className="nav-item flex-1"
-            onClick={() => {
-              setSettingsTab("appearance");
-              setPage("settings");
-            }}
+            className={`nav-item flex-1 ${page === "settings" ? "active" : ""}`}
+            data-nav="settings"
+            onClick={() => setPage("settings")}
           >
             <IconSettings size={15} />
             <span>Settings</span>
           </button>
           <button
             className="icon-btn"
-            title="Help / logs"
+            title="Open logs"
             onClick={async () => {
               try {
                 await (await import("../lib/api")).api.openLogs();
               } catch {
-                setToast("Unable to open logs");
+                // ignore
               }
             }}
           >

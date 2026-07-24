@@ -102,6 +102,8 @@ export type AgentEventEnvelope = {
 export type ProjectWorkspace = {
   path: string;
   name: string;
+  /** Best-effort git branch from .git/HEAD when available. */
+  branch?: string;
 };
 
 export type ProviderPublic = {

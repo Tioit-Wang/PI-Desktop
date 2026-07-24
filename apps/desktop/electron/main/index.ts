@@ -49,6 +49,24 @@ function wrap<T>(fn: () => Promise<T>): Promise<Result<T>> {
     );
 }
 
+async function withGitBranch<T extends { path?: string; name?: string } | null | undefined>(
+  workspace: T,
+): Promise<T> {
+  if (!workspace || !workspace.path) return workspace;
+  try {
+    const { readFile } = await import("node:fs/promises");
+    const { join } = await import("node:path");
+    const head = await readFile(join(workspace.path, ".git/HEAD"), "utf8");
+    const match = head.match(/ref:\s*refs\/heads\/(.+)$/m);
+    return {
+      ...workspace,
+      branch: match?.[1]?.trim() || "detached",
+    };
+  } catch {
+    return { ...workspace, branch: undefined };
+  }
+}
+
 async function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1280,
@@ -253,7 +271,10 @@ function registerIpc() {
 
   handle(IPC.invoke.projectGet, async () => {
     if (!host) throw new Error("host unavailable");
-    return host.call("workspace.get");
+    const res = (await host.call("workspace.get")) as {
+      workspace: { path: string; name: string } | null;
+    };
+    return { workspace: await withGitBranch(res.workspace) };
   });
   handle(IPC.invoke.projectOpen, async () => {
     if (!host) throw new Error("host unavailable");
@@ -263,11 +284,17 @@ function registerIpc() {
     if (result.canceled || !result.filePaths[0]) {
       return { workspace: null, canceled: true };
     }
-    return host.call("workspace.set", { path: result.filePaths[0] });
+    const res = (await host.call("workspace.set", {
+      path: result.filePaths[0],
+    })) as { workspace: { path: string; name: string } | null };
+    return { workspace: await withGitBranch(res.workspace), canceled: false };
   });
   handle(IPC.invoke.projectSet, async (path: string) => {
     if (!host) throw new Error("host unavailable");
-    return host.call("workspace.set", { path });
+    const res = (await host.call("workspace.set", { path })) as {
+      workspace: { path: string; name: string } | null;
+    };
+    return { workspace: await withGitBranch(res.workspace) };
   });
   handle(IPC.invoke.projectClear, async () => {
     if (!host) throw new Error("host unavailable");
@@ -408,7 +435,7 @@ function registerIpc() {
     const builtin = [
       {
         id: "builtin.newChat",
-        title: "New chat",
+        title: "New task",
         category: "Session",
         source: "builtin" as const,
       },
