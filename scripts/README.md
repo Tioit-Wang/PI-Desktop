@@ -1,2 +1,4 @@
 # scripts
-Engineering scripts will live here.
+
+- `e2e-smoke.mjs` — protocol-level e2e against host-core (+ optional live model)
+- `e2e-agent-live.mjs` — live streaming chat through agent-runtime + host-core

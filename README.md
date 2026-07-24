@@ -6,13 +6,15 @@ Local-first AI coding agent desktop client.
 
 ## Current status
 
-This repository currently contains the **baseline specification and architecture decisions**.
+MVP implementation is in progress with a working app skeleton, host-core, agent runtime, and protocol-level e2e coverage.
 
 - Specs: `docs/spec/`
 - ADRs: `docs/adr/`
+- App: `apps/desktop`
+- Host: `crates/host-core`
 - Example plugin: `examples/plugins/hello`
 
-Baseline: **`0.3.2`**
+Baseline: **`0.3.4`**
 
 ## Key decisions
 
@@ -66,11 +68,30 @@ PI-Desktop/
 - [x] English-first policy
 - [x] Rust host-core architecture
 - [x] Private GitHub repository
-- [ ] M1 app skeleton
-- [ ] M2 pi chat runtime
-- [ ] M3 workspace tools
-- [ ] M4 plugin foundation
+- [x] M1 app skeleton
+- [x] M2 pi chat runtime (streaming + provider settings + secrets)
+- [x] M3 workspace tools (Read/Glob/Grep/Write/Edit/Bash + permissions)
+- [x] M4 plugin foundation (local/dev load, commands, tool registration)
 - [ ] M5 packaging/hardening
+
+### Quick start
+
+```bash
+# build host-core
+cargo build -p host-core
+
+# install js deps
+pnpm install
+
+# build packages + electron app
+pnpm -r --if-present build
+
+# dev
+pnpm dev
+
+# protocol e2e smoke
+PI_DESKTOP_TEST_API_KEY=... pnpm test:e2e
+```
 
 ## Principles
 

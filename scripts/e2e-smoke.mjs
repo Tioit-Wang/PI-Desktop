@@ -1,0 +1,298 @@
+#!/usr/bin/env node
+/**
+ * PI-Desktop e2e smoke tests (headless protocol-level).
+ * Covers host-core RPC, tools, secrets, plugins, and optional live model chat.
+ *
+ * Env:
+ *  PI_DESKTOP_TEST_BASE_URL
+ *  PI_DESKTOP_TEST_MODEL
+ *  PI_DESKTOP_TEST_API_KEY
+ *  PI_DESKTOP_HOST_BIN (optional)
+ */
+import { spawn } from "node:child_process";
+import { createInterface } from "node:readline";
+import { randomUUID } from "node:crypto";
+import { existsSync, mkdtempSync, rmSync, writeFileSync, readFileSync, mkdirSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const root = join(__dirname, "..");
+const hostBin =
+  process.env.PI_DESKTOP_HOST_BIN ||
+  join(root, "target/debug/pi-desktop-host-core");
+
+const BASE_URL = process.env.PI_DESKTOP_TEST_BASE_URL || "https://api.oj.ink/v1";
+const MODEL = process.env.PI_DESKTOP_TEST_MODEL || "mimo-v2.5";
+const API_KEY = process.env.PI_DESKTOP_TEST_API_KEY || "";
+
+if (!existsSync(hostBin)) {
+  console.error("host binary missing:", hostBin);
+  process.exit(1);
+}
+
+const dataDir = mkdtempSync(join(tmpdir(), "pi-desktop-e2e-"));
+const results = [];
+
+function record(id, ok, detail = "") {
+  results.push({ id, ok, detail });
+  console.log(`${ok ? "PASS" : "FAIL"} ${id}${detail ? " — " + detail : ""}`);
+}
+
+class Host {
+  constructor(bin, dataDir) {
+    this.child = spawn(bin, [], {
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, PI_DESKTOP_DATA_DIR: dataDir },
+    });
+    this.pending = new Map();
+    this.notifications = [];
+    this.child.stderr.on("data", (b) => {
+      // keep quiet unless debugging
+      if (process.env.DEBUG_HOST) process.stderr.write(b);
+    });
+    const rl = createInterface({ input: this.child.stdout });
+    rl.on("line", (line) => {
+      let msg;
+      try {
+        msg = JSON.parse(line);
+      } catch {
+        return;
+      }
+      if (msg.id != null) {
+        const p = this.pending.get(String(msg.id));
+        if (p) {
+          this.pending.delete(String(msg.id));
+          if (msg.error) p.reject(msg.error);
+          else p.resolve(msg.result);
+        }
+      } else if (msg.method) {
+        this.notifications.push(msg);
+      }
+    });
+  }
+  call(method, params = {}) {
+    const id = randomUUID();
+    return new Promise((resolve, reject) => {
+      this.pending.set(id, { resolve, reject });
+      this.child.stdin.write(
+        JSON.stringify({ jsonrpc: "2.0", id, method, params }) + "\n",
+      );
+      setTimeout(() => {
+        if (this.pending.has(id)) {
+          this.pending.delete(id);
+          reject({ message: `timeout ${method}` });
+        }
+      }, 30_000);
+    });
+  }
+  dispose() {
+    this.child.kill();
+  }
+}
+
+async function main() {
+  const host = new Host(hostBin, dataDir);
+  try {
+    // E2E-003 host health / handshake
+    const hs = await host.call("app.handshake", { protocolVersion: 1 });
+    record("E2E-003-handshake", hs.protocolVersion === 1, `v=${hs.version}`);
+    const health = await host.call("app.health");
+    record("E2E-003-health", health.ok === true, `uptime=${health.uptimeMs}`);
+
+    // provider + secret
+    const created = await host.call("providers.create", {
+      name: "E2E Provider",
+      vendorKey: "custom",
+      type: "openai_compatible",
+      protocol: "openai_compatible",
+      baseUrl: BASE_URL,
+      authKind: "api_key_and_base_url",
+      defaultModelId: MODEL,
+      secretValue: API_KEY || "test-key-not-for-live",
+      apiStyle: "chat_completions",
+    });
+    record(
+      "E2E-005-provider",
+      created.provider?.hasSecret === true && !("secretValue" in created.provider),
+      created.provider?.id,
+    );
+
+    // list providers must not leak secret
+    const listed = await host.call("providers.list", { includeDisabled: true });
+    const leaked = JSON.stringify(listed).includes(API_KEY) && API_KEY.length > 8;
+    record("E2E-027-no-secret-leak-list", !leaked);
+
+    // session persistence
+    const session = await host.call("session.create", {
+      title: "E2E session",
+      mode: "agent",
+      providerId: created.provider.id,
+      modelId: MODEL,
+    });
+    await host.call("session.appendMessage", {
+      sessionId: session.session.id,
+      message: {
+        id: randomUUID(),
+        role: "user",
+        content: "hello",
+        createdAt: new Date().toISOString(),
+        status: "complete",
+      },
+    });
+    const got = await host.call("session.get", { id: session.session.id });
+    record(
+      "E2E-009-session-persist",
+      got.session?.messages?.length === 1,
+      `messages=${got.session?.messages?.length}`,
+    );
+
+    // workspace + tools
+    const sample = join(root, "examples/fixtures/sample-project");
+    await host.call("workspace.set", { path: sample });
+    const read = await host.call("tools.execute", {
+      sessionId: session.session.id,
+      toolCallId: randomUUID(),
+      toolName: "Read",
+      args: { path: "README.md" },
+      mode: "agent",
+    });
+    record(
+      "E2E-016-read-tool",
+      read.ok === true && String(read.content?.content || "").includes("Sample Project"),
+    );
+
+    const glob = await host.call("tools.execute", {
+      sessionId: session.session.id,
+      toolCallId: randomUUID(),
+      toolName: "Glob",
+      args: { pattern: "src/**/*.js" },
+      mode: "agent",
+    });
+    record("E2E-016-glob-tool", glob.ok === true && (glob.content?.count ?? 0) >= 2);
+
+    // path escape denied
+    const escape = await host.call("tools.execute", {
+      sessionId: session.session.id,
+      toolCallId: randomUUID(),
+      toolName: "Read",
+      args: { path: "../outside.txt" },
+      mode: "agent",
+    });
+    record(
+      "E2E-020-path-sandbox",
+      escape.ok === false &&
+        (escape.errorCode === "PATH_OUTSIDE_WORKSPACE" ||
+          escape.content?.code === "PATH_OUTSIDE_WORKSPACE"),
+      escape.errorCode || escape.content?.code,
+    );
+
+    // chat mode hard-denies write
+    const chatWrite = await host.call("tools.execute", {
+      sessionId: session.session.id,
+      toolCallId: randomUUID(),
+      toolName: "Write",
+      args: { path: "x.txt", content: "nope" },
+      mode: "chat",
+    });
+    record(
+      "E2E-017-chat-write-denied",
+      chatWrite.denied === true || chatWrite.ok === false,
+      chatWrite.errorCode,
+    );
+
+    // plugin load
+    const hello = join(root, "examples/plugins/hello");
+    const plugin = await host.call("plugins.loadDev", { path: hello });
+    record(
+      "E2E-022-plugin-load",
+      plugin.plugin?.id === "demo.hello" && plugin.plugin?.enabled === true,
+    );
+    await host.call("plugins.disable", { id: "demo.hello" });
+    const plugins = await host.call("plugins.list");
+    const disabled = plugins.plugins.find((p) => p.id === "demo.hello");
+    record("E2E-025-plugin-disable", disabled?.enabled === false);
+
+    // onboarding
+    const onboarding = await host.call("app.getOnboarding");
+    record(
+      "E2E-004-onboarding",
+      Array.isArray(onboarding.steps) && onboarding.steps.length >= 4,
+    );
+
+    // live model test (optional if key present)
+    if (API_KEY) {
+      const res = await fetch(`${BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [
+            {
+              role: "user",
+              content: "Reply with exactly the word: pong",
+            },
+          ],
+          max_tokens: 16,
+          stream: false,
+        }),
+      });
+      const body = await res.json();
+      const content = body?.choices?.[0]?.message?.content || "";
+      record(
+        "E2E-011-live-model",
+        res.ok && content.toLowerCase().includes("pong"),
+        content.slice(0, 80),
+      );
+
+      // streaming
+      const streamRes = await fetch(`${BASE_URL}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: MODEL,
+          messages: [{ role: "user", content: "Say hi in one word" }],
+          max_tokens: 16,
+          stream: true,
+        }),
+      });
+      const text = await streamRes.text();
+      record(
+        "E2E-012-stream",
+        streamRes.ok && text.includes("data:"),
+        `bytes=${text.length}`,
+      );
+    } else {
+      record("E2E-011-live-model", false, "PI_DESKTOP_TEST_API_KEY not set");
+      record("E2E-012-stream", false, "skipped");
+    }
+
+    // agent-runtime unit-ish import check
+    try {
+      await import(join(root, "packages/agent-runtime/dist/index.js"));
+      record("E2E-runtime-module", true);
+    } catch (e) {
+      record("E2E-runtime-module", false, String(e));
+    }
+  } catch (e) {
+    record("E2E-fatal", false, e?.message || String(e));
+  } finally {
+    host.dispose();
+    rmSync(dataDir, { recursive: true, force: true });
+  }
+
+  const failed = results.filter((r) => !r.ok);
+  console.log("\nSummary:", results.length - failed.length, "/", results.length, "passed");
+  if (failed.length) {
+    process.exitCode = 1;
+  }
+}
+
+main();

@@ -1,7 +1,7 @@
 # 04. E2E Test Plan
 
 > Scope: MVP acceptance scenarios for PI-Desktop  
-> Status: Accepted (documentation; automation deferred)  
+> Status: Accepted (protocol automation started; full desktop Playwright deferred to M5+)  
 > Cross-references: [acceptance-criteria](02-acceptance-criteria.md) · [milestones](01-mvp-milestones.md) · [ai-development-workflow](03-ai-development-workflow.md) · [change-checklist](05-change-checklist.md)
 
 ---
@@ -117,7 +117,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/05-host-core-rust.md`, `03-runtime/06-host-rpc-protocol.md`
 - **Acceptance**: A (bridge normal)
 - **Milestone**: M1
-- **Status**: Draft
+- **Status**: Automated (protocol smoke)
 
 #### E2E-004: First-run inline checklist appears
 

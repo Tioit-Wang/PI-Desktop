@@ -11,6 +11,8 @@
 - [x] Private GitHub repository initialized
 
 ### M1 — App Skeleton
+Status: **Implemented (MVP)**
+
 Goal: bootable desktop shell with dual backend skeletons.
 
 Deliverables:
@@ -28,6 +30,8 @@ Exit criteria:
 - protocol/version handshake visible in logs
 
 ### M2 — Pi Chat Runtime
+Status: **Implemented (MVP)**
+
 Goal: real streaming chat.
 
 Deliverables:
@@ -44,6 +48,8 @@ Exit criteria:
 - history survives restart
 
 ### M3 — Workspace Tools
+Status: **Implemented (MVP)**
+
 Goal: controlled local agency.
 
 Deliverables:
@@ -57,6 +63,8 @@ Exit criteria:
 - denied permission path is correct
 
 ### M4 — Plugin Foundation
+Status: **Implemented (MVP)**
+
 Goal: user-installable local extension system.
 
 Deliverables:

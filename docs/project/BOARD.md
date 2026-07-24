@@ -29,17 +29,18 @@ Until that is enabled, track delivery with:
 - E2E test plan spec (04)
 - Change checklist spec (05)
 - AGENTS.md agent instruction file
+- M1 App Skeleton (pnpm monorepo, Electron, host-core health, i18n)
+- M2 Pi Chat Runtime (provider/secrets, streaming chat, session persistence)
+- M3 Workspace Tools (Read/Glob/Grep/Write/Edit/Bash, permissions, path sandbox)
+- M4 Plugin Foundation (dev load, command palette, plugin tool registration)
 
-### Ready
-- M1 App Skeleton
-- M1 Plugin interface stubs
-- M1 Rust host-core skeleton
+### In Progress
+- M5 Desktop Hardening / packaging polish
 
 ### Backlog
-- M2 Pi Chat Runtime
-- M3 Workspace Tools
-- M4 Plugin Foundation
-- M5 Desktop Hardening
+- Playwright automated desktop e2e
+- Marketplace
+- Windows/Linux packaging
 
 ## Milestone links
 
@@ -48,6 +49,14 @@ Until that is enabled, track delivery with:
 - [M3 Workspace Tools](https://github.com/vastsa/PI-Desktop/milestone/4)
 - [M4 Plugin Foundation](https://github.com/vastsa/PI-Desktop/milestone/5)
 - [M5 Desktop Hardening](https://github.com/vastsa/PI-Desktop/milestone/6)
+
+## Validation snapshot (2026-07-25)
+
+- `cargo test -p host-core` — pass
+- `pnpm --filter @pi-desktop/shared test` — pass
+- `node scripts/e2e-smoke.mjs` — 15/15 pass (with live model)
+- `node scripts/e2e-agent-live.mjs` — pass (streaming assistant)
+- Electron boot smoke — host + sidecar host-proxy mode OK
 
 ## Upgrade to GitHub Projects later
 
