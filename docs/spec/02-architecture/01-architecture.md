@@ -99,6 +99,8 @@ PI-Desktop uses a layered desktop architecture:
 
 ## 6. Process model
 
+Transport: Rust sidecar + stdio JSON-RPC (NDJSON).
+
 MVP target processes:
 
 1. Electron main

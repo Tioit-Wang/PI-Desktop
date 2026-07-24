@@ -7,3 +7,5 @@
 | [03-tools-and-permissions.md](03-tools-and-permissions.md) | Tools & permissions |
 | [04-data-storage.md](04-data-storage.md) | Local storage model |
 | [05-host-core-rust.md](05-host-core-rust.md) | Rust host core |
+| [06-host-rpc-protocol.md](06-host-rpc-protocol.md) | Host JSON-RPC protocol |
+| [07-process-model.md](07-process-model.md) | Process topology & lifecycle |

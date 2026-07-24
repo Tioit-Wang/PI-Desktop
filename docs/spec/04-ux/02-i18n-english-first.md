@@ -11,7 +11,7 @@ PI-Desktop is a global product.
 
 ## 2. Framework requirements
 
-UI must use an i18n framework (recommended: i18next + react-i18next).
+UI must use **i18next + react-i18next** (D012).
 
 Rules:
 

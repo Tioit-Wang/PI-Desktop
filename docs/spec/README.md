@@ -1,6 +1,6 @@
 # PI-Desktop Spec
 
-> Baseline: `0.3.0` 
+> Baseline: `0.3.1` 
 > Updated: `2026-07-25` 
 > Language: **English-first** 
 > Stack: Electron + **Rust host core** + pi Agent Harness + user-installable plugins
@@ -11,6 +11,7 @@
 |---|---|
 | [NAV.md](NAV.md) | One-page full navigation |
 | [00-baseline.md](00-baseline.md) | Frozen baseline |
+| [08-meta/decisions-log.md](08-meta/decisions-log.md) | Frozen detail decisions |
 | [01-product/00-overview.md](01-product/00-overview.md) | Overview |
 | [02-architecture/01-architecture.md](02-architecture/01-architecture.md) | Architecture |
 | [03-runtime/05-host-core-rust.md](03-runtime/05-host-core-rust.md) | Rust host core |
@@ -61,5 +62,9 @@ docs/spec/
 2. English-first product/docs
 3. Rust host backend core
 4. pi agent engine in Node sidecar
-5. Local-first coding agent MVP
-6. user-installable plugins (market later)
+5. Host RPC = stdio JSON-RPC NDJSON
+6. SQLite owned by Rust only
+7. Default mode = Agent; Chat read-only
+8. Permission timeout 120s deny
+9. Local user-installable plugins (market later)
+10. First release = macOS arm64 only

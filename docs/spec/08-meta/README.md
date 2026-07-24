@@ -1,7 +1,6 @@
-# 元信息
+# Meta
 
-> 目录：`docs/spec/08-meta`
-
-| 文档 | 说明 |
+| Doc | Description |
 |---|---|
-| [open-questions.md](open-questions.md) | 待决问题 |
+| [decisions-log.md](decisions-log.md) | Frozen detail decisions |
+| [open-questions.md](open-questions.md) | Remaining non-blocking questions |

@@ -1,5 +1,13 @@
 # 14. Plugin System
 
+## 0. Frozen implementation defaults
+
+- Plugin tool exposed names use forced prefix `plugin_<pluginIdSafe>_<toolName>` (D015)
+- enable→load failure auto-disables plugin (D017)
+- uninstall deletes plugin data by default (D016)
+- plugin settings secrets not allowed in MVP (D018)
+- runtime target remains separate process; M4 may use host-managed sandboxed runtime (D009)
+
 ## 1. 目标
 
 让 PI-Desktop 具备类似 **** 的可扩展能力：

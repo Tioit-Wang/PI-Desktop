@@ -2,6 +2,9 @@
 
 ## 1. Goal
 
+Applied decisions: **D002/D003/D008**.
+
+
 Wrap pi into a product runtime that desktop layers can consume safely.
 
 Core packages:
@@ -60,6 +63,12 @@ interface AgentRuntime {
 6. stream normalized events to UI
 7. on tool calls, delegate to Rust host bridge
 8. finalize and persist
+
+## 5b. Mode defaults
+
+- Default product mode: **Agent**
+- Chat mode is available as a safer read-only profile
+- Mode is session-scoped and persisted with session metadata
 
 ## 6. Providers (MVP)
 

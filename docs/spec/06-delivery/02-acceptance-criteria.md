@@ -32,6 +32,8 @@ MVP 通过的定义：
 - [ ] 工具路径基于该项目
 
 ### E. 工具与权限
+- [ ] Chat mode cannot run Write/Edit/Bash
+- [ ] permission timeout (120s) becomes deny
 - [ ] Read/Glob/Grep 可在项目内工作
 - [ ] Write/Edit/Bash 触发确认
 - [ ] 拒绝后不会执行

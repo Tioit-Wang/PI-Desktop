@@ -12,7 +12,7 @@
 | i18n | i18next (or equivalent) | stable | English source locale |
 | Host backend | **Rust** | stable Rust toolchain | tools/plugins/permissions/persistence adapters |
 | Rust async | tokio | stable | host services |
-| Host RPC | JSON-RPC or protobuf over stdio | decide in M1 | Electron/Rust/Node bridge |
+| Host RPC | stdio JSON-RPC (NDJSON) | frozen (D001) | Electron main ↔ Rust host |
 | Agent engine | `@earendil-works/pi-agent-core` | ^0.82+ | agent loop |
 | Model API | `@earendil-works/pi-ai` | ^0.82+ | providers |
 | Node runtime | Node.js | `>= 22.19` | pi requirement |
@@ -20,6 +20,8 @@
 | Packaging | electron-builder | stable | macOS first |
 | Package manager | pnpm | 10.x | JS monorepo |
 | Lint/test | biome/oxlint + vitest + cargo test | stable | dual stack quality |
+| Schema (TS) | typebox | frozen (D011) | shared contracts |
+| i18n | i18next + react-i18next | frozen (D012) | English source locale |
 
 ## 2. Language policy in engineering
 

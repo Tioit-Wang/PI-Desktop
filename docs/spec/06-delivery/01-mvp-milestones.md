@@ -77,7 +77,7 @@ Exit criteria:
 Goal: daily-usable package.
 
 Deliverables:
-- packaging (macOS first)
+- packaging (**macOS arm64 only** for first release)
 - settings polish
 - logging/error boundaries
 - session management basics
@@ -90,6 +90,10 @@ Deliverables:
 - marketplace preview
 - Windows/Linux hardening
 - additional locales (e.g. zh-CN)
+
+## Release constraint
+
+First distributable release target: **macOS arm64 only** (D010).
 
 ## Rough effort (solo)
 

@@ -26,3 +26,4 @@ Each ADR includes:
 | 0008 | Plugin runtime isolation target = separate process | Accepted (Target) |
 | 0009 | English-first globalization | Accepted |
 | 0010 | Rust backend host core | Accepted |
+| 0011 | Freeze host RPC, storage ownership, and mode defaults | Accepted |

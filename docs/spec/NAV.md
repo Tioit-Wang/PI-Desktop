@@ -19,10 +19,13 @@
 - [03-tools-and-permissions.md](03-runtime/03-tools-and-permissions.md)
 - [04-data-storage.md](03-runtime/04-data-storage.md)
 - [05-host-core-rust.md](03-runtime/05-host-core-rust.md)
+- [06-host-rpc-protocol.md](03-runtime/06-host-rpc-protocol.md)
+- [07-process-model.md](03-runtime/07-process-model.md)
 
 ## 4. UX
 - [01-ui-ia.md](04-ux/01-ui-ia.md)
 - [02-i18n-english-first.md](04-ux/02-i18n-english-first.md)
+- [03-permission-ux.md](04-ux/03-permission-ux.md)
 
 ## 5. Security
 - [01-security.md](05-security/01-security.md)
@@ -48,6 +51,7 @@
 - [14-plugin-roadmap.md](07-plugins/14-plugin-roadmap.md)
 
 ## 8. Meta
+- [decisions-log.md](08-meta/decisions-log.md)
 - [open-questions.md](08-meta/open-questions.md)
 
 ## ADR

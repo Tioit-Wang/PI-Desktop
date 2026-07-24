@@ -1,3 +1,18 @@
+# 03. Tools and Permissions
+
+> Decisions applied: D003, D004, D005, D006, D013
+
+## 0. Frozen policy summary
+
+| Topic | Decision |
+|---|---|
+| Default mode | Agent |
+| Chat tools | Read / Glob / Grep only |
+| Agent tools | Read / Glob / Grep / Write / Edit / Bash |
+| Permission timeout | 120s → deny |
+| allow-session scope | toolName |
+| Bash style (M3) | non-interactive (no PTY) |
+
 # 07. Tools and Permissions
 
 ## 1. 目标
@@ -108,7 +123,20 @@ tool call
 
 MVP 可先写 SQLite 或日志文件。
 
-## 10. Chat 模式 vs Agent 模式
+## 10. Mode matrix (Chat vs Agent)
+
+| Mode | Read/Glob/Grep | Write/Edit | Bash |
+|---|---|---|---|
+| Chat | allow | deny | deny |
+| Agent | allow | confirm | confirm |
+
+### Notes
+- Chat mode hard-denies high-risk tools before permission UI
+- Agent mode uses permission cards for Write/Edit/Bash
+- allow-session is remembered per toolName for the active session only
+
+## 10b. Legacy section title retained below
+
 
 | 模式 | 读工具 | 写工具 | Bash |
 |---|---|---|---|

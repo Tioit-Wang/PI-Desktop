@@ -1,5 +1,13 @@
 # 08. Data Storage
 
+## 0. Ownership decision
+
+**Rust host-core owns SQLite exclusively (D002).**
+
+- Node pi sidecar does not open the DB directly
+- Electron main does not write DB files directly
+- All session/settings/plugin registry writes go through host RPC
+
 ## 1. 目标
 
 本地优先，重启可恢复，敏感数据隔离。

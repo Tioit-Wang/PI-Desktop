@@ -46,7 +46,11 @@ crates/host-core/
  util/
 ```
 
-## 5. RPC surface (logical)
+## 5. RPC transport
+
+Frozen: **stdio JSON-RPC NDJSON** with Electron main (see `06-host-rpc-protocol.md`).
+
+## 5b. RPC surface (logical)
 
 Domains:
 

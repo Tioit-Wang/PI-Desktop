@@ -12,7 +12,7 @@ This repository currently contains the **baseline specification and architecture
 - ADRs: `docs/adr/`
 - Example plugin: `examples/plugins/hello`
 
-Baseline: **`0.3.0`**
+Baseline: **`0.3.1`**
 
 ## Key decisions
 
@@ -25,6 +25,10 @@ Baseline: **`0.3.0`**
 | Agent engine | pi (`pi-ai` + `pi-agent-core`) |
 | Agent placement | Node sidecar |
 | Extensions | user-installable plugins |
+| Host RPC | stdio JSON-RPC (NDJSON) |
+| DB owner | Rust host-core |
+| Default mode | Agent (Chat read-only) |
+| First release | macOS arm64 |
 | Marketplace | Postponed (protocol only) |
 
 ## Docs
