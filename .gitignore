@@ -1,33 +1,34 @@
-
-!.env.example
-# Build
 # Dependencies
-# Electron
-# Env / secrets
-# IDE / OS
-# Local runtime data
-*.local
-*.log
-*.swp
+node_modules/
+.pnpm-store/
+
+# Build
+dist/
+out/
+build/
+target/
 *.tsbuildinfo
-.DS_Store
-.cache/
+apps/desktop/out/
+apps/desktop/dist-electron/
+apps/desktop/release/
+packages/*/dist/
+
+# Env / secrets
 .env
 .env.*
+!.env.example
+*.local
+
+# IDE / OS
+.DS_Store
 .idea/
-.pi-desktop-test/
-.pi-desktop/
-.pnpm-store/
-.turbo/
 .vscode/
-apps/desktop/dist-electron/
-apps/desktop/out
-apps/desktop/out/
-apps/desktop/release/
-build/
+*.swp
+*.log
 coverage/
-dist/
-node_modules/
-out/
-packages/*/dist/
-target/
+.cache/
+.turbo/
+
+# Local runtime data
+.pi-desktop/
+.pi-desktop-test/
