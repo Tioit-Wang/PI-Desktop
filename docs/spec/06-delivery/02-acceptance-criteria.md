@@ -12,6 +12,7 @@ MVP 通过的定义：
 - [ ] 应用可启动并显示主窗口
 - [ ] 主进程/渲染进程 bridge 正常
 - [ ] 显示应用版本信息
+- [ ] first-run inline checklist appears on fresh profile
 
 ### B. 模型配置
 - [ ] 可添加 provider
@@ -52,6 +53,11 @@ MVP 通过的定义：
 - [ ] 插件可注册并调用至少一个 agent tool
 - [ ] 禁用插件后命令与 tool 失效
 - [ ] 插件异常不导致应用退出
+
+### H. Diagnostics
+- [ ] errors expose stable codes
+- [ ] logs folder can be opened
+- [ ] secrets not present in logs for normal flows
 
 ## 3. 安全验收
 

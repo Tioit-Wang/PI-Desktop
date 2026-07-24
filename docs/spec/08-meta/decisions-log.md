@@ -1,6 +1,6 @@
 # Decisions Log
 
-> Baseline delta: `0.3.0` → `0.3.1`  
+> Baseline delta: `0.3.0` → `0.3.2`  
 > Date: `2026-07-25`  
 > Status: Accepted for implementation
 
@@ -35,6 +35,8 @@ This log freezes previously open questions into concrete decisions.
 | D018 | Plugin secrets in settings | **Not allowed in MVP** |
 | D019 | Plugin session summary access | **Denied by default** |
 | D020 | Auto-update | **Post-MVP** |
+| D021 | First-run onboarding | **Inline checklist (not modal wizard)** |
+| D022 | Local telemetry | **Local logs only in MVP (no remote telemetry)** |
 
 ## C. Still deferred (not blocking M1)
 

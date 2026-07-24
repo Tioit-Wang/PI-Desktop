@@ -1,6 +1,6 @@
 # PI-Desktop Spec
 
-> Baseline: `0.3.1` 
+> Baseline: `0.3.2` 
 > Updated: `2026-07-25` 
 > Language: **English-first** 
 > Stack: Electron + **Rust host core** + pi Agent Harness + user-installable plugins

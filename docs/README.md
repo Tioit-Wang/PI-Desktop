@@ -5,7 +5,7 @@
 Domain-organized specifications.
 
 - Index: `docs/spec/README.md`
-- Baseline: `docs/spec/00-baseline.md` (`0.3.1`)
+- Baseline: `docs/spec/00-baseline.md` (`0.3.2`)
 
 ## ADR
 

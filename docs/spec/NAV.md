@@ -21,11 +21,17 @@
 - [05-host-core-rust.md](03-runtime/05-host-core-rust.md)
 - [06-host-rpc-protocol.md](03-runtime/06-host-rpc-protocol.md)
 - [07-process-model.md](03-runtime/07-process-model.md)
+- [08-error-codes.md](03-runtime/08-error-codes.md)
+- [09-logging-and-observability.md](03-runtime/09-logging-and-observability.md)
+- [10-session-state-machine.md](03-runtime/10-session-state-machine.md)
 
 ## 4. UX
 - [01-ui-ia.md](04-ux/01-ui-ia.md)
 - [02-i18n-english-first.md](04-ux/02-i18n-english-first.md)
 - [03-permission-ux.md](04-ux/03-permission-ux.md)
+- [04-builtin-commands.md](04-ux/04-builtin-commands.md)
+- [05-onboarding.md](04-ux/05-onboarding.md)
+- [06-settings-ia.md](04-ux/06-settings-ia.md)
 
 ## 5. Security
 - [01-security.md](05-security/01-security.md)

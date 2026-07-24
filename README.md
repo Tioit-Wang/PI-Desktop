@@ -12,7 +12,7 @@ This repository currently contains the **baseline specification and architecture
 - ADRs: `docs/adr/`
 - Example plugin: `examples/plugins/hello`
 
-Baseline: **`0.3.1`**
+Baseline: **`0.3.2`**
 
 ## Key decisions
 

@@ -1,6 +1,6 @@
 # Open Questions
 
-> Updated for baseline `0.3.1`.  
+> Updated for baseline `0.3.2`.  
 > High-priority questions were frozen in `decisions-log.md`.
 
 ## Still open (non-blocking for M1)
@@ -23,8 +23,7 @@
 
 ### Product polish
 1. Exact app icon / brand system
-2. Whether first-run onboarding is modal wizard or inline checklist
-3. Timeline for additional locales (e.g. zh-CN)
+2. Timeline for additional locales (e.g. zh-CN)
 
 ## Decision rules
 

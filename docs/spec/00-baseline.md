@@ -1,8 +1,8 @@
 # PI-Desktop Baseline Freeze
 
-- Baseline Version: `0.3.1`
+- Baseline Version: `0.3.2`
 - Date: `2026-07-25`
-- Status: `Frozen for implementation details`
+- Status: `Frozen for implementation details (expanded)`
 - Language policy: **English-first**
 - Backend policy: **Rust host core + pi agent sidecar**
 
@@ -38,6 +38,9 @@
 28. TS schema library: **typebox**
 29. i18n library: **i18next**
 30. Bash in M3: **non-interactive only**
+31. Onboarding: **inline checklist**
+32. Observability MVP: **local logs only**
+33. Error model: **shared AppError code registry**
 
 ## Source of Truth
 
