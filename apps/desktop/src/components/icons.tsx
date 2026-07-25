@@ -187,6 +187,44 @@ export function IconSliders(props: IconProps) {
   );
 }
 
+/** Codex settings "Configuration" glyph — dual circular arrows. */
+export function IconConfig(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M16.5 7.5A6.5 6.5 0 0 0 6.2 9.2" />
+      <path d="M6.5 5.5v3.8H10" />
+      <path d="M7.5 16.5A6.5 6.5 0 0 0 17.8 14.8" />
+      <path d="M17.5 18.5v-3.8H14" />
+    </svg>
+  );
+}
+
+/** VS Code mark used in settings open-target pill. */
+export function IconVSCode(props: IconProps) {
+  const { size = 14, ...rest } = props;
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      {...rest}
+    >
+      <path
+        d="M17.9 2.2 9.7 8.1 5.4 4.9 3 6.1v11.8l2.4 1.2 4.3-3.2 8.2 5.9L21 19.3V4.7L17.9 2.2Z"
+        fill="#0078D4"
+      />
+      <path
+        d="M3 6.1 5.4 4.9l4.3 3.2L3 13.5V6.1Zm0 11.8V13.5l6.7 5.4-4.3-3.2L3 17.9Z"
+        fill="#0065A9"
+        opacity="0.85"
+      />
+      <path d="m17.9 2.2 3.1 2.5v14.6L17.9 21.8 9.7 15.9l8.2-6.4V2.2Z" fill="#1F9CF0" />
+    </svg>
+  );
+}
+
 export function IconDot(props: IconProps) {
   return (
     <svg {...base({ ...props, strokeWidth: 0 })}>
@@ -404,8 +442,9 @@ export function IconPalette(props: IconProps) {
 export function IconPerson(props: IconProps) {
   return (
     <svg {...base(props)} viewBox="0 0 24 24">
-      <circle cx="12" cy="8" r="3" />
-      <path d="M6 19c1.5-3 3.5-4.5 6-4.5s4.5 1.5 6 4.5" />
+      <circle cx="12" cy="12" r="9" />
+      <circle cx="12" cy="10" r="2.6" />
+      <path d="M7.2 17.2c1.2-2.1 2.9-3.1 4.8-3.1s3.6 1 4.8 3.1" />
     </svg>
   );
 }

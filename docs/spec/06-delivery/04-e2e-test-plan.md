@@ -668,8 +668,13 @@ This test plan spec is accepted when:
 ### US-UI-44 Settings Codex groups + rows
 - Open Settings light theme at ~1200×690.
 - Full-page shell: rail ~260px on `#f3f3f3`, main `#fff`; Back to app; search pill; General active pill with icon.
-- General content: large title, **Permissions** card with 3 blue toggles, **General** card with default open target / language / menu bar / bottom panel rows.
+- General content: large title, **Permissions** card with 3 blue toggles + Learn more links on auto-review/full-access, **General** card with default open target (VS Code glyph) / language / menu bar / bottom panel rows.
+- Integrations order: Appshots, Plugins, Browser, Computer use, then local MCP.
 - Dark: rail `#000`, main `#181818`, cards elevated `#212121`.
+
+### US-UI-45 Settings permission learn-more
+- On General → Permissions, Auto-review and Full access descriptions include a blue **Learn more** / **了解更多** link.
+- Link opens the Codex sandboxing auto-review docs in an external browser.
 
 ### US-UI-38 Home chips without project
 - On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).

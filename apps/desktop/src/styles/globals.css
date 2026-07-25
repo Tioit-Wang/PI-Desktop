@@ -2313,6 +2313,43 @@ textarea:disabled {
   box-shadow: 0 0 0 0.5px color-mix(in oklab, var(--gray-0) 10%, transparent);
 }
 
+.settings-inline-link {
+  color: var(--ds-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.settings-inline-link:hover {
+  text-decoration: underline;
+}
+
+.settings-pill-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 148px;
+}
+
+.settings-pill-leading {
+  position: absolute;
+  left: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.settings-pill-select.has-leading-icon,
+.settings-row-control .field-select.has-leading-icon {
+  padding-left: 30px;
+}
+
+.settings-row-desc a.settings-inline-link {
+  font-weight: 500;
+}
+
+
 
 
 .page-frame {

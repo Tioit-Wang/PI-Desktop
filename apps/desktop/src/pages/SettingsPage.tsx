@@ -8,6 +8,7 @@ import {
   IconBrowser,
   IconChevronLeft,
   IconComputer,
+  IconConfig,
   IconExternal,
   IconGitBranch,
   IconHook,
@@ -21,10 +22,10 @@ import {
   IconSearch,
   IconServer,
   IconSettings,
-  IconSliders,
   IconSnapshot,
   IconSparkles,
   IconSun,
+  IconVSCode,
 } from "../components/icons";
 
 type SettingsTab = ReturnType<typeof useAppStore.getState>["settingsTab"];
@@ -103,6 +104,47 @@ function Toggle({
   );
 }
 
+
+const LEARN_MORE_SANDBOX =
+  "https://developers.openai.com/codex/concepts/sandboxing/auto-review";
+
+function LearnMoreLink({ label }: { label: string }) {
+  return (
+    <a
+      className="settings-inline-link"
+      href={LEARN_MORE_SANDBOX}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {label}
+    </a>
+  );
+}
+
+function PermissionDescription({
+  before,
+  link,
+  after,
+}: {
+  before: string;
+  link?: string;
+  after?: string;
+}) {
+  return (
+    <>
+      {before}
+      {link ? (
+        <>
+          {" "}
+          <LearnMoreLink label={link} />
+          {after ? <>{after}</> : null}
+        </>
+      ) : null}
+    </>
+  );
+}
+
 function PlaceholderBody({ title, body }: { title: string; body: string }) {
   return (
     <div className="settings-empty-state">
@@ -147,7 +189,7 @@ export function SettingsPage() {
           { id: "general", labelKey: "settings.general", icon: <IconSettings size={15} /> },
           { id: "appearance", labelKey: "settings.appearance", icon: <IconSun size={15} /> },
           { id: "voice", labelKey: "settings.voice", icon: <IconMic size={15} /> },
-          { id: "agent", labelKey: "settings.configuration", icon: <IconSliders size={15} /> },
+          { id: "agent", labelKey: "settings.configuration", icon: <IconConfig size={15} /> },
           {
             id: "personalization",
             labelKey: "settings.personalization",
@@ -171,9 +213,10 @@ export function SettingsPage() {
         items: [
           { id: "appshots", labelKey: "settings.appshots", icon: <IconSnapshot size={15} /> },
           { id: "plugins", labelKey: "settings.plugins", icon: <IconPlug size={15} /> },
-          { id: "mcp", labelKey: "settings.mcp", icon: <IconSparkles size={15} /> },
           { id: "browser", labelKey: "settings.browser", icon: <IconBrowser size={15} /> },
           { id: "computer", labelKey: "settings.computer", icon: <IconComputer size={15} /> },
+          // Local-first extra after Codex-ordered items.
+          { id: "mcp", labelKey: "settings.mcp", icon: <IconSparkles size={15} /> },
         ],
       },
       {
@@ -274,7 +317,13 @@ export function SettingsPage() {
                 </SettingsRow>
                 <SettingsRow
                   title={t("settings.autoReview")}
-                  description={t("settings.autoReviewDesc")}
+                  description={
+                    <PermissionDescription
+                      before={t("settings.autoReviewDesc")}
+                      link={t("settings.learnMore")}
+                      after={t("settings.autoReviewLearnMoreAfter")}
+                    />
+                  }
                 >
                   <Toggle
                     checked={autoReview}
@@ -284,7 +333,13 @@ export function SettingsPage() {
                 </SettingsRow>
                 <SettingsRow
                   title={t("settings.fullAccess")}
-                  description={t("settings.fullAccessDesc")}
+                  description={
+                    <PermissionDescription
+                      before={t("settings.fullAccessDesc")}
+                      link={t("settings.learnMore")}
+                      after={t("settings.fullAccessLearnMoreAfter")}
+                    />
+                  }
                 >
                   <Toggle
                     checked={fullAccess}
@@ -299,11 +354,16 @@ export function SettingsPage() {
                   title={t("settings.defaultOpenTarget")}
                   description={t("settings.defaultOpenTargetDesc")}
                 >
-                  <Select defaultValue="vscode" className="settings-pill-select">
-                    <option value="vscode">VS Code</option>
-                    <option value="finder">Finder</option>
-                    <option value="terminal">Terminal</option>
-                  </Select>
+                  <div className="settings-pill-select-wrap">
+                    <span className="settings-pill-leading" aria-hidden>
+                      <IconVSCode size={14} />
+                    </span>
+                    <Select defaultValue="vscode" className="settings-pill-select has-leading-icon">
+                      <option value="vscode">VS Code</option>
+                      <option value="finder">Finder</option>
+                      <option value="terminal">Terminal</option>
+                    </Select>
+                  </div>
                 </SettingsRow>
                 <SettingsRow title={t("settings.language")} description={t("settings.languageDesc")}>
                   <Select defaultValue="auto" className="settings-pill-select">
@@ -331,25 +391,6 @@ export function SettingsPage() {
                     onChange={setBottomPanel}
                     label={t("settings.bottomPanel")}
                   />
-                </SettingsRow>
-                <SettingsRow
-                  title={t("settings.enterToSend")}
-                  description={t("settings.enterToSendDesc")}
-                >
-                  <Select
-                    className="settings-pill-select"
-                    value={settings.enterToSend ? "yes" : "no"}
-                    onChange={async (e) => {
-                      await api.setSettings({
-                        ...settings,
-                        enterToSend: e.target.value === "yes",
-                      });
-                      await refreshProviders();
-                    }}
-                  >
-                    <option value="yes">{t("settings.yes")}</option>
-                    <option value="no">{t("settings.noCmdEnter")}</option>
-                  </Select>
                 </SettingsRow>
               </SettingsCard>
             </>
@@ -408,6 +449,7 @@ export function SettingsPage() {
             <SettingsCard>
               <SettingsRow title={t("settings.mode")} description={t("settings.modeDesc")}>
                 <Select
+                  className="settings-pill-select"
                   value={settings.defaultMode}
                   onChange={async (e) => {
                     await api.setSettings({
@@ -436,6 +478,25 @@ export function SettingsPage() {
                   className="font-mono text-[12.5px]"
                   placeholder="model-id"
                 />
+              </SettingsRow>
+              <SettingsRow
+                title={t("settings.enterToSend")}
+                description={t("settings.enterToSendDesc")}
+              >
+                <Select
+                  className="settings-pill-select"
+                  value={settings.enterToSend ? "yes" : "no"}
+                  onChange={async (e) => {
+                    await api.setSettings({
+                      ...settings,
+                      enterToSend: e.target.value === "yes",
+                    });
+                    await refreshProviders();
+                  }}
+                >
+                  <option value="yes">{t("settings.yes")}</option>
+                  <option value="no">{t("settings.noCmdEnter")}</option>
+                </Select>
               </SettingsRow>
             </SettingsCard>
           )}
