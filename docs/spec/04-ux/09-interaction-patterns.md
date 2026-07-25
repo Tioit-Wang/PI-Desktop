@@ -217,6 +217,20 @@ Agent calls high-risk tool
 - Per [07-ui-design-system.md](07-ui-design-system.md) §6.4
 - Never remove focus rings globally — accessibility requirement
 
+### 7.5 Text selection
+
+- Application chrome is non-selectable by default to prevent accidental
+  selection while clicking or dragging the shell.
+- Editable controls (`input`, `textarea`, `select`, and
+  `[contenteditable]`) preserve normal text editing and `Cmd/Ctrl+A/C/V`
+  behavior.
+- Transcript prose, rendered Markdown, code blocks, and tool input/output
+  remain text-selectable for inspection and copying.
+- Interactive controls nested inside selectable content remain
+  non-selectable and must keep their click and keyboard behavior.
+- Selection rules must not disable `focus-visible` feedback or native window
+  drag regions.
+
 ## 8. Drag / drop (reserved)
 
 ### 8.1 MVP status
@@ -309,3 +323,5 @@ This does not prevent state changes — it makes them instant.
 10. Command palette traps focus; Escape returns to previous focus
 11. All animations respect `prefers-reduced-motion: reduce` — state changes are instant, no decorative motion
 12. Drag/drop is not implemented in MVP; patterns reserved for future spec
+13. Shell chrome does not create accidental text selections, while editable
+    controls and transcript/code/tool content remain selectable and copyable

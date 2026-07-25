@@ -30,6 +30,22 @@ The desktop shell targets a 1:1 visual match with the local Codex desktop client
 | **Motion as feedback** | Animations convey state change (streaming, loading, expand/collapse). Never decorative. |
 | **Keyboard-first** | Focus rings, tab order, and shortcut labels are primary UX, not afterthoughts. |
 
+### 3.1 Text selection
+
+PI-Desktop behaves like a desktop application shell, so accidental drag
+selection is suppressed for chrome by default. The selection contract is:
+
+- Navigation, titlebar chrome, buttons, labels, badges, menus, and other
+  controls are not text-selectable.
+- `input`, `textarea`, `select`, and editable content remain selectable so
+  users can edit drafts, search, and use native `Cmd/Ctrl+A/C/V` behavior.
+- Transcript message bodies, rendered Markdown, code blocks, and tool
+  input/output remain selectable for copy and inspection.
+- New document-like surfaces must opt into the shared `.selectable` class (or
+  an equivalent explicit `user-select: text` rule).
+- The Electron renderer sets both `user-select` and `-webkit-user-select`;
+  selection rules must not remove focus-visible rings or window drag regions.
+
 ## 4. Color tokens
 
 ### 4.1 Semantic token naming
