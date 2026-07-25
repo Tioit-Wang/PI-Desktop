@@ -21,6 +21,7 @@ import type {
   UiMessage,
 } from "@pi-desktop/shared";
 import type { HostClient } from "./host-client.js";
+import { clampThinkingLevel } from "./model-capabilities.js";
 
 export type RuntimeProviderConfig = {
   id: string;
@@ -110,27 +111,6 @@ function assistantContent(content: unknown): AssistantContent {
     }
   }
   return { text, thinking, hasText, hasThinking };
-}
-
-function clampThinkingLevel(
-  provider: RuntimeProviderConfig,
-  requested: ThinkingLevel,
-): ThinkingLevel {
-  if (!provider.supportsReasoning) return "off";
-
-  const supported = new Set(provider.supportedThinkingLevels ?? ["off"]);
-  if (supported.has(requested)) return requested;
-
-  const requestedIndex = THINKING_LEVELS.indexOf(requested);
-  for (let index = requestedIndex; index < THINKING_LEVELS.length; index += 1) {
-    const candidate = THINKING_LEVELS[index];
-    if (supported.has(candidate)) return candidate;
-  }
-  for (let index = requestedIndex - 1; index >= 0; index -= 1) {
-    const candidate = THINKING_LEVELS[index];
-    if (supported.has(candidate)) return candidate;
-  }
-  return "off";
 }
 
 export class DesktopAgentRuntime {

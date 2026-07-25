@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { resolveThinkingCapabilities } from "./model-capabilities.js";
+import {
+  clampThinkingLevel,
+  resolveThinkingCapabilities,
+  type ModelCapabilities,
+} from "./model-capabilities.js";
+import type { ThinkingLevel } from "@pi-desktop/shared";
 
 describe("resolveThinkingCapabilities", () => {
   it("uses the exact pi-ai catalog model when available", () => {
     const capabilities = resolveThinkingCapabilities({
       vendorKey: "openai",
       modelId: "gpt-5.1",
-      supportsReasoning: false,
     });
 
     expect(capabilities.supportsReasoning).toBe(true);
@@ -42,5 +46,26 @@ describe("resolveThinkingCapabilities", () => {
       supportedThinkingLevels: ["off"],
     });
   });
-});
 
+  it("honors an explicit false override even for a catalogued model", () => {
+    expect(
+      resolveThinkingCapabilities({
+        vendorKey: "openai",
+        modelId: "gpt-5.1",
+        supportsReasoning: false,
+      }),
+    ).toEqual({
+      supportsReasoning: false,
+      supportedThinkingLevels: ["off"],
+    });
+  });
+
+  it("clamps sparse capability lists using the nearest supported level", () => {
+    const capabilities: ModelCapabilities = {
+      supportsReasoning: true,
+      supportedThinkingLevels: ["off", "low", "high"] as ThinkingLevel[],
+    };
+    expect(clampThinkingLevel(capabilities, "minimal")).toBe("low");
+    expect(clampThinkingLevel(capabilities, "max")).toBe("high");
+  });
+});
