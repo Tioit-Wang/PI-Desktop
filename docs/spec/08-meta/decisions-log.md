@@ -78,6 +78,7 @@ This log freezes previously open questions into concrete decisions.
 | D055 | Empty plate draft Y | **Home empty shell min-height ~148px (bottom-aligned) so draft densest ink ≈y556 vs gold; chips compact 28px** | 112px plate left draft ~30px low; grow plate upward without moving toolbar footing |
 | D056 | Empty-home workspace chips | **Hide project/Local/branch capsule on empty home always; show only in thread-docked composer** | cx-home-clean empty gold has no capsule band above the plate even with project title |
 | D057 | Home mark + hero title optical | **Empty-home Codex mark uses denser stroke; short workspace basenames display as `PI-Desktop` for gold title span** | Hero residual was thin mark + short project label under-inking title vs Codex gold |
+| D058 | Home content width + dark ink tokens | **Home dual-grow max width uses `768px` (not `48rem` under 14px root); home horizontal pad 12px; hero title/night controls use theme tokens; night home plate scoped to dark only** | `48rem` at 14px root shrank plate ~120px vs Codex gold; hardcoded light hero ink made night title unreadable |
 
 ## C. Still deferred (not blocking M1)
 

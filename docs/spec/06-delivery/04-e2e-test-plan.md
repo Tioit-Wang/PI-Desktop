@@ -645,6 +645,15 @@ This test plan spec is accepted when:
 - Empty-home Codex mark is visible (not near-invisible); stroke density closer to Codex gold than a 0.3 ghost.
 - Empty-home title with a project uses a readable project label span (short basenames may display as `PI-Desktop` for optical parity).
 
+### US-UI-40 Home content width vs rem root
+- At 1200×690 light empty home, composer plate outer width is ~744–760px (not ~640px).
+- Home suggestion grid spans the same content column as the composer plate.
+
+### US-UI-41 Dark hero + night box readability
+- Dark empty home hero title ink is light-on-dark (`--ds-text-primary` / near white), not hardcoded `#1a1c1f`.
+- Night composer plate is solid `#212121` on main `#181818` with visible elevation; light theme is not forced to the night plate fill.
+
+
 ### US-UI-38 Home chips without project
 - On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).
 - Starting a transcript restores the workspace capsule above the docked composer.
