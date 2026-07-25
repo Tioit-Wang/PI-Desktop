@@ -82,7 +82,7 @@ language, and configuration rows (D064/D065).
 | Plus menu | composer `+` | attach files/photos, capture appshot (stub), open project |
 | Model/effort menu | composer model chip | effort radio + model heading + settings entry (D040) |
 | Profile menu | sidebar footer | Settings / Logs / Theme cycle (D041) |
-| Toasts | events (plugin toast, backend restored, copy) | top-right; 4s default, 8s for errors |
+| Toasts | events (plugin toast, backend restored, copy) | top-center; 4s default, 8s for errors |
 
 ## 5. Navigation model
 

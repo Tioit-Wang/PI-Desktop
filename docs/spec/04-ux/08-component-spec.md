@@ -779,9 +779,9 @@ Transient, non-blocking feedback for completed actions and failures that have no
 ### 17.2 Anatomy
 
 ```text
-                        ┌  toast-viewport (fixed top-right, z-toast) ┐
+                        ┌  toast-viewport (fixed top-center, z-toast) ┐
                         │  ┌──────────────────────────────────────┐ │
-   newest, at corner →  │  │ (✓)  Provider saved               ✕  │ │
+   newest, at anchor →  │  │ (✓)  Provider saved               ✕  │ │
                         │  ├──────────────────────────────────────┤ │
    oldest, pushed down →│  │ (i)  Message text                 ✕  │ │
                         │  └──────────────────────────────────────┘ │
@@ -820,7 +820,7 @@ dismissToast(id: number); // ToastHost internal / tests
 
 - Auto-dismiss 4s (error 8s, `duration: 0` sticky); hovering a card pauses its timer, leaving resumes with remaining time
 - Stack caps at 4 — oldest drops first; re-raising an identical message+variant restarts the existing toast instead of stacking a twin
-- Newest toast enters at the top-right corner (slide-down 200ms ease-out) pushing older cards down; exit is a 150ms ease-in fade
+- Newest toast enters at the top-center anchor (slide-down 200ms ease-out) pushing older cards down; exit is a 150ms ease-in fade
 - Dismiss X always available; reduced motion keeps animations near-zero-duration so removal (bound to `animationend`) still fires
 
 ### 17.6 Accessibility
@@ -851,4 +851,4 @@ dismissToast(id: number); // ToastHost internal / tests
 10. Empty states always provide an actionable next step, not just a message
 11. All components have correct ARIA roles and labels
 12. Responsive collapse works at 800px and 640px breakpoints
-13. Toasts stack top-right with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17
+13. Toasts stack top-center with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17

@@ -1525,13 +1525,14 @@ textarea:disabled {
 .toast-viewport {
   position: fixed;
   top: 16px;
-  right: 16px;
+  left: 50%;
   z-index: 50; /* z-toast */
   display: flex;
   flex-direction: column-reverse;
-  align-items: flex-end;
+  align-items: center;
   gap: 8px;
   width: min(360px, calc(100vw - 32px));
+  transform: translateX(-50%);
   pointer-events: none;
 }
 

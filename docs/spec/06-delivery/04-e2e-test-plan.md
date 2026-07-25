@@ -776,7 +776,7 @@ This test plan spec is accepted when:
 
 ### US-UI-54 Toast variants + lifecycle (D085)
 - Trigger a success (save provider), an error (run with an invalid key), and an info toast (branch chip).
-- Expect a top-right stack on an elevated plate with a tinted variant icon (green ✓ / red ! / info) and an X dismiss per card; newest enters at the corner and pushes older cards down.
+- Expect a top-center stack on an elevated plate with a tinted variant icon (green ✓ / red ! / info) and an X dismiss per card; newest enters at the top-center anchor and pushes older cards down.
 - Success/info auto-dismiss ~4s, error lingers ~8s; hovering a card pauses its countdown; X removes it immediately.
 - Repeating the same action restarts the existing toast instead of stacking a duplicate; stack never exceeds 4.
 - Capture rig scenes `pi-toasts-light` / `pi-toasts-dark` show the stack in both themes.
