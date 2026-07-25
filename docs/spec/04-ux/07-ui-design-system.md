@@ -58,7 +58,8 @@ All color references in components use **semantic token names**, never raw hex v
 
 | Token | Hex | Tailwind mapping | Usage |
 |---|---|---|---|
-| `--color-bg-primary` | `#181818` | Codex `gray-900` | Main background / sidebar |
+| `--color-bg-primary` | `#181818` | Codex `gray-900` | Main surface |
+| `--color-bg-sidebar` / under | `#000000` (dark) / `#f3f3f3` (light) | Codex `surface-under` / gray-75 | Sidebar rail |
 | `--color-bg-secondary` | `#212121` | Codex `gray-800` | Elevated surfaces, composer |
 | `--color-bg-tertiary` | `#282828` | Codex `gray-750` | Hover / opaque elevated |
 | `--color-bg-inset` | `#0d0d0d` | Codex `gray-1000` | Code blocks, deepest inset |
@@ -250,7 +251,7 @@ Toolbar: traffic lights `{x:16,y:16}` in 46px titlebar.
 Composer elevation (Codex `elevation-prominent`):
 
 - stroke: `0 0 0 0.5px` border-heavy mix
-- soft: `0 3px 7.5px` + `0 0 20px` low-alpha black
+- soft: `0 3px 7.5px rgba(0,0,0,0.039)` + `0 0 20px rgba(0,0,0,0.051)` (Codex `#0000000a` / `#0000000d`, both themes)
 
 Shadow token values (light theme only):
 
