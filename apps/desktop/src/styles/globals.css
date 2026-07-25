@@ -346,35 +346,55 @@ textarea:disabled {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
+  gap: 24px; /* Codex gap-6 */
   padding: 40px 28px 180px;
   text-align: center;
 }
 
 .empty-hero-icon {
   display: flex;
-  height: 40px;
-  width: 40px;
+  height: 56px; /* Codex size-14 */
+  width: 56px;
   align-items: center;
   justify-content: center;
-  color: color-mix(in oklab, var(--ds-text-primary) 22%, transparent);
+  color: var(--ds-text-primary);
+  opacity: 0.3;
+  transition: opacity 120ms ease, transform 180ms ease;
+  cursor: default;
+  user-select: none;
+}
+
+.empty-hero-icon:hover {
+  opacity: 0.4;
 }
 
 .empty-hero h1 {
   margin: 0;
-  max-width: 820px;
-  font-size: 28px;
+  max-width: min(100%, 42rem);
+  font-size: 28px; /* Codex --text-xl / heading-xl */
   font-weight: 400;
   letter-spacing: -0.025em;
-  line-height: 34px;
+  line-height: 1.2;
   color: var(--ds-text-primary);
+  white-space: pre-wrap;
 }
 
 .empty-hero .project-underline {
-  text-decoration: underline;
+  display: inline-block;
+  max-width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
   text-decoration-thickness: 1px;
-  text-underline-offset: 5px;
-  text-decoration-color: color-mix(in oklab, var(--ds-text-primary) 35%, transparent);
+  text-underline-offset: 4px;
+  text-decoration-color: var(--ds-text-faint);
+}
+
+.empty-hero .project-underline:hover {
+  color: var(--ds-text-secondary);
 }
 
 .composer-dock {

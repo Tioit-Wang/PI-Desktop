@@ -25,6 +25,7 @@ export const en = {
     emptyTitleInProject: "What should we build in {{project}}?",
     emptyHint: "Configure a provider, open a project, then send your first prompt.",
     placeholder: "",
+    addFiles: "Add files and more",
     send: "Send",
     abort: "Stop",
     running: "Working…",

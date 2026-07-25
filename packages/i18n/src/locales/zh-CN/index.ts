@@ -28,6 +28,7 @@ export const zhCN = {
     emptyTitleInProject: "What should we build in {{project}}?",
     emptyHint: "配置模型提供方、打开项目，然后发送第一条消息。",
     placeholder: "",
+    addFiles: "添加文件等",
     send: "发送",
     abort: "停止",
     running: "处理中…",

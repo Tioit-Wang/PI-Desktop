@@ -145,7 +145,8 @@ export function Composer() {
             <div className="composer-left">
               <button
                 className="icon-btn"
-                title={t("project.open")}
+                title={t("chat.addFiles")}
+                aria-label={t("chat.addFiles")}
                 onClick={() => void openProject()}
               >
                 <IconPlus size={15} />

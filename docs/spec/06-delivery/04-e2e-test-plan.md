@@ -551,3 +551,9 @@ This test plan spec is accepted when:
 - On light/dark home shell, sidebar footer shows Custom + a circular blue cloud/update badge (~20px, Codex charts-blue).
 - Badge click remains available (local stand-in opens logs until real update channel lands).
 - Traffic lights sit at Codex `{x:16,y:16}` with 46px toolbar; back/forward nav lives in the drag row after lights.
+
+### US-UI-17 Codex home hero mark
+- On empty chat home, a 56px Codex cloud/glyph mark renders above the title at ~30% opacity (hover ~40%).
+- Title is 28px / weight 400; active project name uses dotted underline (1px, offset 4px).
+- Plus control in composer toolbar is labeled "Add files and more" / 添加文件等.
+

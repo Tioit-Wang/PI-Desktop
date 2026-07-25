@@ -13,7 +13,7 @@ import { ScheduledPage } from "./pages/ScheduledPage";
 import { PluginsPage } from "./pages/PluginsPage";
 import { useAppStore } from "./stores/app-store";
 import { api } from "./lib/api";
-import { IconPanel } from "./components/icons";
+import { IconCodexHome, IconPanel } from "./components/icons";
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -174,28 +174,15 @@ function AppShell() {
             {!hasTranscript ? (
               <div className="thread-scroll">
                 <div className="empty-hero">
-                  <div className="empty-hero-icon" aria-hidden>
-                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
-                      <path
-                        d="M7.5 16.5c-2.4 0-4.2-1.9-4.2-4.1 0-1.8 1.2-3.4 2.9-3.9.4-2.4 2.5-4.2 5-4.2 2.2 0 4.1 1.4 4.8 3.4 2 .3 3.5 2 3.5 4 0 2.2-1.8 4-4 4H7.5Z"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinejoin="round"
-                      />
-                      <path
-                        d="M9.2 12.2 11 14l3.6-4.2"
-                        stroke="currentColor"
-                        strokeWidth="1.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                  <div className="empty-hero-icon" data-testid="home-icon" aria-hidden>
+                    <IconCodexHome size={56} />
                   </div>
                   <h1>
                     {heroProject ? (
                       <>
                         What should we build in{" "}
                         <button
+                          type="button"
                           className="project-underline"
                           onClick={() => void openProject()}
                           title={workspace?.path || t("project.open")}
