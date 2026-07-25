@@ -641,6 +641,12 @@ This test plan spec is accepted when:
 - Model chip shows the active model id; effort options remain in the model/intelligence menu.
 - Placeholder and approval chip remain legible on light and dark plates.
 
+### US-UI-37 Empty draft infinity + resize
+- Empty composer shows a left ∞ cue and visible placeholder ink (not a blank white/night hole).
+- Auto-resize never collapses empty textarea below ~28px.
+- Disabled send control is a solid gray chip on light (`#bdbdbd`), full opacity.
+- Dark night plate remains solid `#212121` with readable elevation on `#181818`.
+
 ### US-UI-31b (superseded)
 - Superseded by US-UI-31 split-grow layout.
 

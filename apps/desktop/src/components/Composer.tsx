@@ -74,8 +74,11 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.style.height = "0px";
-    el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
+    // Measure scrollHeight from a clean auto height. Never collapse empty
+    // draft to 0 — that hides placeholder/infinity optical row (Codex ~28px).
+    el.style.height = "auto";
+    const next = Math.max(28, Math.min(el.scrollHeight, 180));
+    el.style.height = `${next}px`;
   }, [value]);
 
   useEffect(() => {
@@ -173,6 +176,10 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
 
         <div className="composer-shell">
           <div className="composer-input-wrap">
+            {/* Codex empty/thread cue: infinity mark left of draft */}
+            <span className="composer-thread-mark" aria-hidden>
+              <span className="infinity-mark">∞</span>
+            </span>
             <textarea
               ref={ref}
               className="composer-input"

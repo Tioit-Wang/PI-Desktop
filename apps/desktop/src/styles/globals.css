@@ -96,7 +96,11 @@
   --ds-info: #0285ff;
   --ds-shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.12);
   --ds-elevation-stroke: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 16%, transparent);
-  --ds-shadow-composer: var(--ds-elevation-stroke), 0 3px 7.5px #00000012, 0 0 22px #00000014;
+  /* Codex elevation-prominent + soft outer halo matching gold #f6 plate rim */
+  --ds-shadow-composer: var(--ds-elevation-stroke),
+    0 3px 7.5px #00000012,
+    0 0 22px #00000018,
+    0 -2px 12px #0000000a;
   --ds-bg-elevated-primary: color-mix(in oklab, #ffffff 70%, transparent);
 }
 
@@ -431,7 +435,7 @@ textarea:disabled {
   width: min(100%, 48rem);
   max-width: 100%;
   margin-inline: auto;
-  padding: 10px 24px 18px; /* match Codex home composer footing */
+  padding: 8px 24px 16px; /* Codex home composer footing */
 }
 
 /* Codex home ambient suggestion cards (electron cards mode) */
@@ -788,11 +792,14 @@ textarea:disabled {
   outline: none;
   background: transparent;
   color: var(--ds-text-primary);
+  font-size: 14px;
   line-height: 1.45;
 }
 
 .composer-input::placeholder {
-  color: var(--ds-text-faint);
+  color: var(--ds-text-secondary);
+  -webkit-text-fill-color: var(--ds-text-secondary);
+  opacity: 0.72;
 }
 
 .composer-toolbar {
@@ -856,7 +863,19 @@ textarea:disabled {
 }
 
 .send-btn:disabled {
-  opacity: 0.35;
+  opacity: 1;
+  background: color-mix(in oklab, var(--ds-text-primary) 18%, transparent);
+  color: color-mix(in oklab, var(--ds-bg-primary) 92%, transparent);
+}
+
+:root[data-theme="light"] .send-btn:disabled {
+  background: #bdbdbd;
+  color: #ffffff;
+}
+
+:root[data-theme="dark"] .send-btn:disabled {
+  background: color-mix(in oklab, var(--gray-0) 18%, transparent);
+  color: color-mix(in oklab, var(--gray-900) 70%, transparent);
 }
 
 .stop-btn {
@@ -918,8 +937,8 @@ textarea:disabled {
   width: 100%;
   overflow: hidden;
   border-radius: 8px;
-  padding: 5px 8px;
-  min-height: 28px; /* Codex recents row pitch ~31px optical with gap-px */
+  padding: 6px 8px;
+  min-height: 30px; /* Codex recents row pitch ~31px optical with gap-px */
   color: var(--ds-text-secondary);
   font-size: 13px;
   line-height: 18px;
@@ -1286,27 +1305,43 @@ textarea:disabled {
 :root[data-theme="light"] .composer-shell {
   background: #ffffff;
   box-shadow: var(--ds-shadow-composer);
-  /* Keep plate edge readable on pure white main */
-  outline: 0.5px solid color-mix(in oklab, #1a1c1f 8%, transparent);
-  outline-offset: 0;
+  /* Hairline only — elevation-prominent supplies the soft #f6 rim */
+  outline: none;
+  border: 0;
 }
 
 .composer-dock-home .composer-shell {
   display: flex;
-  /* Codex empty-home plate is compact (~110px), not a tall forced stack */
+  /* Codex empty-home plate ~112px optical height */
   min-height: 112px;
   flex-direction: column;
 }
 
 .composer-dock-home .composer-input-wrap {
   flex: 1 1 auto;
-  min-height: 40px;
+  min-height: 52px;
   align-items: flex-start;
-  padding-top: 12px;
+  /* Gold: plate top ~y537, draft ink ~y551 → ~14px inset */
+  padding: 14px 14px 0 14px;
+  gap: 8px;
+}
+
+.composer-dock-home .composer-thread-mark {
+  margin-top: 0;
+  font-size: 18px;
+  line-height: 1.3;
+  color: color-mix(in oklab, var(--ds-text-primary) 72%, transparent);
+}
+
+.composer-dock-home .composer-input {
+  font-size: 14px;
+  line-height: 1.45;
+  min-height: 22px;
 }
 
 .composer-dock-home .composer-toolbar {
   margin-top: auto;
+  padding: 6px 8px 10px;
 }
 
 :root[data-theme="light"] .composer-chips .chip,
@@ -1318,16 +1353,19 @@ textarea:disabled {
 :root[data-theme="light"] .composer-toolbar .icon-btn,
 :root[data-theme="light"] .mode-chip,
 :root[data-theme="light"] .model-chip {
-  color: color-mix(in oklab, #1a1c1f 78%, transparent) !important;
+  color: color-mix(in oklab, #1a1c1f 84%, transparent) !important;
 }
 
 :root[data-theme="light"] .composer-input::placeholder {
-  /* Gold empty-home placeholder ink ~#8b8c8e–#8f9092 */
-  color: color-mix(in oklab, #1a1c1f 58%, transparent);
+  /* Gold empty-home placeholder ~#525355 */
+  color: #525355;
+  -webkit-text-fill-color: #525355;
+  opacity: 1;
 }
 
 :root[data-theme="light"] .composer-thread-mark {
-  color: color-mix(in oklab, #1a1c1f 42%, transparent);
+  /* Gold infinity ink is near primary dark, not faint gray */
+  color: #2f3134;
 }
 
 :root[data-theme="light"] .chip-sep {
@@ -1479,23 +1517,41 @@ textarea:disabled {
 
 /* DARK_COMPOSER_BOX — Codex elevated-primary + elevation-prominent */
 :root[data-theme="dark"] .composer-chips {
-  background: color-mix(in oklab, var(--gray-0) 6%, transparent); /* elevated-secondary readable on #181818 */
-  box-shadow: var(--ds-elevation-stroke);
+  background: color-mix(in oklab, var(--gray-0) 6%, transparent); /* elevated-secondary on #181818 */
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, var(--gray-0) 10%, transparent);
   backdrop-filter: blur(16px);
 }
 
 :root[data-theme="dark"] .composer-shell {
-  /* elevated-primary: #212121f5 → opaque read on gray-900 */
-  background: color-mix(in oklab, var(--gray-800) 96%, transparent);
+  /* elevated-primary: solid #212121 night plate (Codex gray-800) */
+  background: #212121;
   background-color: #212121;
   box-shadow: var(--ds-shadow-composer);
   border: 0;
+  outline: 0;
 }
 
 :root[data-theme="dark"] .composer-dock-home .composer-shell {
-  /* Night box: keep solid plate so blur/stacking cannot flatten to main #181818 */
+  /* Night box: solid plate + slightly stronger lift vs main #181818 */
   background: #212121;
-  box-shadow: var(--ds-elevation-stroke), 0 3px 7.5px #0000001a, 0 0 20px #00000024;
+  box-shadow:
+    0 0 0 0.5px color-mix(in oklab, var(--gray-0) 10%, transparent),
+    0 3px 7.5px #00000022,
+    0 0 22px #00000030;
+}
+
+:root[data-theme="dark"] .composer-input::placeholder {
+  color: color-mix(in oklab, var(--gray-0) 42%, transparent);
+  -webkit-text-fill-color: color-mix(in oklab, var(--gray-0) 42%, transparent);
+  opacity: 1;
+}
+
+:root[data-theme="dark"] .composer-thread-mark {
+  color: color-mix(in oklab, var(--gray-0) 38%, transparent);
+}
+
+:root[data-theme="dark"] .composer-dock-home .composer-thread-mark {
+  color: color-mix(in oklab, var(--gray-0) 45%, transparent);
 }
 
 

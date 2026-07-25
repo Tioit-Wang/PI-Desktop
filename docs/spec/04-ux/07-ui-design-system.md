@@ -349,8 +349,11 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Composer is **not** absolute-docked on empty home; thread mode keeps the bottom dock + fade veil
 - Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
 - Empty-home composer plate is **compact** (~112px min-height), not a tall forced stack
-- Floating plates use Codex `--elevation-prominent`: stroke `0 0 0 0.5px` + `0 3px 7.5px #0000000a` + `0 0 20px #0000000d` in **both** themes (dark does not invent a heavier box shadow)
-- Dark elevated shell reads as solid `#212121` on `#181818` (Codex elevated-primary)
+- Empty draft row keeps **min textarea height 28px** (auto-resize must not collapse to 0) so placeholder remains visible
+- Left **∞** thread mark beside empty draft; light mark near primary dark ink; light placeholder ~`#525355`
+- Disabled send is a **solid gray chip** (`#bdbdbd` light), not opacity-only fade
+- Floating plates use Codex `--elevation-prominent` base (stroke + soft 3px/20px lift); light may add a soft top halo so the plate rim reads as gold `#f6` band on pure white main
+- Dark elevated shell reads as solid `#212121` on `#181818` (Codex elevated-primary); home night plate may use a slightly stronger lift so it does not flatten into main
 
 ## 8.1 Composer workspace chips (Codex parity)
 
