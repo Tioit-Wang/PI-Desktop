@@ -57,6 +57,8 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 3. General shows Permissions (with Learn more) + General cards matching Codex row set
 4. Open-target control shows VS Code glyph in the pill
 5. Provider secrets never display raw key values
+6. Row descriptions use semantic secondary text and maintain at least 4.5:1
+   contrast against their card surface in both light and dark themes
 
 ## 5. General chrome metrics (Codex gold)
 

@@ -787,6 +787,8 @@ This test plan spec is accepted when:
 
 ### US-UI-53 Settings dark shell (D070)
 - Dark theme Settings General: black rail, elevated cards, blue on-toggles, Back returns to chat.
+- Row descriptions use theme-aware secondary text and remain clearly readable on
+  the `#212121` card surface; they must not fall back to low-contrast muted ink.
 
 ### US-UI-54 Toast variants + lifecycle (D085)
 - Trigger a success (save provider), an error (run with an invalid key), and an info toast (branch chip).

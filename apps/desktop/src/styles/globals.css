@@ -2597,7 +2597,7 @@ textarea:disabled {
 
 .settings-row-desc {
   margin-top: 3px;
-  color: var(--ds-text-muted);
+  color: var(--ds-text-secondary);
   font-size: var(--text-sm);
   line-height: var(--leading-body);
   max-width: 62ch;
