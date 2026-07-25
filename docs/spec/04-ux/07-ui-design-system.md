@@ -348,7 +348,7 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Card actions prefill composer with Codex starter prompts (Explore / Build / Review / Fix)
 - Composer is **not** absolute-docked on empty home; thread mode keeps the bottom dock + fade veil
 - Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
-- Empty-home composer plate is **compact** (~112px min-height), not a tall forced stack
+- Empty-home composer plate targets gold draft→toolbar spacing (**~148px** min-height at 1200×690) so draft ink lands near y556; not a collapsed hole
 - Empty draft row keeps **min textarea height 28px** (auto-resize must not collapse to 0) so placeholder remains visible
 - Left **∞** thread mark beside empty draft; light mark near primary dark ink; light placeholder ~`#525355`
 - Disabled send is a **solid gray chip** (`#bdbdbd` light), not opacity-only fade

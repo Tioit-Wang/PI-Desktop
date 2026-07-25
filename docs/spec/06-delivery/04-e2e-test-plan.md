@@ -632,7 +632,7 @@ This test plan spec is accepted when:
 - Activating a card prefills the composer with the matching starter prompt and focuses the input.
 
 ### US-UI-35 Empty composer plate density
-- Empty-home floating composer plate is compact (~112px min height), not an oversized empty stack.
+- Empty-home floating composer plate uses gold draft→toolbar spacing (~148px min height at 1200×690); draft densest ink near y556 (±8).
 
 ### US-UI-36 Hero Y + night box elevation
 - At ~1200×690 light home, hero first dark ink is near y≈300 (±12px) vs Codex gold.

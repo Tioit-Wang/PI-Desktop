@@ -95,12 +95,12 @@
   --ds-error: #e02e2a;
   --ds-info: #0285ff;
   --ds-shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.12);
-  --ds-elevation-stroke: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 16%, transparent);
-  /* Codex elevation-prominent + soft outer halo matching gold #f6 plate rim */
+  --ds-elevation-stroke: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 14%, transparent);
+  /* Soft top #f6 rim + Codex elevation-prominent lift on pure white main */
   --ds-shadow-composer: var(--ds-elevation-stroke),
+    0 -6px 18px #0000000a,
     0 3px 7.5px #00000012,
-    0 0 22px #00000018,
-    0 -2px 12px #0000000a;
+    0 0 22px #00000014;
   --ds-bg-elevated-primary: color-mix(in oklab, #ffffff 70%, transparent);
 }
 
@@ -435,7 +435,7 @@ textarea:disabled {
   width: min(100%, 48rem);
   max-width: 100%;
   margin-inline: auto;
-  padding: 8px 24px 16px; /* Codex home composer footing */
+  padding: 6px 24px 14px; /* footing; plate min-height lifts draft */
 }
 
 /* Codex home ambient suggestion cards (electron cards mode) */
@@ -682,7 +682,7 @@ textarea:disabled {
 .composer-dock-home .composer-stack {
   width: 100%;
   max-width: 100%;
-  gap: 10px; /* Codex chips-to-shell breathing room */
+  gap: 8px; /* chips sit just above elevated shell */
   overflow: visible;
 }
 
@@ -707,8 +707,9 @@ textarea:disabled {
   border-radius: 999px;
   background: var(--ds-bg-elevated);
   box-shadow: 0 0 0 1px var(--ds-border-default);
-  padding: 3px 4px;
+  padding: 2px 4px;
   backdrop-filter: blur(16px);
+  max-height: 28px;
 }
 
 .chip-sep {
@@ -1310,16 +1311,25 @@ textarea:disabled {
   border: 0;
 }
 
+.composer-dock-home .composer-chips .chip {
+  padding: 3px 8px;
+  font-size: 12px;
+  gap: 5px;
+}
+
 .composer-dock-home .composer-shell {
   display: flex;
-  /* Codex empty-home plate ~112px optical height */
-  min-height: 112px;
+  /*
+    Gold empty plate: draft densest ~y556, toolbar ~y642.
+    Bottom-aligned min-height grows upward so draft Y matches gold (~148px).
+  */
+  min-height: 148px;
   flex-direction: column;
 }
 
 .composer-dock-home .composer-input-wrap {
   flex: 1 1 auto;
-  min-height: 52px;
+  min-height: 80px;
   align-items: flex-start;
   /* Gold: plate top ~y537, draft ink ~y551 → ~14px inset */
   padding: 14px 14px 0 14px;
@@ -1364,8 +1374,8 @@ textarea:disabled {
 }
 
 :root[data-theme="light"] .composer-thread-mark {
-  /* Gold infinity ink is near primary dark, not faint gray */
-  color: #2f3134;
+  /* Gold infinity ink is near primary (#1a1c1f) */
+  color: #1f2124;
 }
 
 :root[data-theme="light"] .chip-sep {
@@ -1531,7 +1541,13 @@ textarea:disabled {
   outline: 0;
 }
 
-:root[data-theme="dark"] .composer-dock-home .composer-shell {
+:root[data-theme="dark"] .composer-dock-home .composer-chips .chip {
+  padding: 3px 8px;
+  font-size: 12px;
+  gap: 5px;
+}
+
+.composer-dock-home .composer-shell {
   /* Night box: solid plate + slightly stronger lift vs main #181818 */
   background: #212121;
   box-shadow:
