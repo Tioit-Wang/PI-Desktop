@@ -534,3 +534,9 @@ This test plan spec is accepted when:
 ### US-UI-13 Light theme shell parity
 - Set theme to system/light on a light macOS appearance.
 - Expect sidebar `#f3f3f3`, main `#ffffff`, text `#1a1c1f`, white floating composer, and home hero with project underline.
+- Sidebar nav labels (New task / Projects / Pull requests / Scheduled / Plugins / Recents), thread titles, and composer chips must remain readable dark-on-light (≥4.5:1). Never white/translucent text on the light sidebar.
+- Titlebar back/forward controls use dark ink on light chrome.
+
+### US-UI-14 Semantic chrome tokens
+- Toggle theme system → light → dark without restart.
+- Shell chrome (sidebar items, chips, composer, icon buttons) follows semantic `--ds-text-*` / `--ds-bg-*` tokens in both themes; no hard-coded white (`gray-0`) text on light surfaces.

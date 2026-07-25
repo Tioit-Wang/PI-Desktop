@@ -56,6 +56,7 @@ This log freezes previously open questions into concrete decisions.
 | D033 | Tool result limits | **256KB/4000 lines defaults with explicit truncation markers** | Protect context & UI |
 | D034 | Desktop visual baseline | **Codex electron-dark 1:1 shell (charcoal gray, floating composer, ~275px sidebar)** | Match local Codex usability and density; keep PI-Desktop product branding |
 | D035 | Shell display name | **UI chrome uses shellName "Codex"; product/about remains PI-Desktop** | Satisfy visual 1:1 replica goal while preserving product identity in about/settings |
+| D036 | Theme chrome tokens | **All shell chrome (nav, threads, chips, title buttons) uses semantic `--ds-*` text/surface tokens; no raw gray-0 text in light mode** | Light macOS default was unusable when nav used white ink on `#f3f3f3` |
 
 ## C. Still deferred (not blocking M1)
 

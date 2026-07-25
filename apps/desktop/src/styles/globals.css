@@ -242,15 +242,15 @@ textarea:disabled {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  color: color-mix(in oklab, var(--gray-0) 55%, transparent);
-  background: color-mix(in oklab, var(--gray-0) 4%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--gray-0) 6%, transparent);
+  color: color-mix(in oklab, var(--ds-text-primary) 55%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 4%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--ds-text-primary) 6%, transparent);
   transition: background 120ms ease, color 120ms ease;
 }
 
 .title-nav-btn:hover:not(:disabled) {
   color: var(--ds-text-primary);
-  background: color-mix(in oklab, var(--gray-0) 8%, transparent);
+  background: var(--ds-bg-hover);
 }
 
 .title-nav-btn:disabled {
@@ -259,7 +259,7 @@ textarea:disabled {
 
 .title-nav-btn.active {
   color: var(--ds-text-primary);
-  background: color-mix(in oklab, var(--gray-0) 10%, transparent);
+  background: var(--ds-bg-active);
 }
 
 .main-titlebar {
@@ -410,8 +410,8 @@ textarea:disabled {
   max-width: 100%;
   overflow: hidden;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--gray-800) 96%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--gray-0) 8%, transparent);
+  background: var(--ds-bg-elevated);
+  box-shadow: 0 0 0 1px var(--ds-border-default);
   padding: 3px 4px;
   backdrop-filter: blur(16px);
 }
@@ -420,14 +420,14 @@ textarea:disabled {
   width: 1px;
   height: 14px;
   margin: 0 1px;
-  background: color-mix(in oklab, var(--gray-0) 10%, transparent);
+  background: var(--ds-border-strong);
   flex: 0 0 auto;
 }
 
 .composer-shell {
   width: 100%;
-  border-radius: 22px;
-  background: color-mix(in oklab, var(--gray-800) 96%, transparent);
+  border-radius: var(--ds-composer-radius, 22px);
+  background: var(--ds-bg-composer);
   box-shadow: var(--ds-shadow-composer);
   backdrop-filter: blur(18px);
 }
@@ -447,13 +447,13 @@ textarea:disabled {
   max-width: 220px;
   border-radius: 999px;
   padding: 4px 9px;
-  color: color-mix(in oklab, var(--gray-0) 72%, transparent);
+  color: var(--ds-text-secondary);
   font-size: 12px;
   white-space: nowrap;
 }
 
 .chip:hover {
-  background: color-mix(in oklab, var(--gray-0) 6%, transparent);
+  background: var(--ds-bg-hover);
   color: var(--ds-text-primary);
 }
 
@@ -585,7 +585,7 @@ textarea:disabled {
   gap: 10px;
   border-radius: 10px;
   padding: 7px 10px;
-  color: color-mix(in oklab, var(--gray-0) 72%, transparent);
+  color: var(--ds-text-secondary);
   font-size: 13.5px;
   text-align: left;
   transition: background 120ms ease, color 120ms ease;
@@ -607,7 +607,7 @@ textarea:disabled {
   align-items: center;
   gap: 10px;
   border-radius: 10px;
-  background: color-mix(in oklab, var(--gray-0) 7%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
   padding: 7px 10px;
   color: var(--ds-text-primary);
   font-size: 13.5px;
@@ -615,16 +615,8 @@ textarea:disabled {
   transition: background 120ms ease;
 }
 
-:root[data-theme="light"] .new-task-btn {
-  background: color-mix(in oklab, #000 6%, transparent);
-}
-
 .new-task-btn:hover {
-  background: color-mix(in oklab, var(--gray-0) 12%, transparent);
-}
-
-:root[data-theme="light"] .new-task-btn:hover {
-  background: color-mix(in oklab, #000 10%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 12%, transparent);
 }
 
 .thread-item {
@@ -633,7 +625,7 @@ textarea:disabled {
   overflow: hidden;
   border-radius: 8px;
   padding: 6px 10px;
-  color: color-mix(in oklab, var(--gray-0) 70%, transparent);
+  color: var(--ds-text-secondary);
   font-size: 13.5px;
   text-align: left;
   text-overflow: ellipsis;
@@ -693,7 +685,7 @@ textarea:disabled {
   margin: 8px 0;
   border: 1px solid var(--ds-border-default);
   border-radius: 12px;
-  background: color-mix(in oklab, var(--gray-0) 3%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 3%, transparent);
   overflow: hidden;
 }
 
@@ -744,7 +736,7 @@ textarea:disabled {
 .prose-chat code {
   font-family: var(--font-mono);
   font-size: 12.5px;
-  background: color-mix(in oklab, var(--gray-0) 6%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 6%, transparent);
   border-radius: 5px;
   padding: 0.1em 0.35em;
 }
@@ -778,7 +770,7 @@ textarea:disabled {
 .panel-card {
   border: 1px solid var(--ds-border-default);
   border-radius: 14px;
-  background: color-mix(in oklab, var(--gray-0) 3%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 3%, transparent);
 }
 
 .field-input,
@@ -787,7 +779,7 @@ textarea:disabled {
   width: 100%;
   border: 1px solid var(--ds-border-default);
   border-radius: 10px;
-  background: color-mix(in oklab, var(--gray-0) 3%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 3%, transparent);
   padding: 8px 10px;
   color: var(--ds-text-primary);
   outline: none;
@@ -823,11 +815,11 @@ textarea:disabled {
 }
 
 .btn-secondary {
-  background: color-mix(in oklab, var(--gray-0) 8%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 8%, transparent);
   color: var(--ds-text-primary);
 }
 .btn-secondary:hover:not(:disabled) {
-  background: color-mix(in oklab, var(--gray-0) 12%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 12%, transparent);
 }
 
 .btn-ghost {
@@ -847,7 +839,7 @@ textarea:disabled {
   line-height: 1.4;
 }
 .badge-neutral {
-  background: color-mix(in oklab, var(--gray-0) 8%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 8%, transparent);
   color: var(--ds-text-secondary);
 }
 .badge-success {
@@ -957,9 +949,9 @@ textarea:disabled {
 }
 
 .page-card {
-  border: 1px solid color-mix(in oklab, var(--gray-0) 8%, transparent);
+  border: 1px solid var(--ds-border-default);
   border-radius: 16px;
-  background: color-mix(in oklab, var(--gray-0) 3%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 3%, transparent);
 }
 
 .page-empty {
@@ -978,17 +970,12 @@ textarea:disabled {
   justify-content: center;
   margin-bottom: 12px;
   border-radius: 999px;
-  background: color-mix(in oklab, var(--gray-0) 6%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 6%, transparent);
   color: var(--ds-text-secondary);
 }
 
 
-/* LIGHT_CODEX_OVERRIDES */
-:root[data-theme="light"] .composer-shell {
-  background: #ffffff;
-  box-shadow: var(--ds-shadow-composer);
-}
-
+/* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
 :root[data-theme="light"] .composer-chips {
   background: color-mix(in oklab, #1a1c1f 3%, #ffffff);
   box-shadow: 0 0 0 1px color-mix(in oklab, #1a1c1f 6%, transparent);
@@ -1001,12 +988,6 @@ textarea:disabled {
 
 :root[data-theme="light"] .new-task-btn:hover {
   background: color-mix(in oklab, #1a1c1f 5%, transparent);
-}
-
-:root[data-theme="light"] .title-nav-btn {
-  color: color-mix(in oklab, #1a1c1f 55%, transparent);
-  background: color-mix(in oklab, #1a1c1f 3%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in oklab, #1a1c1f 6%, transparent);
 }
 
 :root[data-theme="light"] .tool-card {

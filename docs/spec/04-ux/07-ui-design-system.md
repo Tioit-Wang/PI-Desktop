@@ -74,25 +74,26 @@ All color references in components use **semantic token names**, never raw hex v
 | `--color-error` | `#EF4444` | `text-red-500` | Error, denied |
 | `--color-info` | `#6366F1` | `text-indigo-500` | Informational |
 
-### 4.3 Light theme
+### 4.3 Light theme (Codex electron-light)
 
-| Token | Hex | Tailwind mapping | Usage |
-|---|---|---|---|
-| `--color-bg-primary` | `#FFFFFF` | `bg-white` | Main background |
-| `--color-bg-secondary` / sidebar | `#f3f3f3` | Codex gray-75 | Sidebar surface |
-| `--color-bg-tertiary` | `#F1F5F9` | `bg-slate-100` | Hover, elevated |
-| `--color-bg-inset` | `#F1F5F9` | `bg-slate-100` | Code blocks, inset |
-| `--color-text-primary` | `#1a1c1f` | Codex light foreground | Body text |
-| `--color-text-secondary` | `#475569` | `text-slate-600` | Labels, secondary |
-| `--color-text-muted` | `#94A3B8` | `text-slate-400` | Disabled, hints |
-| `--color-border-default` | `#E2E8F0` | `border-slate-200` | Default borders |
-| `--color-border-subtle` | `#F1F5F9` | `border-slate-100` | Subtle separators |
-| `--color-accent` | `#0285FF` | `text-blue-600` | Primary accent, CTA |
-| `--color-accent-hover` | `#1D4ED8` | `text-blue-700` | Accent hover |
-| `--color-success` | `#16A34A` | `text-green-600` | Success, run complete |
-| `--color-warning` | `#D97706` | `text-amber-600` | Warning, caution |
-| `--color-error` | `#DC2626` | `text-red-600` | Error, denied |
-| `--color-info` | `#4F46E5` | `text-indigo-600` | Informational |
+Neutral gray scale only — no blue-slate surfaces. Chrome components must consume semantic `--ds-*` tokens so light ink stays dark on `#f3f3f3` / `#ffffff`.
+
+| Token | Hex / value | Usage |
+|---|---|---|
+| `--color-bg-primary` | `#ffffff` | Main surface |
+| `--color-bg-secondary` / sidebar | `#f3f3f3` (gray-75) | Sidebar surface |
+| `--color-bg-tertiary` | `#f3f3f3` | Nested / hover base |
+| `--color-bg-inset` | `#ededed` (gray-100) | Code blocks, inset |
+| `--color-text-primary` | `#1a1c1f` | Body + brand |
+| `--color-text-secondary` | `color-mix(#1a1c1f 70%, transparent)` | Nav items, chips, thread titles |
+| `--color-text-muted` | `#5d5d5d` (gray-500) | Section labels |
+| `--color-text-faint` | `#afafaf` (gray-300) | Placeholder |
+| `--color-border-default` | `color-mix(#1a1c1f 8%, transparent)` | Default borders |
+| `--color-border-subtle` | `color-mix(#1a1c1f 5%, transparent)` | Sidebar edge / dividers |
+| `--color-accent` | `#0285ff` | Primary accent, CTA, footer badge |
+| `--color-success` / warning / error | green-500 / orange-500 / red-500 | Status |
+
+**Invariant:** never paint chrome text with raw `gray-0` (`#fff`) under `data-theme="light"`. Use `--ds-text-primary` / `--ds-text-secondary`.
 
 ### 4.4 System theme behavior
 
