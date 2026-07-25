@@ -642,8 +642,8 @@ This test plan spec is accepted when:
 - Placeholder and approval chip remain legible on light and dark plates.
 
 ### US-UI-38 Home chips without project
-- On empty chat home with no workspace path, the project/Local/branch capsule is hidden (matches Codex empty gold).
-- Opening a project or switching to a transcript restores the workspace capsule above the composer.
+- On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).
+- Starting a transcript restores the workspace capsule above the docked composer.
 
 ### US-UI-37 Empty draft infinity + resize
 - Empty composer shows a left ∞ cue and visible placeholder ink (not a blank white/night hole).

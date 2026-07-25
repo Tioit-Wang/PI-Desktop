@@ -134,8 +134,8 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   return (
     <div className={`composer-dock composer-dock-${variant}`}>
       <div className="composer-stack">
-        {/* Codex empty-home gold has no workspace capsule until a project is open */}
-        {(variant === "docked" || workspace?.path) && (
+        {/* Codex empty-home gold: no workspace capsule above the plate; show in thread dock */}
+        {variant === "docked" && (
           <div className="composer-chips" role="group" aria-label="Workspace context">
             <button
               className="chip"

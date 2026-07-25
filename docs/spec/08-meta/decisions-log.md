@@ -76,7 +76,7 @@ This log freezes previously open questions into concrete decisions.
 | D053 | Stage Manager CG detection | **CG bounds helper matches any window layer by pid; missing-CG needs streak≥3 before shelf recovery; avoid permanent alwaysOnTop** | alwaysOnTop floating layer broke layer-0 helpers and caused restore thrash |
 | D054 | Empty draft row + infinity cue | **Composer auto-resize must never collapse empty textarea height (<28px); show ∞ cue left of draft; solid disabled send (`#bdbdbd` light); denser placeholder ink; night plate solid `#212121`** | Empty `height:0` auto-resize hid placeholder and read as broken night/light box; gold draft row needs visible mark + ink density |
 | D055 | Empty plate draft Y | **Home empty shell min-height ~148px (bottom-aligned) so draft densest ink ≈y556 vs gold; chips compact 28px** | 112px plate left draft ~30px low; grow plate upward without moving toolbar footing |
-| D056 | Empty-home workspace chips | **Hide project/Local/branch capsule on empty home when no workspace path; show when project open or thread docked** | cx-home-clean empty gold has no capsule band above the plate |
+| D056 | Empty-home workspace chips | **Hide project/Local/branch capsule on empty home always; show only in thread-docked composer** | cx-home-clean empty gold has no capsule band above the plate even with project title |
 
 ## C. Still deferred (not blocking M1)
 

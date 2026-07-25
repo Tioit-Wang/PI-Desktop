@@ -95,12 +95,11 @@
   --ds-error: #e02e2a;
   --ds-info: #0285ff;
   --ds-shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.12);
-  --ds-elevation-stroke: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 14%, transparent);
-  /* Soft top #f6 rim + Codex elevation-prominent lift on pure white main */
+  --ds-elevation-stroke: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent);
+  /* Codex elevation-prominent (stroke + soft lift). Upper #f6 wash is on shell fill. */
   --ds-shadow-composer: var(--ds-elevation-stroke),
-    0 -6px 18px #0000000a,
-    0 3px 7.5px #00000012,
-    0 0 22px #00000014;
+    0 3px 7.5px #00000010,
+    0 0 20px #00000012;
   --ds-bg-elevated-primary: color-mix(in oklab, #ffffff 70%, transparent);
 }
 
@@ -423,7 +422,7 @@ textarea:disabled {
   right: 0;
   left: 0;
   z-index: 15;
-  margin-top: 32px; /* mt-8 Codex */
+  margin-top: 48px; /* land cards near gold ~y425 band */
   min-width: 0;
   padding-inline: 24px;
   box-sizing: border-box;
@@ -612,14 +611,14 @@ textarea:disabled {
   align-items: center;
   justify-content: center;
   color: var(--ds-text-primary);
-  opacity: 0.3;
+  opacity: 0.34;
   transition: opacity 120ms ease, transform 180ms ease;
   cursor: default;
   user-select: none;
 }
 
 .empty-hero-icon:hover {
-  opacity: 0.4;
+  opacity: 0.45;
 }
 
 .empty-hero h1 {
@@ -1304,9 +1303,18 @@ textarea:disabled {
 }
 
 :root[data-theme="light"] .composer-shell {
-  background: #ffffff;
+  /* Gold empty plate: upper band ~#f6 then pure white interior */
+  background-color: #ffffff;
+  background-image: linear-gradient(
+    to bottom,
+    #f6f6f6 0%,
+    #f6f6f6 22px,
+    #f8f8f8 40px,
+    #fbfbfb 56px,
+    #ffffff 72px,
+    #ffffff 100%
+  );
   box-shadow: var(--ds-shadow-composer);
-  /* Hairline only — elevation-prominent supplies the soft #f6 rim */
   outline: none;
   border: 0;
 }
@@ -1367,15 +1375,16 @@ textarea:disabled {
 }
 
 :root[data-theme="light"] .composer-input::placeholder {
-  /* Gold empty-home placeholder ~#525355 */
-  color: #525355;
-  -webkit-text-fill-color: #525355;
+  /* Gold empty-home placeholder ink ~#525355–#58595b */
+  color: #4a4c4f;
+  -webkit-text-fill-color: #4a4c4f;
   opacity: 1;
 }
 
 :root[data-theme="light"] .composer-thread-mark {
   /* Gold infinity ink is near primary (#1a1c1f) */
-  color: #1f2124;
+  color: #1a1c1f;
+  opacity: 0.88;
 }
 
 :root[data-theme="light"] .chip-sep {
