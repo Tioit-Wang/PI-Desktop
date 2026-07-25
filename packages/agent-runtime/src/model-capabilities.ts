@@ -13,6 +13,9 @@ export type ModelCapabilities = {
   supportedThinkingLevels: ThinkingLevel[];
 };
 
+/** Public name used by the desktop main-process provider enrichment. */
+export type ThinkingCapabilities = ModelCapabilities;
+
 const DEFAULT_REASONING_LEVELS: ThinkingLevel[] = [
   "off",
   "minimal",
@@ -57,4 +60,3 @@ export function resolveThinkingCapabilities(
     supportedThinkingLevels: ["off"],
   };
 }
-
