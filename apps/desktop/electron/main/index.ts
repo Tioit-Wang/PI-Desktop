@@ -236,6 +236,48 @@ async function createWindow() {
             await clickNav("projects");
             await new Promise((r) => setTimeout(r, 500));
             await shot("pi-projects-live");
+            await clickNav("scheduled");
+            await new Promise((r) => setTimeout(r, 400));
+            await shot("pi-scheduled-live");
+            await clickNav("plugins");
+            await new Promise((r) => setTimeout(r, 400));
+            await shot("pi-plugins-live");
+            // Settings page (not the profile trigger).
+            await mainWindow!.webContents.executeJavaScript(`
+              (() => {
+                const item = document.querySelector('[data-nav="settings"]');
+                if (item) item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                else {
+                  // Fallback: open profile then settings item
+                  document.querySelector('[data-nav="profile"]')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+                }
+              })()
+            `);
+            await new Promise((r) => setTimeout(r, 500));
+            // Ensure settings page via footer menu Settings entry if still closed.
+            await mainWindow!.webContents.executeJavaScript(`
+              (() => {
+                const items = Array.from(document.querySelectorAll('.profile-menu-item, [data-nav="settings"]'));
+                const settingsItem = items.find((el) => (el.textContent || '').includes('Settings') || el.getAttribute('data-nav')==='settings');
+                settingsItem?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              })()
+            `);
+            await new Promise((r) => setTimeout(r, 400));
+            await shot("pi-settings-live");
+            await clickNav("new-task");
+            await new Promise((r) => setTimeout(r, 300));
+            // Profile menu from footer Custom row.
+            await mainWindow!.webContents.executeJavaScript(`
+              (() => {
+                const btn = document.querySelector('[data-nav="profile"], .footer-profile');
+                if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              })()
+            `);
+            await new Promise((r) => setTimeout(r, 250));
+            await shot("pi-profile-menu");
+            await mainWindow!.webContents.executeJavaScript(`
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            `);
           } catch (e) {
             console.error(e);
           }

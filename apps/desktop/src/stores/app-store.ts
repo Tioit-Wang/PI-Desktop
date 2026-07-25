@@ -12,6 +12,7 @@ import type {
   UiMessage,
 } from "@pi-desktop/shared";
 import { api } from "../lib/api";
+import { rememberProject } from "../lib/recent-projects";
 
 type AppState = {
   ready: boolean;
@@ -107,6 +108,13 @@ export const useAppStore = create<AppState>((set, get) => ({
         onboarding,
         plugins: plugins.plugins,
       });
+      if (project.workspace?.path) {
+        rememberProject({
+          path: project.workspace.path,
+          name: project.workspace.name || project.workspace.path,
+          branch: project.workspace.branch,
+        });
+      }
       // Codex opens an empty draft home ("What should we build…") rather than
       // restoring a prior transcript as the first paint.
       await get().newSession();
@@ -239,6 +247,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const result = await api.openProject();
     if (!result.canceled) {
       set({ workspace: result.workspace });
+      if (result.workspace?.path) {
+        rememberProject({
+          path: result.workspace.path,
+          name: result.workspace.name || result.workspace.path,
+          branch: result.workspace.branch,
+        });
+      }
       const onboarding = await api.getOnboarding();
       set({ onboarding, page: "chat" });
     }

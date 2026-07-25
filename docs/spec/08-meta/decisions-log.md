@@ -62,6 +62,8 @@ This log freezes previously open questions into concrete decisions.
 | D039 | Stage Manager bounds | **Permanent host watchdog restores footprint while width/height remain collapsed** | 20s burst was insufficient under Stage Manager thrash |
 | D040 | Composer intelligence control | **Custom effort chip opens a popover (effort radio + model heading + settings) instead of cycling on click** | Match Codex model/intelligence affordance without full cloud model catalog yet |
 | D041 | Profile footer | **Custom footer opens profile menu (Settings / Logs / Theme); cloud badge remains update stand-in** | Match Codex profileFooter + profileDropdown entry points |
+| D042 | Projects page | **Projects is a card grid of recent/active local workspaces with pin + glyph color (localStorage recents)** | Match Codex Projects destination density without cloud project backend |
+| D043 | Settings shell | **Settings uses left nav rail on sidebar surface + content pane (General/Providers/Plugins/About)** | Closer to Codex settings IA than a top-only tab strip |
 
 ## C. Still deferred (not blocking M1)
 

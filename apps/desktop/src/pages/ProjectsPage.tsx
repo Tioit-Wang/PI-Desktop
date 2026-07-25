@@ -1,7 +1,15 @@
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import { Button, Panel } from "../components/ui";
 import { IconFolder, IconPlus } from "../components/icons";
+import {
+  loadRecentProjects,
+  projectColor,
+  removeRecentProject,
+  setProjectPinned,
+  type RecentProject,
+} from "../lib/recent-projects";
 
 export function ProjectsPage() {
   const { t } = useTranslation();
@@ -10,6 +18,39 @@ export function ProjectsPage() {
   const clearProject = useAppStore((s) => s.clearProject);
   const newSession = useAppStore((s) => s.newSession);
   const setPage = useAppStore((s) => s.setPage);
+  const setToast = useAppStore((s) => s.setToast);
+  const [recents, setRecents] = useState<RecentProject[]>(() => loadRecentProjects());
+
+  const items = useMemo(() => {
+    const list = [...recents];
+    if (workspace?.path && !list.some((p) => p.path === workspace.path)) {
+      list.unshift({
+        path: workspace.path,
+        name: workspace.name || workspace.path,
+        branch: workspace.branch || undefined,
+        openedAt: Date.now(),
+        color: projectColor(workspace.path),
+      });
+    }
+    return list.sort(
+      (a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.openedAt - a.openedAt,
+    );
+  }, [recents, workspace]);
+
+  const activate = async (path: string) => {
+    try {
+      // Prefer native open dialog for new paths; for recents re-open via host if supported.
+      // Fallback: if already active, go home; else open dialog.
+      if (workspace?.path === path) {
+        setPage("chat");
+        return;
+      }
+      await openProject();
+      setRecents(loadRecentProjects());
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : String(e));
+    }
+  };
 
   return (
     <div className="thread-scroll">
@@ -19,48 +60,13 @@ export function ProjectsPage() {
             <h1 className="page-title">{t("project.title")}</h1>
             <div className="page-subtitle">{t("project.subtitle")}</div>
           </div>
-          <Button variant="primary" onClick={() => void openProject()}>
+          <Button variant="primary" onClick={() => void openProject().then(() => setRecents(loadRecentProjects()))}>
             <IconPlus size={14} />
             {t("project.add")}
           </Button>
         </div>
 
-        {workspace?.path ? (
-          <Panel className="page-card p-4">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
-                <div className="mb-2 flex items-center gap-2 text-[13px] text-text-muted">
-                  <IconFolder size={14} />
-                  {t("project.active")}
-                </div>
-                <div className="truncate text-[16px] font-medium">{workspace.name}</div>
-                <div className="mt-1 truncate font-mono text-[12px] text-text-muted">
-                  {workspace.path}
-                </div>
-                <div className="mt-2 text-[12px] text-text-secondary">
-                  {t("project.branch")}: {workspace.branch || "—"}
-                </div>
-              </div>
-              <div className="flex shrink-0 flex-col gap-2">
-                <Button
-                  variant="secondary"
-                  onClick={async () => {
-                    await newSession();
-                    setPage("chat");
-                  }}
-                >
-                  {t("nav.newTask")}
-                </Button>
-                <Button variant="ghost" onClick={() => void openProject()}>
-                  {t("project.switch")}
-                </Button>
-                <Button variant="ghost" onClick={() => void clearProject()}>
-                  {t("project.close")}
-                </Button>
-              </div>
-            </div>
-          </Panel>
-        ) : (
+        {items.length === 0 ? (
           <Panel className="page-card page-empty">
             <div className="page-empty-icon">
               <IconFolder size={20} />
@@ -73,6 +79,85 @@ export function ProjectsPage() {
               {t("project.add")}
             </Button>
           </Panel>
+        ) : (
+          <div className="project-grid">
+            {items.map((project) => {
+              const active = workspace?.path === project.path;
+              const color = project.color || projectColor(project.path);
+              return (
+                <Panel
+                  key={project.path}
+                  className={`project-card ${active ? "active" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className="project-card-main"
+                    onClick={() => void activate(project.path)}
+                    title={project.path}
+                  >
+                    <span className="project-glyph" style={{ background: color }}>
+                      <IconFolder size={16} />
+                    </span>
+                    <span className="min-w-0 flex-1 text-left">
+                      <span className="block truncate text-[14px] font-medium text-text-primary">
+                        {project.name}
+                      </span>
+                      <span className="mt-0.5 block truncate font-mono text-[11.5px] text-text-muted">
+                        {project.path}
+                      </span>
+                      {(project.branch || (active && workspace?.branch)) && (
+                        <span className="mt-1 block text-[11.5px] text-text-secondary">
+                          {t("project.branch")}: {active ? workspace?.branch || project.branch : project.branch}
+                        </span>
+                      )}
+                    </span>
+                    {active && <span className="project-active-pill">{t("project.active")}</span>}
+                  </button>
+                  <div className="project-card-actions">
+                    <button
+                      type="button"
+                      className="project-action"
+                      onClick={() => setRecents(setProjectPinned(project.path, !project.pinned))}
+                    >
+                      {project.pinned ? t("project.unpin") : t("project.pin")}
+                    </button>
+                    {active ? (
+                      <>
+                        <button
+                          type="button"
+                          className="project-action"
+                          onClick={async () => {
+                            await newSession();
+                            setPage("chat");
+                          }}
+                        >
+                          {t("nav.newTask")}
+                        </button>
+                        <button
+                          type="button"
+                          className="project-action"
+                          onClick={async () => {
+                            await clearProject();
+                            setRecents(loadRecentProjects());
+                          }}
+                        >
+                          {t("project.close")}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="project-action danger"
+                        onClick={() => setRecents(removeRecentProject(project.path))}
+                      >
+                        {t("project.remove")}
+                      </button>
+                    )}
+                  </div>
+                </Panel>
+              );
+            })}
+          </div>
         )}
       </div>
     </div>

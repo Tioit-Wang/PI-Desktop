@@ -581,3 +581,11 @@ This test plan spec is accepted when:
 - On the sidebar footer, click Custom (profile row).
 - Expect a Codex-style profile menu with Settings, Logs, and Theme cycle; Settings navigates to the settings page.
 
+### US-UI-23 Projects page grid
+- Open Projects from the sidebar.
+- Expect Codex-like page title "Projects", primary "Add new project", and either an empty state or a card grid of recent/active projects with colored glyph, path, pin/remove actions, and active highlight.
+
+### US-UI-24 Settings left navigation
+- Open Settings (footer Custom → Settings, or settings nav).
+- Expect a left settings rail (General / Providers / Plugins / About) on the sidebar surface, with content pane on the main surface—not only a top tab strip.
+

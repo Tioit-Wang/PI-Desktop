@@ -567,3 +567,8 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 - Combined workspace chips: elevated translucent plate over main, not flat main gray
 - Stage Manager: host re-asserts min bounds while collapsed (permanent watchdog)
 
+## Destination pages
+
+- **Projects**: card grid (`minmax(280px,1fr)`), 14px radius cards, 32px colored glyph, pin/remove row, active accent ring
+- **Settings**: 200px left rail on `--ds-bg-sidebar`, main content on `--ds-bg-primary`, topbar 46px
+- Light destination cards use white elevated plates (not flat gray fills)

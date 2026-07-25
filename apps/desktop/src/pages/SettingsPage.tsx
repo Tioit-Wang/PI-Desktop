@@ -22,39 +22,34 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false);
 
   const tabs = [
+    ["appearance", "General"],
     ["providers", "Providers"],
     ["plugins", "Plugins"],
-    ["appearance", "Appearance"],
     ["about", "About"],
   ] as const;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-bg-primary">
-      <div className="flex h-[46px] shrink-0 items-center justify-between border-b border-border-subtle px-4 pt-1">
+    <div className="settings-shell">
+      <div className="settings-topbar">
         <div className="text-[14px] font-medium">Settings</div>
         <Button size="sm" variant="ghost" onClick={() => setPage("chat")}>
           Back
         </Button>
       </div>
 
-      <div className="flex gap-1 border-b border-border-subtle px-4">
-        {tabs.map(([id, label]) => (
-          <button
-            key={id}
-            className={cx(
-              "relative px-3 py-2.5 text-[13px] transition-colors",
-              tab === id
-                ? "text-text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-px after:bg-text-primary"
-                : "text-text-secondary hover:text-text-primary",
-            )}
-            onClick={() => setSettingsTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-auto px-4 py-4">
+      <div className="settings-body">
+        <aside className="settings-nav" aria-label="Settings">
+          {tabs.map(([id, label]) => (
+            <button
+              key={id}
+              className={cx("settings-nav-item", tab === id && "active")}
+              onClick={() => setSettingsTab(id)}
+            >
+              {label}
+            </button>
+          ))}
+        </aside>
+        <div className="settings-content">
         {tab === "providers" && (
           <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-2">
             <Panel className="p-4">
@@ -325,6 +320,7 @@ export function SettingsPage() {
             </Panel>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

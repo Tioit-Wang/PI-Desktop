@@ -313,7 +313,7 @@ export function Sidebar({
           )}
           <button
             className={`nav-item footer-profile ${page === "settings" || profileOpen ? "active" : ""}`}
-            data-nav="settings"
+            data-nav="profile"
             aria-haspopup="menu"
             aria-expanded={profileOpen}
             onClick={() => setProfileOpen((v) => !v)}
