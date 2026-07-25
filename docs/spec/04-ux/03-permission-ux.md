@@ -54,13 +54,11 @@ Must show:
 - sending another prompt in same session is blocked while turn waits on permission
 - Abort cancels turn and pending permission request
 
-## 8. Session grants panel (settings/session details)
+## 8. Session grants surface
 
-Show active session grants:
-
-- toolName
-- grantedAt
-- clear button
+Active session grants (toolName, grantedAt, clear action) surface in
+Settings → General under the Default permissions card (D062/D065); a
+per-session grants view in the context panel is a tracked follow-up.
 
 ## 9. Acceptance
 

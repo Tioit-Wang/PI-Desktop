@@ -9,7 +9,6 @@
 | Bundler | electron-vite / Vite | stable | multi-entry build |
 | Styling | Tailwind CSS 4 | stable | utility-first |
 | State | Zustand | stable | UI state |
-| i18n | i18next (or equivalent) | stable | English source locale |
 | Host backend | **Rust** | stable Rust toolchain | tools/plugins/permissions/persistence adapters |
 | Rust async | tokio | stable | host services |
 | Host RPC | stdio JSON-RPC (NDJSON) | frozen (D001) | Electron main ↔ Rust host |
@@ -19,7 +18,7 @@
 | DB | SQLite | via Rust and/or node adapter | sessions/settings |
 | Packaging | electron-builder | stable | macOS first |
 | Package manager | pnpm | 10.x | JS monorepo |
-| Lint/test | biome/oxlint + vitest + cargo test | stable | dual stack quality |
+| Lint/test | style-token checker (`scripts/check-style-tokens.mjs`) + vitest + cargo test; general JS linter still open (biome vs oxlint) | stable | dual stack quality |
 | Schema (TS) | typebox | frozen (D011) | shared contracts |
 | i18n | i18next + react-i18next | frozen (D012) | English source locale |
 
