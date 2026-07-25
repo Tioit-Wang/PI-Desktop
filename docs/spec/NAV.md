@@ -51,6 +51,7 @@
 - [03-ai-development-workflow.md](06-delivery/03-ai-development-workflow.md)
 - [04-e2e-test-plan.md](06-delivery/04-e2e-test-plan.md)
 - [05-change-checklist.md](06-delivery/05-change-checklist.md)
+- [06-release-runbook.md](06-delivery/06-release-runbook.md)
 
 ## 7. Plugins
 - [01-plugin-system.md](07-plugins/01-plugin-system.md)

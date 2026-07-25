@@ -10,6 +10,9 @@
   },
   "scripts": {
     "dev": "pnpm --filter @pi-desktop/desktop dev",
+    "preview": "pnpm --filter @pi-desktop/desktop run preview",
+    "pack": "pnpm --filter @pi-desktop/desktop run pack",
+    "dist": "pnpm --filter @pi-desktop/desktop run dist",
     "build": "pnpm -r --if-present build && cargo build --release -p host-core",
     "build:js": "pnpm -r --if-present build",
     "build:host": "cargo build --release -p host-core",
