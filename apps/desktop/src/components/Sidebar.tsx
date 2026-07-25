@@ -8,6 +8,7 @@ import {
   IconClock,
   IconCompose,
   IconFolder,
+  IconCloudDown,
   IconHelp,
   IconPullRequest,
   IconSearch,
@@ -245,7 +246,7 @@ export function Sidebar({
             <span>{t("nav.custom")}</span>
           </button>
           <button
-            className="icon-btn"
+            className="footer-badge"
             title="Help / logs"
             onClick={async () => {
               try {
@@ -255,7 +256,7 @@ export function Sidebar({
               }
             }}
           >
-            <IconHelp size={15} />
+            <IconCloudDown size={14} />
           </button>
         </div>
       </div>

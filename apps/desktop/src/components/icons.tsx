@@ -220,3 +220,13 @@ export function IconExternal(props: IconProps) {
     </svg>
   );
 }
+
+export function IconCloudDown(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M7.5 17.5c-2.4 0-4.2-1.9-4.2-4.1 0-1.8 1.2-3.4 2.9-3.9.4-2.4 2.5-4.2 5-4.2 2.2 0 4.1 1.4 4.8 3.4 2 .3 3.5 2 3.5 4 0 2.2-1.8 4-4 4H7.5Z" />
+      <path d="M12 11.5v5M10 14.5l2 2 2-2" />
+    </svg>
+  );
+}
+

@@ -1018,3 +1018,25 @@ textarea:disabled {
   /* inherits nav density; dark keeps soft fill from .new-task-btn */
   gap: 10px;
 }
+
+
+.footer-badge {
+  display: inline-flex;
+  height: 26px;
+  width: 26px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--ds-accent);
+  color: #fff;
+  flex-shrink: 0;
+}
+
+.footer-badge:hover {
+  background: var(--ds-accent-hover);
+}
+
+:root[data-theme="dark"] .footer-badge {
+  background: color-mix(in oklab, var(--blue-400) 90%, white);
+  color: #0d0d0d;
+}
