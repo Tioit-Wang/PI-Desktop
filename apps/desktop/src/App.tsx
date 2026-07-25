@@ -31,9 +31,9 @@ class ErrorBoundary extends Component<
     if (this.state.error) {
       return (
         <div className="flex h-full items-center justify-center bg-bg-primary p-8 text-text-primary">
-          <div className="max-w-lg rounded-[16px] border border-border-default bg-bg-secondary p-5">
-            <div className="mb-2 text-[15px] font-semibold">PI-Desktop UI crashed</div>
-            <pre className="whitespace-pre-wrap text-[12.5px] text-error">
+          <div className="max-w-lg rounded-lg-plus border border-border-default bg-bg-secondary p-5">
+            <div className="mb-2 text-base-plus font-semibold">PI-Desktop UI crashed</div>
+            <pre className="whitespace-pre-wrap text-sm-plus text-error">
               {this.state.error.message}
             </pre>
           </div>
@@ -114,6 +114,8 @@ function AppShell() {
           fatal: status.fatal === true,
           component: status.component,
         });
+        // A dead sidecar cannot finish the turn; unstick the composer.
+        useAppStore.setState({ isRunning: false });
       }
     });
     const onKey = (e: KeyboardEvent) => {
@@ -285,7 +287,7 @@ function AppShell() {
           <div className="main-titlebar-right no-drag">
             <button
               className={`title-nav-btn ${contextOpen ? "active" : ""}`}
-              title="Toggle context"
+              title={t("nav.toggleContext")}
               onClick={() => setContextOpen((v) => !v)}
             >
               <IconPanel size={14} />
@@ -374,7 +376,7 @@ function AppShell() {
 
             {error && (
               <div className="absolute inset-x-0 bottom-[150px] z-10 flex justify-center px-4">
-                <div className="max-w-[820px] rounded-[12px] border border-error/30 bg-bg-secondary px-3 py-2 text-[13px] text-error">
+                <div className="max-w-[820px] rounded-md-plus border border-error/30 bg-bg-secondary px-3 py-2 text-md text-error">
                   {error}
                 </div>
               </div>

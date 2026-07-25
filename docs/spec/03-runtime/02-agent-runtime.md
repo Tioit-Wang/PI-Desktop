@@ -128,3 +128,17 @@ Local models are supported through OpenAI-compatible endpoints (Ollama, LM Studi
 - no DOM knowledge
 - no direct FS access bypassing Rust host
 - no secret leakage into events/logs
+
+## 11. Implementation status (M5)
+
+Implemented: streaming turns over the OpenAI-compatible protocol path
+(universal escape hatch, D024); one active turn per session enforced with
+`AGENT_BUSY`; real `turnId` returned per accepted prompt; provider failures
+mapped to `PROVIDER_UNAUTHORIZED` / `PROVIDER_RATE_LIMITED` /
+`STREAM_FAILED` / `TURN_ABORTED` where detectable.
+
+Tracked gaps (post-MVP backlog): native Anthropic/Google protocol adapters
+(DB `protocol` field is stored but the runtime currently always uses the
+OpenAI-compatible path); session-scoped mode binding (mode is app-scoped via
+`settings.defaultMode`); persisted turn/tool-call tables; richer system
+prompt composition (§7).

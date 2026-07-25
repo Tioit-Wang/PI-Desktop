@@ -7,6 +7,18 @@ import type { HostProcess, ProcessExitHandler, StderrHandler } from "./host-proc
 
 export type SidecarNotificationHandler = (method: string, params: unknown) => void;
 
+// The sidecar runs model-directed code paths; it must not be able to pull
+// secrets or mutate configuration through the parent proxy. Tight allowlist
+// of host methods the agent loop legitimately needs.
+const HOST_PROXY_ALLOWED = new Set([
+  "tools.execute",
+  "tools.list",
+  "session.get",
+  "session.appendMessage",
+  "workspace.get",
+  "app.health",
+]);
+
 function resolveSidecarEntry(): string {
   const candidates = [
     join(process.resourcesPath || "", "agent-runtime/sidecar.js"),
@@ -100,8 +112,15 @@ export class AgentSidecar {
     if (msg.method === "host.proxy" && msg.id !== undefined) {
       try {
         if (!this.host) throw new Error("host unavailable");
+        const method = String(msg.params?.method || "");
+        if (!HOST_PROXY_ALLOWED.has(method)) {
+          throw Object.assign(
+            new Error(`host method not allowed from sidecar: ${method}`),
+            { code: -32601 },
+          );
+        }
         const result = await this.host.call(
-          msg.params?.method,
+          method,
           msg.params?.params ?? {},
         );
         this.child.stdin.write(

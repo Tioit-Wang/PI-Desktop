@@ -4,6 +4,7 @@
  * Host access is proxied through main (single host-core process).
  */
 import { createInterface } from "node:readline";
+import { randomUUID } from "node:crypto";
 import { ParentHostProxy } from "./parent-host-proxy.js";
 import { DesktopAgentRuntime } from "./runtime.js";
 import type { AgentEventEnvelope, Mode } from "@pi-desktop/shared";
@@ -57,12 +58,20 @@ async function handle(method: string, params: any): Promise<unknown> {
           errorCode: "MODEL_NOT_CONFIGURED",
         });
       }
-      // Always recreate runtime for provider/mode changes
+      // A session runs one turn at a time (AGENT_BUSY, spec 02-agent-runtime).
+      // Idle runtimes are recreated so provider/mode changes apply.
       const existing = runtimes.get(sessionId);
       if (existing) {
+        if (existing.getStatus().isRunning) {
+          throw Object.assign(new Error("session already has an active turn"), {
+            rpcCode: -32000,
+            errorCode: "AGENT_BUSY",
+          });
+        }
         await existing.dispose();
         runtimes.delete(sessionId);
       }
+      const turnId = randomUUID();
       const runtime = new DesktopAgentRuntime({
         host: hostProxy as any,
         sessionId,
@@ -74,20 +83,30 @@ async function handle(method: string, params: any): Promise<unknown> {
       });
       runtimes.set(sessionId, runtime);
       void runtime.prompt(content).catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        let code = "PROVIDER_ERROR";
+        let retriable = true;
+        if (/\b401\b|\b403\b|unauthorized|invalid[_ ]api[_ ]key/i.test(message)) {
+          code = "PROVIDER_UNAUTHORIZED";
+          retriable = false;
+        } else if (/\b429\b|rate.?limit|quota/i.test(message)) {
+          code = "PROVIDER_RATE_LIMITED";
+        } else if (/abort/i.test(message)) {
+          code = "TURN_ABORTED";
+          retriable = false;
+        } else if (/stream/i.test(message)) {
+          code = "STREAM_FAILED";
+        }
         notify("agent.event", {
           sessionId,
           ts: Date.now(),
           event: {
             type: "error",
-            error: {
-              code: "PROVIDER_ERROR",
-              message: err instanceof Error ? err.message : String(err),
-              retriable: true,
-            },
+            error: { code, message, retriable },
           },
         });
       });
-      return { accepted: true, turnId: "pending" };
+      return { accepted: true, turnId };
     }
     case "agent.abort": {
       const sessionId = String(params.sessionId);

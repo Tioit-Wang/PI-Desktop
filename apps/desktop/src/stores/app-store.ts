@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import i18n from "i18next";
 import type {
   AgentEventEnvelope,
   AppSettings,
@@ -11,8 +12,28 @@ import type {
   ToolPermissionRequest,
   UiMessage,
 } from "@pi-desktop/shared";
+import { PROTOCOL_VERSION } from "@pi-desktop/shared";
 import { api } from "../lib/api";
 import { rememberProject } from "../lib/recent-projects";
+
+// Sessions created before locale switches keep their old default title, so
+// match against every locale's defaults (case-insensitive), not just the
+// active locale's.
+const LEGACY_DEFAULT_TITLES = new Set(["new task", "new chat", "新建任务", "新对话"]);
+
+function untitledTaskTitle() {
+  return i18n.t("chat.untitledTask");
+}
+
+export function isDefaultSessionTitle(title?: string | null) {
+  const trimmed = (title || "").trim().toLowerCase();
+  return (
+    !trimmed ||
+    LEGACY_DEFAULT_TITLES.has(trimmed) ||
+    trimmed === untitledTaskTitle().toLowerCase() ||
+    trimmed === i18n.t("nav.newChat").toLowerCase()
+  );
+}
 
 type AppState = {
   ready: boolean;
@@ -52,6 +73,7 @@ type AppState = {
   navStack: Array<{ page: AppState["page"]; sessionId?: string }>;
   navIndex: number;
   error?: string | null;
+  errorCode?: string | null;
   bootstrap: () => Promise<void>;
   refreshSessions: () => Promise<void>;
   selectSession: (id: string, opts?: { record?: boolean }) => Promise<void>;
@@ -94,6 +116,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   toast: null,
   composerPrefill: null,
   error: null,
+  errorCode: null,
 
   bootstrap: async () => {
     try {
@@ -109,15 +132,22 @@ export const useAppStore = create<AppState>((set, get) => ({
           api.listPlugins(),
         ]);
       let settings = settingsRaw;
-      // Match Codex defaults without pinning theme: chat mode is the home default.
-      if (settings && settings.defaultMode !== "chat") {
-        const next = { ...settings, defaultMode: "chat" as const };
+      // First-run default per D003: Agent. Never force-rewrite an existing
+      // user choice on boot (a previous build reset it to chat each launch).
+      if (settings && !settings.defaultMode) {
+        const next = { ...settings, defaultMode: "agent" as const };
         try {
           await api.setSettings(next);
           settings = next;
         } catch {
           settings = next;
         }
+      }
+      if (version.protocolVersion !== PROTOCOL_VERSION) {
+        set({
+          error: `Protocol mismatch: UI ${PROTOCOL_VERSION} vs app ${version.protocolVersion}`,
+          errorCode: "PROTOCOL_MISMATCH",
+        });
       }
       set({
         ready: true,
@@ -182,13 +212,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   newSession: async () => {
-    const isDefaultTitle = (title?: string | null) => {
-      const t = (title || "").trim();
-      return !t || t === "New task" || t === "New chat" || t === "新建任务";
-    };
     // Codex reuses an empty draft thread instead of stacking "New task" rows.
     for (const session of get().sessions) {
-      if (!isDefaultTitle(session.title)) continue;
+      if (!isDefaultSessionTitle(session.title)) continue;
       try {
         const detail = await api.getSession(session.id);
         const messages = detail.session?.messages ?? [];
@@ -202,7 +228,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
     const settings = get().settings;
     const created = await api.createSession({
-      title: "New task",
+      title: untitledTaskTitle(),
       mode: settings?.defaultMode ?? "chat",
       providerId: settings?.defaultProviderId,
       modelId: settings?.defaultModelId,
@@ -231,17 +257,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessionId = get().activeSessionId;
     }
     if (!sessionId) throw new Error("No active session");
-    set({ isRunning: true, error: null });
+    set({ isRunning: true, error: null, errorCode: null });
     try {
       const current = get().sessions.find((s) => s.id === sessionId);
-      const title = (current?.title || "").trim();
-      const isDefault =
-        !title ||
-        title === "New task" ||
-        title === "New chat" ||
-        title === "新建任务";
-      if (isDefault) {
-        const nextTitle = content.trim().replace(/\s+/g, " ").slice(0, 48) || "New task";
+      if (isDefaultSessionTitle(current?.title)) {
+        const nextTitle =
+          content.trim().replace(/\s+/g, " ").slice(0, 48) || untitledTaskTitle();
         try {
           await api.renameSession(sessionId, nextTitle);
           await get().refreshSessions();
@@ -254,6 +275,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({
         isRunning: false,
         error: e instanceof Error ? e.message : String(e),
+        errorCode: (e as { code?: string })?.code ?? null,
       });
     }
   },
@@ -301,10 +323,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   handleAgentEvent: (envelope) => {
-    if (envelope.sessionId !== get().activeSessionId) {
-      // still track running state lightly
-    }
     const event = envelope.event;
+    if (envelope.sessionId !== get().activeSessionId) {
+      // Cross-session events must not bleed into the visible transcript.
+      // Only global concerns pass: permission prompts (dialog is global)
+      // and finished turns refreshing the recents list.
+      if (event.type === "tool_permission_request") {
+        set({ permission: event.request });
+      } else if (event.type === "agent_end" || event.type === "turn_end") {
+        void get().refreshSessions();
+      }
+      return;
+    }
     switch (event.type) {
       case "agent_start":
       case "turn_start":
@@ -386,6 +416,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({
           isRunning: false,
           error: `${event.error.code}: ${event.error.message}`,
+          errorCode: event.error.code,
         });
         break;
       default:

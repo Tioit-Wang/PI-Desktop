@@ -52,7 +52,7 @@ function wrap<T>(fn: () => Promise<T>): Promise<Result<T>> {
       err(
         e?.data?.errorCode || e?.errorCode || ErrorCodes.INTERNAL,
         e instanceof Error ? e.message : String(e),
-        { retriable: true, details: e?.data },
+        { retriable: e?.data?.retriable === true, details: e?.data },
       ),
     );
 }
@@ -838,11 +838,74 @@ function registerIpc() {
   });
   handle(IPC.invoke.providersTest, async (id: string) => {
     if (!host) throw new Error("host unavailable");
-    return host.call("providers.testConnection", { id });
+    // Config-level validation first (secret present etc.)
+    const local = await host.call<{ ok: boolean; message?: string }>(
+      "providers.testConnection",
+      { id },
+    );
+    if (!local.ok) return { ...local, network: "skipped" };
+    const detail = await host.call<{ provider?: { baseUrl?: string; authKind?: string } }>(
+      "providers.get",
+      { id },
+    );
+    const baseUrl = detail.provider?.baseUrl;
+    if (!baseUrl) return { ...local, network: "skipped" };
+    const secret = await host.call<{ value?: string }>("providers.getSecret", { id });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(`${baseUrl.replace(/\/+$/, "")}/models`, {
+        headers: secret.value ? { Authorization: `Bearer ${secret.value}` } : {},
+        signal: controller.signal,
+      });
+      if (res.status === 401 || res.status === 403) {
+        return {
+          ok: false,
+          network: "failed",
+          status: res.status,
+          errorCode: ErrorCodes.PROVIDER_UNAUTHORIZED,
+        };
+      }
+      if (res.status === 429) {
+        return {
+          ok: false,
+          network: "failed",
+          status: res.status,
+          errorCode: ErrorCodes.PROVIDER_RATE_LIMITED,
+        };
+      }
+      return { ok: res.ok, network: res.ok ? "ok" : "failed", status: res.status };
+    } catch (e) {
+      return {
+        ok: false,
+        network: "failed",
+        errorCode: ErrorCodes.TIMEOUT,
+        message: e instanceof Error ? e.message : String(e),
+      };
+    } finally {
+      clearTimeout(timer);
+    }
   });
   handle(IPC.invoke.providersListModels, async (providerId?: string) => {
     if (!host) throw new Error("host unavailable");
     return host.call("providers.listModels", { providerId });
+  });
+
+  // Secret material never crosses to the renderer: set/delete/has only.
+  handle(IPC.invoke.secretsSet, async (input: { secretRef: string; value: string }) => {
+    if (!host) throw new Error("host unavailable");
+    return host.call("secrets.set", {
+      secretRef: input?.secretRef,
+      value: input?.value,
+    });
+  });
+  handle(IPC.invoke.secretsDelete, async (secretRef: string) => {
+    if (!host) throw new Error("host unavailable");
+    return host.call("secrets.delete", { secretRef });
+  });
+  handle(IPC.invoke.secretsHas, async (secretRef: string) => {
+    if (!host) throw new Error("host unavailable");
+    return host.call("secrets.has", { secretRef });
   });
 
   handle(IPC.invoke.projectGet, async () => {
@@ -850,10 +913,12 @@ function registerIpc() {
     let res = (await host.call("workspace.get")) as {
       workspace: { path: string; name: string } | null;
     };
+    // Dev convenience only: never auto-open the app bundle directory as the
+    // workspace in a packaged build.
     const seed =
       process.env.PI_DESKTOP_SEED_WORKSPACE ||
       process.env.PI_DESKTOP_WORKSPACE ||
-      join(__dirname, "../../..");
+      (app.isPackaged ? "" : join(__dirname, "../../.."));
     if (!res.workspace && seed) {
       try {
         res = (await host.call("workspace.set", { path: seed })) as {

@@ -83,7 +83,10 @@ Required (all **implemented**):
 - host-core speaks NDJSON JSON-RPC on stdio to the Electron main process
   only; it binds no network ports
 - The agent sidecar reaches host services only through the main-process
-  proxy (`host.proxy`), inheriting the same permission checks
+  proxy (`host.proxy`), which enforces a **method allowlist**
+  (`tools.execute`, `tools.list`, `session.get`, `session.appendMessage`,
+  `workspace.get`, `app.health`) — the sidecar cannot pull secrets or
+  mutate providers/settings/plugins through the proxy
 - host-core child processes (Bash tool) run with the user's privileges;
   containment relies on the permission layer, not OS sandboxing (documented
   limitation for MVP)
