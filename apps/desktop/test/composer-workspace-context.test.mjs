@@ -1,0 +1,25 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const composerSource = await readFile(
+  new URL("../src/components/Composer.tsx", import.meta.url),
+  "utf8",
+);
+const globalStyles = await readFile(
+  new URL("../src/styles/globals.css", import.meta.url),
+  "utf8",
+);
+
+test("composer omits the workspace context rail", () => {
+  assert.match(composerSource, /className="composer-shell"/);
+  assert.doesNotMatch(composerSource, /composer-chips/);
+  assert.doesNotMatch(composerSource, /chat\.(?:workspaceContext|localWorkspace|local|branch)/);
+  assert.doesNotMatch(composerSource, /Icon(?:Computer|GitBranch)/);
+});
+
+test("workspace context rail styles are removed", () => {
+  assert.doesNotMatch(globalStyles, /\.composer-chips\b/);
+  assert.doesNotMatch(globalStyles, /\.chip-sep\b/);
+  assert.doesNotMatch(globalStyles, /\.chip-label\b/);
+});

@@ -3,9 +3,6 @@ import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import {
   IconArrowUp,
-  IconComputer,
-  IconFolder,
-  IconGitBranch,
   IconShield,
   IconStop,
   IconChevronDown,
@@ -19,25 +16,16 @@ function cssPixels(value: string) {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function projectName(path?: string | null, name?: string | null, fallback = "") {
-  if (name) return name;
-  if (!path) return fallback;
-  const parts = path.split(/[\\/]/).filter(Boolean);
-  return parts[parts.length - 1] || path;
-}
-
 export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }) {
   const { t } = useTranslation();
   const sendPrompt = useAppStore((s) => s.sendPrompt);
   const abort = useAppStore((s) => s.abort);
   const isRunning = useAppStore((s) => s.isRunning);
-  const workspace = useAppStore((s) => s.workspace);
   const settings = useAppStore((s) => s.settings);
   const sessions = useAppStore((s) => s.sessions);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const providers = useAppStore((s) => s.providers);
   const configureActiveSession = useAppStore((s) => s.configureActiveSession);
-  const openProject = useAppStore((s) => s.openProject);
   const showToast = useAppStore((s) => s.showToast);
   const composerPrefill = useAppStore((s) => s.composerPrefill);
   const clearComposerPrefill = useAppStore((s) => s.clearComposerPrefill);
@@ -120,7 +108,6 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
     !!modelId &&
     (provider.hasSecret || provider.authKind === "none");
   const enterToSend = settings?.enterToSend ?? true;
-  const branch = workspace?.branch || "main";
 
   const submit = async () => {
     const content = value.trim();
@@ -132,42 +119,6 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   return (
     <div className={`composer-dock composer-dock-${variant}`}>
       <div className="composer-stack">
-        {/* Codex home-with-project gold shows workspace capsule; bare empty home hides it */}
-        {(variant === "docked" || !!workspace?.path) && (
-          <div className="composer-chips" role="group" aria-label={t("chat.workspaceContext")}>
-            <button
-              className="chip"
-              onClick={() => void openProject()}
-              title={workspace?.path ?? t("project.open")}
-            >
-              <IconFolder size={14} />
-              <span className="chip-label">
-                {projectName(workspace?.path, workspace?.name, t("project.none"))}
-              </span>
-            </button>
-            <span className="chip-sep" aria-hidden />
-            <span
-              className="chip"
-              title={
-                workspace?.path
-                  ? t("chat.localWorkspace", { path: workspace.path })
-                  : t("project.open")
-              }
-            >
-              <IconComputer size={14} />
-              <span>{t("chat.local")}</span>
-            </span>
-            <span className="chip-sep" aria-hidden />
-            <span
-              className="chip"
-              title={workspace?.branch ? `${t("chat.branch")} ${workspace.branch}` : t("chat.branch")}
-            >
-              <IconGitBranch size={14} />
-              <span className="chip-label">{branch}</span>
-            </span>
-          </div>
-        )}
-
         <div className="composer-shell">
           <div className="composer-input-wrap">
             {/* Thread dock keeps ∞ cue; home-with-project gold has plain draft */}
