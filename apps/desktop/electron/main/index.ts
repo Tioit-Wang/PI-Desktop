@@ -156,10 +156,10 @@ async function createWindow() {
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 16 },
     webPreferences: {
-      preload: join(__dirname, "../preload/index.mjs"),
+      preload: join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false,
+      sandbox: true,
     },
   });
 
@@ -280,7 +280,7 @@ async function createWindow() {
 
   mainWindow.on("show", () => ensureStableBounds(false));
   mainWindow.on("focus", () => ensureStableBounds(false));
-  mainWindow.on("restore", () => ensureStableBounds(true));
+  mainWindow.on("restore", () => ensureStableBounds(false));
   mainWindow.on("resize", scheduleBoundsCheck);
   mainWindow.on("move", scheduleBoundsCheck);
 
@@ -327,7 +327,9 @@ async function createWindow() {
   mainWindow.on("closed", () => clearInterval(boundsWatchdog));
 
   mainWindow.once("ready-to-show", () => {
-    ensureStableBounds(true);
+    // Capture runs need the deterministic Codex footprint; normal launches
+    // must respect restored user bounds and only fix real shelf states.
+    ensureStableBounds(process.env.PI_DESKTOP_CAPTURE === "1");
     mainWindow?.show();
     mainWindow?.focus();
     // Burst re-assert only while Stage Manager initially settles / shelves us.
@@ -1255,15 +1257,50 @@ app.whenReady().then(async () => {
     });
   }
   await createWindow();
-  // The renderer subscribes on mount; give it the boot outcome once loaded.
-  mainWindow?.webContents.once("did-finish-load", () => {
+  // createWindow awaits the initial load (loadFile resolves on
+  // did-finish-load), so the page is up; give React a beat to mount its
+  // event subscriptions before pushing the boot outcome.
+  setTimeout(() => {
     sendToRenderer(IPC.event.hostStatus, {
       ok: !bootError,
       ...(bootError
         ? { component: "host", fatal: true, message: String(bootError) }
         : {}),
     });
-  });
+  }, 300);
+
+  // Headless boot probe for automated e2e (scripts/e2e-electron-boot.mjs):
+  // verifies sandboxed preload bridge + a full IPC round-trip, then quits.
+  if (process.env.PI_DESKTOP_BOOT_PROBE === "1") {
+    setTimeout(() => {
+      void (async () => {
+        try {
+          const probe = await mainWindow!.webContents.executeJavaScript(
+            `(async () => {
+               const api = window.piDesktop;
+               if (!api || typeof api.invoke !== "function") {
+                 return { ok: false, reason: "preload api missing" };
+               }
+               const version = await api.invoke(api.channels.invoke.appGetVersion);
+               return {
+                 ok: version?.ok === true,
+                 version: version?.data?.version,
+                 hostProtocol: version?.data?.hostProtocolVersion,
+               };
+             })()`,
+          );
+          console.log("BOOT_PROBE", JSON.stringify(probe));
+        } catch (e) {
+          console.log(
+            "BOOT_PROBE",
+            JSON.stringify({ ok: false, reason: String(e) }),
+          );
+        } finally {
+          app.quit();
+        }
+      })();
+    }, 800);
+  }
 });
 
 app.on("window-all-closed", () => {

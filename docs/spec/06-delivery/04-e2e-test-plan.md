@@ -107,7 +107,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`
 - **Acceptance**: A (bridge normal)
 - **Milestone**: M1
-- **Status**: Draft
+- **Status**: Automated (`scripts/e2e-electron-boot.mjs` — sandboxed preload bridge + IPC round-trip)
 
 #### E2E-003: Rust host healthcheck responds
 
