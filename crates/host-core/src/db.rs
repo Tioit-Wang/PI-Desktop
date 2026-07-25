@@ -4,8 +4,11 @@ use serde::Serialize;
 use serde_json::Value;
 use std::path::Path;
 
-/// Storage schema v2 (docs/spec/03-runtime/04-data-storage.md, D086).
-pub const SCHEMA_VERSION: i64 = 2;
+/// Storage schema v3 (docs/spec/03-runtime/04-data-storage.md, D086).
+///
+/// v3 adds the persisted per-session thinking level.  The migration is
+/// deliberately additive so existing v2 transcripts remain readable.
+pub const SCHEMA_VERSION: i64 = 3;
 
 /// Audit rows older than this are pruned at boot.
 const AUDIT_RETENTION_MS: i64 = 90 * 24 * 3600 * 1000;
@@ -79,7 +82,7 @@ fn upsert_project_row(conn: &Connection, raw: &str, touch: bool) -> Result<Optio
     Ok(Some(id))
 }
 
-const SCHEMA_V2: &str = r#"
+const SCHEMA_V3: &str = r#"
 CREATE TABLE kv (
   ns         TEXT NOT NULL,
   key        TEXT NOT NULL,
@@ -134,6 +137,9 @@ CREATE TABLE sessions (
   provider_id TEXT,
   model_id    TEXT,
   mode        TEXT NOT NULL DEFAULT 'agent',
+  thinking_level TEXT NOT NULL DEFAULT 'off'
+                CHECK (thinking_level IN ('off', 'minimal', 'low', 'medium',
+                                          'high', 'xhigh', 'max')),
   source      TEXT,
   pinned      INTEGER NOT NULL DEFAULT 0,
   last_seq    INTEGER NOT NULL DEFAULT 0,
@@ -281,7 +287,7 @@ impl Database {
         Self::open(&v2_path)
     }
 
-    /// Open a specific database file, bootstrapping the v2 schema on a fresh
+    /// Open a specific database file, bootstrapping the latest schema on a fresh
     /// file. Fails on files with an unknown newer schema.
     pub fn open(path: &Path) -> Result<Self> {
         if let Some(parent) = path.parent() {
@@ -316,12 +322,27 @@ impl Database {
                 // auto_vacuum must be set before the first table exists.
                 conn.execute_batch("PRAGMA auto_vacuum = INCREMENTAL;")?;
                 let tx = conn.unchecked_transaction()?;
-                tx.execute_batch(SCHEMA_V2)?;
+                tx.execute_batch(SCHEMA_V3)?;
+                tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+                tx.commit()?;
+            }
+            2 => {
+                // Keep this migration in its own transaction.  SQLite rolls
+                // back both the ALTER and user_version update if either
+                // statement fails, so a crash cannot leave a half-migrated
+                // database claiming to be v3.
+                let tx = conn.unchecked_transaction()?;
+                tx.execute_batch(
+                    "ALTER TABLE sessions
+                     ADD COLUMN thinking_level TEXT NOT NULL DEFAULT 'off'
+                     CHECK (thinking_level IN
+                       ('off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'));",
+                )?;
                 tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
                 tx.commit()?;
             }
             SCHEMA_VERSION => {}
-            // Future migrations chain here (3, 4, …) once they exist.
+            // Future migrations chain here (4, 5, …) once they exist.
             other => {
                 return Err(anyhow!(
                     "database schema version {other} is newer than supported {SCHEMA_VERSION}"
@@ -448,7 +469,7 @@ impl Database {
     }
 }
 
-// ---- v1 → v2 migration ------------------------------------------------------
+// ---- legacy v1 → latest schema migration ------------------------------------
 
 fn table_exists(conn: &Connection, name: &str) -> Result<bool> {
     let n: i64 = conn.query_row(
@@ -461,7 +482,8 @@ fn table_exists(conn: &Connection, name: &str) -> Result<bool> {
 
 /// One-shot migration: build a fresh `pi.sqlite` from a legacy v1
 /// `settings.sqlite`, then rename the old file to `settings.sqlite.v1.bak`.
-/// On failure the partial v2 file is removed and the v1 file stays untouched.
+/// On failure the partial destination file is removed and the v1 file stays
+/// untouched.
 fn migrate_v1_file(v1_path: &Path, v2_path: &Path) -> Result<()> {
     // Fold WAL content into the main file so the backup rename is complete.
     {
@@ -782,7 +804,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fresh_open_creates_v2_schema() {
+    fn fresh_open_creates_v3_schema() {
         let dir = tempfile::tempdir().unwrap();
         let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
         let version: i64 = db
@@ -806,6 +828,76 @@ mod tests {
         ] {
             assert!(table_exists(db.conn(), table).unwrap(), "missing {table}");
         }
+        let thinking_column: (String, String) = db
+            .conn()
+            .query_row(
+                "SELECT name, dflt_value
+                 FROM pragma_table_info('sessions')
+                 WHERE name = 'thinking_level'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(thinking_column, ("thinking_level".into(), "'off'".into()));
+    }
+
+    #[test]
+    fn migrates_v2_sessions_to_v3_thinking_level() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pi.sqlite");
+
+        // Build a genuine v2 fixture from the current schema by removing only
+        // the additive v3 column.  This keeps the migration test aligned with
+        // all other v2 tables and triggers instead of relying on a toy schema.
+        let v2_column = r#"  thinking_level TEXT NOT NULL DEFAULT 'off'
+                CHECK (thinking_level IN ('off', 'minimal', 'low', 'medium',
+                                          'high', 'xhigh', 'max')),
+"#;
+        let schema_v2 = SCHEMA_V3.replace(v2_column, "");
+        assert_ne!(schema_v2, SCHEMA_V3, "v2 fixture must omit thinking_level");
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch(&schema_v2).unwrap();
+            conn.pragma_update(None, "user_version", 2).unwrap();
+            conn.execute(
+                "INSERT INTO sessions
+                    (id, title, mode, created_at, updated_at)
+                 VALUES ('legacy', 'Legacy', 'chat', 1, 2)",
+                [],
+            )
+            .unwrap();
+        }
+
+        let db = Database::open(&path).unwrap();
+        let version: i64 = db
+            .conn()
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, SCHEMA_VERSION);
+        let (level, title): (String, String) = db
+            .conn()
+            .query_row(
+                "SELECT thinking_level, title FROM sessions WHERE id = 'legacy'",
+                [],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(level, "off");
+        assert_eq!(title, "Legacy");
+
+        // Reopening is a no-op and does not attempt to add the column again.
+        drop(db);
+        let db = Database::open(&path).unwrap();
+        let count: i64 = db
+            .conn()
+            .query_row(
+                "SELECT COUNT(*) FROM pragma_table_info('sessions')
+                 WHERE name = 'thinking_level'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 1);
     }
 
     #[test]

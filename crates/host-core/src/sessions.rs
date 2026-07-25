@@ -6,9 +6,34 @@ use uuid::Uuid;
 
 use crate::db::{ms_to_ts, now_ms, ts_to_ms, Database};
 
+/// Values accepted by the persisted per-session thinking selector.  Keep this
+/// list in the host boundary so old clients cannot write arbitrary provider
+/// options into the session row.
+pub const THINKING_LEVELS: [&str; 7] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
+
+pub fn is_valid_thinking_level(level: &str) -> bool {
+    THINKING_LEVELS.contains(&level)
+}
+
+fn default_thinking_level() -> String {
+    "off".to_string()
+}
+
+fn validate_thinking_level(level: &str) -> Result<()> {
+    if is_valid_thinking_level(level) {
+        Ok(())
+    } else {
+        Err(anyhow!(
+            "thinkingLevel must be one of {}",
+            THINKING_LEVELS.join(", ")
+        ))
+    }
+}
+
 /// Wire format is unchanged from v1: RFC3339 timestamps, `projectPath`
 /// resolved from the projects table, flat tool fields on messages. Storage is
-/// schema v2 (block-array transcripts, integer times, per-session `seq`).
+/// schema v3 (block-array transcripts, integer times, per-session `seq`, and
+/// persisted thinking level).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionSummary {
@@ -18,6 +43,8 @@ pub struct SessionSummary {
     pub model_id: Option<String>,
     pub provider_id: Option<String>,
     pub mode: String,
+    #[serde(default = "default_thinking_level")]
+    pub thinking_level: String,
     pub updated_at: String,
     pub created_at: String,
 }
@@ -29,6 +56,8 @@ pub struct UiMessage {
     pub role: String,
     pub content: String,
     pub created_at: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -84,6 +113,10 @@ fn ui_to_storage(message: &UiMessage) -> (Option<String>, String, Option<String>
         .as_ref()
         .map(|s| json!({ "status": s }).to_string());
     if message.role == "tool" {
+        let mut blocks = Vec::new();
+        if let Some(thinking) = &message.thinking {
+            blocks.push(json!({ "type": "thinking", "text": thinking }));
+        }
         let mut block = serde_json::Map::new();
         block.insert("type".into(), json!("tool_call"));
         if let Some(v) = &message.tool_call_id {
@@ -113,15 +146,17 @@ fn ui_to_storage(message: &UiMessage) -> (Option<String>, String, Option<String>
         if !message.content.is_empty() {
             block.insert("text".into(), json!(message.content));
         }
-        (
-            None,
-            Value::Array(vec![Value::Object(block)]).to_string(),
-            meta,
-        )
+        blocks.push(Value::Object(block));
+        (None, Value::Array(blocks).to_string(), meta)
     } else {
+        let mut blocks = Vec::with_capacity(2);
+        if let Some(thinking) = &message.thinking {
+            blocks.push(json!({ "type": "thinking", "text": thinking }));
+        }
+        blocks.push(json!({ "type": "text", "text": message.content }));
         (
             Some(message.content.clone()),
-            json!([{ "type": "text", "text": message.content }]).to_string(),
+            Value::Array(blocks).to_string(),
             meta,
         )
     }
@@ -149,6 +184,15 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
         .get("status")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
+    let thinking = blocks
+        .iter()
+        .filter_map(|b| {
+            (b.get("type").and_then(|t| t.as_str()) == Some("thinking"))
+                .then(|| b.get("text").and_then(|v| v.as_str()))
+                .flatten()
+        })
+        .collect::<Vec<_>>();
+    let thinking = (!thinking.is_empty()).then(|| thinking.concat());
 
     if row.role == "tool" {
         let block = blocks
@@ -166,6 +210,7 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             role: row.role,
             content: text,
             created_at: ms_to_ts(row.created_at),
+            thinking,
             status,
             tool_name: row.tool_name,
             tool_call_id: block
@@ -201,6 +246,7 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             role: row.role,
             content,
             created_at: ms_to_ts(row.created_at),
+            thinking,
             status,
             tool_name: None,
             tool_call_id: None,
@@ -249,8 +295,8 @@ fn insert_message(
     Ok(())
 }
 
-const SUMMARY_SELECT: &str =
-    "SELECT s.id, s.title, p.path, s.model_id, s.provider_id, s.mode, s.updated_at, s.created_at
+const SUMMARY_SELECT: &str = "SELECT s.id, s.title, p.path, s.model_id, s.provider_id, s.mode,
+            s.thinking_level, s.updated_at, s.created_at
      FROM sessions s LEFT JOIN projects p ON p.id = s.project_id";
 
 fn summary_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionSummary> {
@@ -261,8 +307,9 @@ fn summary_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionSummary>
         model_id: row.get(3)?,
         provider_id: row.get(4)?,
         mode: row.get(5)?,
-        updated_at: ms_to_ts(row.get(6)?),
-        created_at: ms_to_ts(row.get(7)?),
+        thinking_level: row.get(6)?,
+        updated_at: ms_to_ts(row.get(7)?),
+        created_at: ms_to_ts(row.get(8)?),
     })
 }
 
@@ -311,6 +358,8 @@ pub fn list_sessions(db: &Database) -> Result<Vec<SessionSummary>> {
     Ok(out)
 }
 
+/// Backwards-compatible session constructor.  New callers that need an
+/// explicit thinking level should use [`create_session_with_thinking`].
 pub fn create_session(
     db: &Database,
     title: Option<String>,
@@ -319,10 +368,24 @@ pub fn create_session(
     model_id: Option<String>,
     project_path: Option<String>,
 ) -> Result<SessionSummary> {
+    create_session_with_thinking(db, title, mode, provider_id, model_id, project_path, None)
+}
+
+pub fn create_session_with_thinking(
+    db: &Database,
+    title: Option<String>,
+    mode: Option<String>,
+    provider_id: Option<String>,
+    model_id: Option<String>,
+    project_path: Option<String>,
+    thinking_level: Option<String>,
+) -> Result<SessionSummary> {
     let now = now_ms();
     let id = Uuid::new_v4().to_string();
     let title = title.unwrap_or_else(|| "New task".into());
     let mode = mode.unwrap_or_else(|| "agent".into());
+    let thinking_level = thinking_level.unwrap_or_else(default_thinking_level);
+    validate_thinking_level(&thinking_level)?;
     let project_id = match project_path
         .as_deref()
         .filter(|path| !path.trim().is_empty())
@@ -336,9 +399,10 @@ pub fn create_session(
     };
     db.conn()
         .prepare_cached(
-            "INSERT INTO sessions (id, title, project_id, provider_id, model_id, mode,
-                                   created_at, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?7)",
+            "INSERT INTO sessions (
+                id, title, project_id, provider_id, model_id, mode, thinking_level,
+                created_at, updated_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?8)",
         )?
         .execute(params![
             id,
@@ -347,6 +411,7 @@ pub fn create_session(
             provider_id,
             model_id,
             mode,
+            thinking_level,
             now
         ])?;
     Ok(SessionSummary {
@@ -356,6 +421,7 @@ pub fn create_session(
         model_id,
         provider_id,
         mode,
+        thinking_level,
         updated_at: ms_to_ts(now),
         created_at: ms_to_ts(now),
     })
@@ -396,6 +462,8 @@ pub fn get_session(db: &Database, id: &str) -> Result<Option<SessionDetail>> {
     Ok(Some(SessionDetail { summary, messages }))
 }
 
+/// Backwards-compatible configurator.  Omitting the thinking level preserves
+/// the current persisted value.
 pub fn configure_session(
     db: &Database,
     id: &str,
@@ -403,17 +471,39 @@ pub fn configure_session(
     provider_id: Option<&str>,
     model_id: Option<&str>,
 ) -> Result<Option<SessionSummary>> {
+    configure_session_with_thinking(db, id, mode, provider_id, model_id, None)
+}
+
+pub fn configure_session_with_thinking(
+    db: &Database,
+    id: &str,
+    mode: &str,
+    provider_id: Option<&str>,
+    model_id: Option<&str>,
+    thinking_level: Option<&str>,
+) -> Result<Option<SessionSummary>> {
     if !matches!(mode, "chat" | "agent") {
         return Err(anyhow!("mode must be chat or agent"));
+    }
+    if let Some(level) = thinking_level {
+        validate_thinking_level(level)?;
     }
     let changed = db
         .conn()
         .prepare_cached(
             "UPDATE sessions
-             SET mode = ?2, provider_id = ?3, model_id = ?4, updated_at = ?5
+             SET mode = ?2, provider_id = ?3, model_id = ?4,
+                 thinking_level = COALESCE(?5, thinking_level), updated_at = ?6
              WHERE id = ?1",
         )?
-        .execute(params![id, mode, provider_id, model_id, now_ms()])?;
+        .execute(params![
+            id,
+            mode,
+            provider_id,
+            model_id,
+            thinking_level,
+            now_ms()
+        ])?;
     if changed == 0 {
         return Ok(None);
     }
@@ -496,6 +586,7 @@ pub fn import_session(
     summary: &SessionSummary,
     messages: &[UiMessage],
 ) -> Result<bool> {
+    validate_thinking_level(&summary.thinking_level)?;
     let conn = db.conn();
     let exists: i64 = conn.query_row(
         "SELECT COUNT(*) FROM sessions WHERE id = ?1",
@@ -523,9 +614,10 @@ pub fn import_session(
         "external".to_string()
     });
     tx.prepare_cached(
-        "INSERT INTO sessions (id, title, project_id, provider_id, model_id, mode, source,
-                               last_seq, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        "INSERT INTO sessions (
+            id, title, project_id, provider_id, model_id, mode, thinking_level, source,
+            last_seq, created_at, updated_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
     )?
     .execute(params![
         summary.id,
@@ -534,6 +626,7 @@ pub fn import_session(
         summary.provider_id,
         summary.model_id,
         summary.mode,
+        summary.thinking_level,
         source,
         messages.len() as i64,
         ts_to_ms(&summary.created_at),
@@ -689,6 +782,7 @@ mod tests {
             role: "user".into(),
             content: content.into(),
             created_at: ts.into(),
+            thinking: None,
             status: None,
             tool_name: None,
             tool_call_id: None,
@@ -720,12 +814,13 @@ mod tests {
             )
             .unwrap();
 
-        let configured = configure_session(
+        let configured = configure_session_with_thinking(
             &db,
             &session.id,
             "chat",
             Some("provider-1"),
             Some("model-1"),
+            Some("high"),
         )
         .unwrap()
         .unwrap();
@@ -733,7 +828,23 @@ mod tests {
         assert_eq!(configured.mode, "chat");
         assert_eq!(configured.provider_id.as_deref(), Some("provider-1"));
         assert_eq!(configured.model_id.as_deref(), Some("model-1"));
+        assert_eq!(configured.thinking_level, "high");
+        // Omitting the new field is backwards-compatible and preserves the
+        // configured value rather than resetting it to off.
+        let preserved = configure_session(&db, &session.id, "chat", None, None)
+            .unwrap()
+            .unwrap();
+        assert_eq!(preserved.thinking_level, "high");
         assert!(configure_session(&db, &session.id, "invalid", None, None).is_err());
+        assert!(configure_session_with_thinking(
+            &db,
+            &session.id,
+            "chat",
+            None,
+            None,
+            Some("turbo")
+        )
+        .is_err());
     }
 
     #[test]
@@ -781,6 +892,7 @@ mod tests {
             model_id: None,
             provider_id: None,
             mode: "agent".into(),
+            thinking_level: "off".into(),
             created_at: "2025-01-01T00:00:00Z".into(),
             updated_at: "2025-01-02T00:00:00Z".into(),
         };
@@ -828,6 +940,7 @@ mod tests {
             model_id: None,
             provider_id: None,
             mode: "agent".into(),
+            thinking_level: "off".into(),
             created_at: "2025-01-01T00:00:00Z".into(),
             updated_at: "2025-01-01T00:00:00Z".into(),
         };
@@ -872,6 +985,7 @@ mod tests {
             role: "tool".into(),
             content: "ok".into(),
             created_at: "2025-05-01T00:00:02Z".into(),
+            thinking: None,
             status: Some("complete".into()),
             tool_name: Some("Write".into()),
             tool_call_id: Some("c1".into()),
@@ -911,6 +1025,89 @@ mod tests {
             )
             .unwrap();
         assert_eq!(last_seq, 2);
+    }
+
+    #[test]
+    fn assistant_thinking_roundtrips_as_canonical_blocks() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        let assistant = UiMessage {
+            id: "assistant-1".into(),
+            role: "assistant".into(),
+            content: "final answer".into(),
+            created_at: "2025-05-01T00:00:01Z".into(),
+            thinking: Some("first plan\nsecond plan".into()),
+            status: Some("complete".into()),
+            tool_name: None,
+            tool_call_id: None,
+            tool_status: None,
+            tool_args: None,
+            tool_result: None,
+            tool_completed_at: None,
+            tool_duration_ms: None,
+            is_error: None,
+        };
+        append_message(&db, &session.id, &assistant, None).unwrap();
+
+        let content_json: String = db
+            .conn()
+            .query_row(
+                "SELECT content_json FROM messages WHERE id = 'assistant-1'",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let blocks: Value = serde_json::from_str(&content_json).unwrap();
+        assert_eq!(
+            blocks[0],
+            json!({
+                "type": "thinking",
+                "text": "first plan\nsecond plan"
+            })
+        );
+        assert_eq!(
+            blocks[1],
+            json!({
+                "type": "text",
+                "text": "final answer"
+            })
+        );
+
+        let detail = get_session(&db, &session.id).unwrap().unwrap();
+        assert_eq!(
+            detail.messages[0].thinking.as_deref(),
+            Some("first plan\nsecond plan")
+        );
+        assert_eq!(detail.messages[0].content, "final answer");
+    }
+
+    #[test]
+    fn import_and_replace_preserve_thinking() {
+        let db = test_db();
+        let summary = SessionSummary {
+            id: "thinking-import".into(),
+            title: "Thinking".into(),
+            project_path: None,
+            model_id: None,
+            provider_id: None,
+            mode: "agent".into(),
+            thinking_level: "medium".into(),
+            created_at: "2025-01-01T00:00:00Z".into(),
+            updated_at: "2025-01-01T00:00:00Z".into(),
+        };
+        let mut message = user_msg("m1", "prompt", "2025-01-01T00:00:01Z");
+        message.role = "assistant".into();
+        message.thinking = Some("persist me".into());
+        assert!(import_session(&db, &summary, &[message.clone()]).unwrap());
+        let detail = get_session(&db, &summary.id).unwrap().unwrap();
+        assert_eq!(detail.summary.thinking_level, "medium");
+        assert_eq!(detail.messages[0].thinking.as_deref(), Some("persist me"));
+
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        message.id = "m2".into();
+        replace_messages(&db, &session.id, &[message]).unwrap();
+        let detail = get_session(&db, &session.id).unwrap().unwrap();
+        assert_eq!(detail.messages[0].thinking.as_deref(), Some("persist me"));
     }
 
     #[test]

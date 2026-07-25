@@ -21,6 +21,10 @@ pub struct ProviderPublic {
     pub has_secret: bool,
     pub default_model_id: Option<String>,
     pub api_style: Option<String>,
+    /// Explicit provider-level reasoning override.  `None` means the model
+    /// catalog resolver should infer capability from the selected model.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub supports_reasoning: Option<bool>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -38,6 +42,7 @@ pub struct ProviderCreateInput {
     pub default_model_id: Option<String>,
     pub secret_value: Option<String>,
     pub api_style: Option<String>,
+    pub supports_reasoning: Option<bool>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -54,13 +59,36 @@ pub struct ProviderUpdateInput {
     pub default_model_id: Option<String>,
     pub secret_value: Option<String>,
     pub api_style: Option<String>,
+    pub supports_reasoning: Option<bool>,
     pub enabled: Option<bool>,
 }
 
 const PROVIDER_SELECT: &str =
     "SELECT id, name, vendor_key, type, protocol, enabled, base_url, auth_kind, secret_ref,
-            default_model_id, api_style, created_at, updated_at
+            default_model_id, api_style, config_json, created_at, updated_at
      FROM providers";
+
+fn config_reasoning_override(raw: &str) -> Option<bool> {
+    serde_json::from_str::<serde_json::Value>(raw)
+        .ok()
+        .and_then(|v| v.get("compatibility")?.get("supportsReasoning")?.as_bool())
+}
+
+fn config_with_reasoning_override(raw: &str, value: bool) -> Result<String> {
+    let mut config: serde_json::Value = serde_json::from_str(raw)
+        .map_err(|e| anyhow::anyhow!("provider config_json is invalid: {e}"))?;
+    let object = config
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("provider config_json must be a JSON object"))?;
+    let compatibility = object
+        .entry("compatibility")
+        .or_insert_with(|| serde_json::json!({}));
+    let compatibility = compatibility.as_object_mut().ok_or_else(|| {
+        anyhow::anyhow!("provider config_json.compatibility must be a JSON object")
+    })?;
+    compatibility.insert("supportsReasoning".into(), serde_json::json!(value));
+    Ok(config.to_string())
+}
 
 fn provider_from_row(
     row: &rusqlite::Row<'_>,
@@ -79,8 +107,12 @@ fn provider_from_row(
         has_secret: secret_ref.as_ref().map(|r| secrets.has(r)).unwrap_or(false),
         default_model_id: row.get(9)?,
         api_style: row.get(10)?,
-        created_at: ms_to_ts(row.get(11)?),
-        updated_at: ms_to_ts(row.get(12)?),
+        supports_reasoning: row
+            .get::<_, String>(11)
+            .ok()
+            .and_then(|raw| config_reasoning_override(&raw)),
+        created_at: ms_to_ts(row.get(12)?),
+        updated_at: ms_to_ts(row.get(13)?),
     })
 }
 
@@ -139,13 +171,21 @@ pub fn create_provider(
     let auth_kind = input
         .auth_kind
         .unwrap_or_else(|| "api_key_and_base_url".into());
+    let config_json = input
+        .supports_reasoning
+        .map(|value| {
+            serde_json::json!({
+                "compatibility": { "supportsReasoning": value }
+            })
+        })
+        .unwrap_or_else(|| serde_json::json!({}));
 
     db.conn()
         .prepare_cached(
             "INSERT INTO providers (
                 id, name, vendor_key, type, protocol, enabled, base_url, auth_kind, secret_ref,
-                api_style, default_model_id, created_at, updated_at
-             ) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?7, ?8, ?9, ?10, ?11, ?11)",
+                api_style, default_model_id, config_json, created_at, updated_at
+             ) VALUES (?1, ?2, ?3, ?4, ?5, 1, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?12)",
         )?
         .execute(params![
             id,
@@ -162,6 +202,7 @@ pub fn create_provider(
             },
             input.api_style,
             input.default_model_id,
+            config_json.to_string(),
             now,
         ])?;
 
@@ -187,6 +228,16 @@ pub fn update_provider(
         upsert_secret_meta(db, &sref, &input.id, &backend)?;
         secret_ref = Some(sref);
     }
+    let config_json = if let Some(value) = input.supports_reasoning {
+        let raw: String = db.conn().query_row(
+            "SELECT config_json FROM providers WHERE id = ?1",
+            params![input.id],
+            |row| row.get(0),
+        )?;
+        Some(config_with_reasoning_override(&raw, value)?)
+    } else {
+        None
+    };
 
     db.conn()
         .prepare_cached(
@@ -201,8 +252,9 @@ pub fn update_provider(
                 api_style = COALESCE(?8, api_style),
                 enabled = COALESCE(?9, enabled),
                 secret_ref = COALESCE(?10, secret_ref),
-                updated_at = ?11
-             WHERE id = ?12",
+                config_json = COALESCE(?11, config_json),
+                updated_at = ?12
+             WHERE id = ?13",
         )?
         .execute(params![
             input.name,
@@ -215,6 +267,7 @@ pub fn update_provider(
             input.api_style,
             input.enabled.map(|b| if b { 1 } else { 0 }),
             secret_ref,
+            config_json,
             now_ms(),
             input.id
         ])?;
@@ -268,4 +321,141 @@ pub fn get_secret_for_provider(
 pub fn provider_count_with_secret(db: &Database, secrets: &SecretStore) -> Result<i64> {
     let providers = list_providers(db, secrets, true)?;
     Ok(providers.iter().filter(|p| p.has_secret).count() as i64)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn test_context() -> (tempfile::TempDir, Database, SecretStore) {
+        let dir = tempfile::tempdir().unwrap();
+        let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
+        let secrets = SecretStore::open(dir.path()).unwrap();
+        (dir, db, secrets)
+    }
+
+    #[test]
+    fn reasoning_override_roundtrips_and_preserves_provider_config() {
+        let (_dir, db, secrets) = test_context();
+        let provider = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "Custom".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("none".into()),
+                default_model_id: Some("model-1".into()),
+                secret_value: None,
+                api_style: None,
+                supports_reasoning: Some(true),
+            },
+        )
+        .unwrap();
+        assert_eq!(provider.supports_reasoning, Some(true));
+
+        db.conn()
+            .execute(
+                "UPDATE providers
+                 SET config_json = ?1
+                 WHERE id = ?2",
+                params![
+                    json!({
+                        "headers": { "x-demo": "keep" },
+                        "compatibility": { "supportsTools": true },
+                        "custom": { "nested": 42 }
+                    })
+                    .to_string(),
+                    provider.id
+                ],
+            )
+            .unwrap();
+
+        let updated = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id.clone(),
+                name: None,
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                supports_reasoning: Some(false),
+                enabled: None,
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(updated.supports_reasoning, Some(false));
+
+        let raw: String = db
+            .conn()
+            .query_row(
+                "SELECT config_json FROM providers WHERE id = ?1",
+                params![provider.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(config["headers"]["x-demo"], "keep");
+        assert_eq!(config["compatibility"]["supportsTools"], true);
+        assert_eq!(config["compatibility"]["supportsReasoning"], false);
+        assert_eq!(config["custom"]["nested"], 42);
+
+        // An update without the field leaves the explicit override intact.
+        let unchanged = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id,
+                name: Some("Renamed".into()),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                supports_reasoning: None,
+                enabled: None,
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(unchanged.supports_reasoning, Some(false));
+    }
+
+    #[test]
+    fn provider_without_override_omits_reasoning_capability() {
+        let (_dir, db, secrets) = test_context();
+        let provider = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "No override".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("none".into()),
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                supports_reasoning: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(provider.supports_reasoning, None);
+        let wire = serde_json::to_value(provider).unwrap();
+        assert!(wire.get("supportsReasoning").is_none());
+    }
 }

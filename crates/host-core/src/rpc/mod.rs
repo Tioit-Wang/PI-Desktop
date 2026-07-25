@@ -140,6 +140,37 @@ fn rpc_err(code: i64, message: impl Into<String>, error_code: &str) -> JsonRpcEr
     }
 }
 
+/// Parse the optional session thinking selector at the RPC boundary.  A
+/// missing/null value keeps the backwards-compatible default; present values
+/// must be strings from the host's allowlist rather than being silently
+/// coerced to `off`.
+fn thinking_level_param(params: &Value) -> Result<Option<String>, JsonRpcError> {
+    let Some(value) = params.get("thinkingLevel") else {
+        return Ok(None);
+    };
+    if value.is_null() {
+        return Ok(None);
+    }
+    let Some(level) = value.as_str() else {
+        return Err(rpc_err(
+            1002,
+            "thinkingLevel must be a string",
+            "INVALID_PARAMS",
+        ));
+    };
+    if !sessions::is_valid_thinking_level(level) {
+        return Err(rpc_err(
+            1002,
+            format!(
+                "thinkingLevel must be one of {}",
+                sessions::THINKING_LEVELS.join(", ")
+            ),
+            "INVALID_PARAMS",
+        ));
+    }
+    Ok(Some(level.to_string()))
+}
+
 async fn emit_notification(tx: &mpsc::UnboundedSender<String>, method: &str, params: Value) {
     let note = JsonRpcNotification {
         jsonrpc: "2.0",
@@ -464,11 +495,16 @@ async fn handle_request(
                     }
                 }
                 if let Some(model) = p.default_model_id {
+                    let mut capabilities = vec!["text"];
+                    if p.supports_reasoning == Some(true) {
+                        capabilities.push("reasoning");
+                    }
                     models.push(json!({
                         "modelId": model,
                         "displayName": model,
                         "providerId": p.id,
-                        "source": "user"
+                        "source": "user",
+                        "capabilities": capabilities
                     }));
                 }
             }
@@ -496,8 +532,9 @@ async fn handle_request(
             Ok(json!({ "sessions": sessions }))
         }
         "session.create" => {
+            let thinking_level = thinking_level_param(&params)?;
             let st = state.lock().await;
-            let session = sessions::create_session(
+            let session = sessions::create_session_with_thinking(
                 &st.db,
                 params
                     .get("title")
@@ -519,6 +556,7 @@ async fn handle_request(
                     .get("projectPath")
                     .and_then(|v| v.as_str())
                     .map(str::to_string),
+                thinking_level,
             )
             .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "session": session }))
@@ -542,13 +580,15 @@ async fn handle_request(
                 .get("mode")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| rpc_err(1002, "mode required", "INVALID_PARAMS"))?;
+            let thinking_level = thinking_level_param(&params)?;
             let st = state.lock().await;
-            let session = sessions::configure_session(
+            let session = sessions::configure_session_with_thinking(
                 &st.db,
                 id,
                 mode,
                 params.get("providerId").and_then(|v| v.as_str()),
                 params.get("modelId").and_then(|v| v.as_str()),
+                thinking_level.as_deref(),
             )
             .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?
             .ok_or_else(|| rpc_err(1007, "session not found", "NOT_FOUND"))?;
