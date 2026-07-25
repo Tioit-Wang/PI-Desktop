@@ -85,7 +85,7 @@ export function Sidebar({
 
   if (collapsed) {
     return (
-      <aside className="flex w-[56px] shrink-0 flex-col border-r border-border-subtle bg-bg-primary">
+      <aside className="sidebar-rail">
         <div className="sidebar-drag" />
         <div className="no-drag flex flex-1 flex-col items-center gap-2 px-2 py-2">
           <button

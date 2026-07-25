@@ -221,6 +221,16 @@ textarea:disabled {
   border-right: 1px solid var(--ds-border-subtle);
 }
 
+.sidebar-rail {
+  width: 56px;
+  flex: 0 0 56px;
+  display: flex;
+  flex-direction: column;
+  background: var(--ds-bg-sidebar, var(--ds-bg-primary));
+  border-right: 1px solid var(--ds-border-subtle);
+}
+
+
 .sidebar-drag {
   height: 46px; /* Codex --height-toolbar */
   -webkit-app-region: drag;

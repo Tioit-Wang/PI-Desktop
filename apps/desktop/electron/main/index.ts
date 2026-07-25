@@ -167,6 +167,18 @@ async function createWindow() {
             await clickNav("new-task");
             await new Promise((r) => setTimeout(r, 400));
             await shot("pi-final");
+            // Open composer + menu for chrome parity proof.
+            await mainWindow!.webContents.executeJavaScript(`
+              (() => {
+                const btn = document.querySelector('.composer-plus button, .composer-plus .icon-btn');
+                if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              })()
+            `);
+            await new Promise((r) => setTimeout(r, 250));
+            await shot("pi-plus-menu");
+            await mainWindow!.webContents.executeJavaScript(`
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            `);
             // Dark shell parity capture (temporary attribute; restore system after).
             await mainWindow!.webContents.executeJavaScript(
               `document.documentElement.dataset.theme = "dark"`,
