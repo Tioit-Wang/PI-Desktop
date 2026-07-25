@@ -143,6 +143,8 @@ async function createWindow() {
                 `document.querySelector('[data-nav="${nav}"]')?.dispatchEvent(new MouseEvent('click',{bubbles:true}))`,
               );
             };
+            await clickNav("new-task");
+            await new Promise((r) => setTimeout(r, 400));
             await shot("pi-final");
             await clickNav("pulls");
             await new Promise((r) => setTimeout(r, 900));

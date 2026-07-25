@@ -28,6 +28,7 @@
   --blue-900: #00284d;
 
   --ds-bg-primary: var(--gray-900);
+  --ds-bg-sidebar: var(--gray-900);
   --ds-bg-secondary: var(--gray-800);
   --ds-bg-tertiary: var(--gray-750);
   --ds-bg-inset: var(--gray-1000);
@@ -63,34 +64,36 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
+  /* Codex electron-light */
   --ds-bg-primary: #ffffff;
+  --ds-bg-sidebar: #f3f3f3;
   --ds-bg-secondary: #f9f9f9;
   --ds-bg-tertiary: #f3f3f3;
   --ds-bg-inset: #ededed;
   --ds-bg-under: #f9f9f9;
-  --ds-bg-elevated: #ffffff;
+  --ds-bg-elevated: color-mix(in oklab, #ffffff 70%, transparent);
   --ds-bg-elevated-opaque: #ffffff;
-  --ds-bg-hover: color-mix(in oklab, #000 4%, transparent);
-  --ds-bg-active: color-mix(in oklab, #000 8%, transparent);
+  --ds-bg-hover: color-mix(in oklab, #1a1c1f 5%, transparent);
+  --ds-bg-active: color-mix(in oklab, #1a1c1f 8%, transparent);
   --ds-bg-composer: #ffffff;
-  --ds-bg-chip: color-mix(in oklab, #000 4%, transparent);
-  --ds-text-primary: #0d0d0d;
-  --ds-text-secondary: color-mix(in oklab, #0d0d0d 70%, transparent);
+  --ds-bg-chip: color-mix(in oklab, #1a1c1f 4%, transparent);
+  --ds-text-primary: #1a1c1f;
+  --ds-text-secondary: color-mix(in oklab, #1a1c1f 70%, transparent);
   --ds-text-muted: #5d5d5d;
   --ds-text-faint: #afafaf;
-  --ds-border-default: color-mix(in oklab, #0d0d0d 10%, transparent);
-  --ds-border-subtle: color-mix(in oklab, #0d0d0d 6%, transparent);
-  --ds-border-strong: color-mix(in oklab, #0d0d0d 16%, transparent);
+  --ds-border-default: color-mix(in oklab, #1a1c1f 8%, transparent);
+  --ds-border-subtle: color-mix(in oklab, #1a1c1f 5%, transparent);
+  --ds-border-strong: color-mix(in oklab, #1a1c1f 12%, transparent);
   --ds-accent: #0285ff;
   --ds-accent-hover: #339cff;
-  --ds-accent-soft: #00284d;
-  --ds-success: #16a34a;
-  --ds-warning: #ea580c;
-  --ds-error: #dc2626;
+  --ds-accent-soft: #e5f3ff;
+  --ds-success: #00a240;
+  --ds-warning: #e25507;
+  --ds-error: #e02e2a;
   --ds-info: #0285ff;
   --ds-shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.12);
-  --ds-shadow-composer: 0 0 0 1px color-mix(in oklab, #0d0d0d 8%, transparent),
-    0 8px 28px rgba(0, 0, 0, 0.08);
+  --ds-shadow-composer: 0 0 0 1px color-mix(in oklab, #1a1c1f 8%, transparent),
+    0 10px 30px rgba(0, 0, 0, 0.08);
 }
 
 @theme {
@@ -212,8 +215,8 @@ textarea:disabled {
   flex: 0 0 var(--ds-sidebar-width);
   display: flex;
   flex-direction: column;
-  background: var(--ds-bg-primary);
-  border-right: 1px solid color-mix(in oklab, var(--gray-0) 5%, transparent);
+  background: var(--ds-bg-sidebar, var(--ds-bg-primary));
+  border-right: 1px solid var(--ds-border-subtle);
 }
 
 .sidebar-drag {
@@ -289,17 +292,19 @@ textarea:disabled {
 }
 
 .brand {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.02em;
+  color: var(--ds-text-primary);
 }
 
 .message-row.user .message-bubble {
-  max-width: min(72%, 560px);
+  max-width: min(72%, 520px);
   border-radius: 18px;
-  background: color-mix(in oklab, var(--gray-0) 10%, transparent);
+  background: color-mix(in oklab, var(--ds-text-primary) 8%, transparent);
   padding: 8px 14px;
   font-size: 14px;
+  line-height: 1.45;
 }
 
 .message-row.assistant {
@@ -328,18 +333,29 @@ textarea:disabled {
 }
 
 .thread-content {
-  width: min(100%, 820px);
+  width: min(100%, 760px);
   margin: 0 auto;
-  padding: 24px 28px 180px;
+  padding: 28px 28px 220px;
 }
 
 .empty-hero {
   display: flex;
   min-height: 100%;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 18px;
   padding: 48px 28px 200px;
   text-align: center;
+}
+
+.empty-hero-icon {
+  display: flex;
+  height: 44px;
+  width: 44px;
+  align-items: center;
+  justify-content: center;
+  color: color-mix(in oklab, var(--ds-text-primary) 28%, transparent);
 }
 
 .empty-hero h1 {
@@ -636,10 +652,11 @@ textarea:disabled {
 }
 
 .section-label {
-  padding: 16px 10px 6px;
+  padding: 14px 10px 6px;
   color: var(--ds-text-muted);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
+  letter-spacing: 0.01em;
 }
 
 .message-row {
@@ -660,7 +677,7 @@ textarea:disabled {
 }
 
 :root[data-theme="light"] .message-row.user .message-bubble {
-  background: color-mix(in oklab, #000 5%, transparent);
+  background: color-mix(in oklab, #1a1c1f 6%, transparent);
 }
 
 .message-row.assistant .message-bubble,
@@ -682,13 +699,23 @@ textarea:disabled {
 
 .tool-card-header {
   display: flex;
+  width: 100%;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--ds-border-subtle);
+  border-bottom: 1px solid transparent;
   color: var(--ds-text-secondary);
   font-size: 12px;
+  text-align: left;
+}
+
+.tool-card-header:hover {
+  background: var(--ds-bg-hover);
+}
+
+.tool-card:has(.tool-card-body) .tool-card-header {
+  border-bottom-color: var(--ds-border-subtle);
 }
 
 .tool-card-body {
@@ -905,7 +932,7 @@ textarea:disabled {
 .page-frame {
   width: min(100%, 880px);
   margin: 0 auto;
-  padding: 56px 32px 40px;
+  padding: 52px 32px 40px;
 }
 
 .page-header {
@@ -953,4 +980,41 @@ textarea:disabled {
   border-radius: 999px;
   background: color-mix(in oklab, var(--gray-0) 6%, transparent);
   color: var(--ds-text-secondary);
+}
+
+
+/* LIGHT_CODEX_OVERRIDES */
+:root[data-theme="light"] .composer-shell {
+  background: #ffffff;
+  box-shadow: var(--ds-shadow-composer);
+}
+
+:root[data-theme="light"] .composer-chips {
+  background: color-mix(in oklab, #1a1c1f 3%, #ffffff);
+  box-shadow: 0 0 0 1px color-mix(in oklab, #1a1c1f 6%, transparent);
+}
+
+:root[data-theme="light"] .new-task-btn {
+  background: transparent;
+  font-weight: 400;
+}
+
+:root[data-theme="light"] .new-task-btn:hover {
+  background: color-mix(in oklab, #1a1c1f 5%, transparent);
+}
+
+:root[data-theme="light"] .title-nav-btn {
+  color: color-mix(in oklab, #1a1c1f 55%, transparent);
+  background: color-mix(in oklab, #1a1c1f 3%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, #1a1c1f 6%, transparent);
+}
+
+:root[data-theme="light"] .tool-card {
+  background: color-mix(in oklab, #1a1c1f 2%, transparent);
+}
+
+
+.nav-item.new-task-btn {
+  /* inherits nav density; dark keeps soft fill from .new-task-btn */
+  gap: 10px;
 }

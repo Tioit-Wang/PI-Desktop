@@ -158,7 +158,7 @@ export function Sidebar({
         </div>
 
         <button
-          className="new-task-btn mb-1.5"
+          className="nav-item new-task-btn mb-1.5"
           data-nav="new-task"
           onClick={() => void newSession()}
         >

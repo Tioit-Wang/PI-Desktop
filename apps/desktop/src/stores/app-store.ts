@@ -86,19 +86,14 @@ export const useAppStore = create<AppState>((set, get) => ({
           api.listPlugins(),
         ]);
       let settings = settingsRaw;
-      if (settings) {
-        const next = {
-          ...settings,
-          theme: "dark" as const,
-          defaultMode: "chat" as const,
-        };
-        if (settings.theme !== "dark" || settings.defaultMode !== "chat") {
-          try {
-            await api.setSettings(next);
-            settings = next;
-          } catch {
-            settings = next;
-          }
+      // Match Codex defaults without pinning theme: chat mode is the home default.
+      if (settings && settings.defaultMode !== "chat") {
+        const next = { ...settings, defaultMode: "chat" as const };
+        try {
+          await api.setSettings(next);
+          settings = next;
+        } catch {
+          settings = next;
         }
       }
       set({

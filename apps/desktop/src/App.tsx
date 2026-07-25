@@ -71,16 +71,24 @@ function AppShell() {
   const [contextOpen, setContextOpen] = useState(false);
 
   useEffect(() => {
-    const theme = settings?.theme ?? "dark";
-    if (theme === "system") {
-      document.documentElement.dataset.theme = window.matchMedia(
-        "(prefers-color-scheme: light)",
-      ).matches
-        ? "light"
-        : "dark";
-    } else {
-      document.documentElement.dataset.theme = theme;
-    }
+    const theme = settings?.theme ?? "system";
+    const apply = () => {
+      if (theme === "system") {
+        document.documentElement.dataset.theme = window.matchMedia(
+          "(prefers-color-scheme: light)",
+        ).matches
+          ? "light"
+          : "dark";
+      } else {
+        document.documentElement.dataset.theme = theme;
+      }
+    };
+    apply();
+    if (theme !== "system") return;
+    const mq = window.matchMedia("(prefers-color-scheme: light)");
+    const onChange = () => apply();
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
   }, [settings?.theme]);
 
   useEffect(() => {
@@ -166,6 +174,23 @@ function AppShell() {
             {!hasTranscript ? (
               <div className="thread-scroll">
                 <div className="empty-hero">
+                  <div className="empty-hero-icon" aria-hidden>
+                    <svg width="34" height="34" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M7.5 16.5c-2.4 0-4.2-1.9-4.2-4.1 0-1.8 1.2-3.4 2.9-3.9.4-2.4 2.5-4.2 5-4.2 2.2 0 4.1 1.4 4.8 3.4 2 .3 3.5 2 3.5 4 0 2.2-1.8 4-4 4H7.5Z"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinejoin="round"
+                      />
+                      <path
+                        d="M9.2 12.2 11 14l3.6-4.2"
+                        stroke="currentColor"
+                        strokeWidth="1.4"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </div>
                   <h1>
                     {heroProject ? (
                       <>

@@ -530,3 +530,7 @@ This test plan spec is accepted when:
 
 ### US-UI-12 Combined workspace chips
 - On chat home, expect project / Local / branch controls to share one capsule bar above the composer.
+
+### US-UI-13 Light theme shell parity
+- Set theme to system/light on a light macOS appearance.
+- Expect sidebar `#f3f3f3`, main `#ffffff`, text `#1a1c1f`, white floating composer, and home hero with project underline.

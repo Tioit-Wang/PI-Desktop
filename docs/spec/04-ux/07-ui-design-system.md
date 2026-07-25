@@ -79,10 +79,10 @@ All color references in components use **semantic token names**, never raw hex v
 | Token | Hex | Tailwind mapping | Usage |
 |---|---|---|---|
 | `--color-bg-primary` | `#FFFFFF` | `bg-white` | Main background |
-| `--color-bg-secondary` | `#FFFFFF` | `bg-slate-50` | Sidebar, card surfaces |
+| `--color-bg-secondary` / sidebar | `#f3f3f3` | Codex gray-75 | Sidebar surface |
 | `--color-bg-tertiary` | `#F1F5F9` | `bg-slate-100` | Hover, elevated |
 | `--color-bg-inset` | `#F1F5F9` | `bg-slate-100` | Code blocks, inset |
-| `--color-text-primary` | `#181818` | `text-slate-900` | Body text |
+| `--color-text-primary` | `#1a1c1f` | Codex light foreground | Body text |
 | `--color-text-secondary` | `#475569` | `text-slate-600` | Labels, secondary |
 | `--color-text-muted` | `#94A3B8` | `text-slate-400` | Disabled, hints |
 | `--color-border-default` | `#E2E8F0` | `border-slate-200` | Default borders |
