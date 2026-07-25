@@ -318,3 +318,113 @@ export function IconFix(props: IconProps) {
     </svg>
   );
 }
+
+export function IconKeyboard(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M7 10h.01M11 10h.01M15 10h.01M7 14h10" />
+    </svg>
+  );
+}
+
+export function IconMic(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <rect x="9" y="3" width="6" height="10" rx="3" />
+      <path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6" />
+    </svg>
+  );
+}
+
+export function IconPlug(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <path d="M9 7v4M15 7v4M7 11h10v2a5 5 0 0 1-10 0v-2Z" />
+      <path d="M12 18v3" />
+    </svg>
+  );
+}
+
+export function IconUser(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="3.5" />
+      <path d="M5 19c1.8-3 4-4.5 7-4.5S16.2 16 18 19" />
+    </svg>
+  );
+}
+
+export function IconSparkles(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M6 18l2.5-2.5" />
+    </svg>
+  );
+}
+
+export function IconBrowser(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <path d="M3 8h18M7 6h.01M10 6h.01" />
+    </svg>
+  );
+}
+
+export function IconHook(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <path d="M10 4v8a4 4 0 1 0 4 4" />
+      <circle cx="10" cy="4" r="1.5" />
+    </svg>
+  );
+}
+
+export function IconLink(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <path d="M9 12a4 4 0 0 1 0-5.7l1.8-1.8a4 4 0 0 1 5.7 5.7L15 12" />
+      <path d="M15 12a4 4 0 0 1 0 5.7l-1.8 1.8a4 4 0 1 1-5.7-5.7L9 12" />
+    </svg>
+  );
+}
+
+export function IconPalette(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <path d="M12 4a8 8 0 1 0 0 16h1.5a2 2 0 0 0 0-4H12" />
+      <circle cx="8" cy="10" r="1" fill="currentColor" stroke="none" />
+      <circle cx="11" cy="7.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="15" cy="8" r="1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function IconPerson(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <circle cx="12" cy="8" r="3" />
+      <path d="M6 19c1.5-3 3.5-4.5 6-4.5s4.5 1.5 6 4.5" />
+    </svg>
+  );
+}
+
+export function IconInfo(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 10v6M12 7h.01" />
+    </svg>
+  );
+}
+
+export function IconServer(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <rect x="4" y="4" width="16" height="6" rx="1.5" />
+      <rect x="4" y="14" width="16" height="6" rx="1.5" />
+      <path d="M8 7h.01M8 17h.01" />
+    </svg>
+  );
+}

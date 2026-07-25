@@ -198,6 +198,18 @@ function AppShell() {
     return Boolean((m.content || "").trim()) || m.role === "tool";
   });
 
+  // Codex settings is a full-window page (no app sidebar / main titlebar chrome).
+  if (page === "settings") {
+    return (
+      <div className="app-shell settings-mode">
+        <SettingsPage />
+        <PermissionDialog />
+        <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
+        {toast && <div className="toast">{toast}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <Sidebar
@@ -218,9 +230,7 @@ function AppShell() {
           </div>
         </div>
 
-        {page === "settings" ? (
-          <SettingsPage />
-        ) : page === "projects" ? (
+        {page === "projects" ? (
           <ProjectsPage />
         ) : page === "pulls" ? (
           <PullRequestsPage />

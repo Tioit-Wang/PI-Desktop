@@ -585,9 +585,9 @@ This test plan spec is accepted when:
 - Open Projects from the sidebar.
 - Expect Codex-like page title "Projects", primary "Add new project", and either an empty state or a card grid of recent/active projects with colored glyph, path, pin/remove actions, and active highlight.
 
-### US-UI-24 Settings left navigation
-- Open Settings (footer Custom → Settings, or settings nav).
-- Expect a left settings rail (General / Providers / Plugins / About) on the sidebar surface, with content pane on the main surface—not only a top tab strip.
+### US-UI-24 Settings full-page shell
+- Open Settings (footer profile → Settings).
+- Expect **full-page** Codex settings (no app sidebar/nav). Left rail has Back to app, search, Personal/Integrations/Coding groups with icons; content pane shows section title + elevated cards.
 
 ### US-UI-25 Pull requests destination chrome
 - Open Pull requests with a project selected.
@@ -663,6 +663,13 @@ This test plan spec is accepted when:
 - Open empty home at ~1200×690 light theme.
 - Composer plate top wash ≈y537, draft ≈y552, foot shadow ≈y674; plate min-height ~140px; no large pre-plate halo.
 - Switch dark theme: night plate is elevated-primary (`#212121f5` / gray-800 96%) with downward elevation (no heavier omni night shadow).
+
+
+### US-UI-44 Settings Codex groups + rows
+- Open Settings light theme at ~1200×690.
+- Full-page shell: rail ~260px on `#f3f3f3`, main `#fff`; Back to app; search pill; General active pill with icon.
+- General content: large title, **Permissions** card with 3 toggles, **General** card with enter-to-send / mode rows.
+- Dark: rail `#000`, main `#181818`, cards elevated `#212121`.
 
 ### US-UI-38 Home chips without project
 - On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).

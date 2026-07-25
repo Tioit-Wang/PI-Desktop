@@ -30,7 +30,23 @@ type AppState = {
   permission?: ToolPermissionRequest | null;
   toast?: string | null;
   page: "chat" | "projects" | "pulls" | "scheduled" | "plugins" | "settings";
-  settingsTab: "providers" | "plugins" | "appearance" | "about";
+  settingsTab:
+    | "general"
+    | "appearance"
+    | "voice"
+    | "providers"
+    | "agent"
+    | "personalization"
+    | "keyboard"
+    | "account"
+    | "plugins"
+    | "mcp"
+    | "browser"
+    | "computer"
+    | "hooks"
+    | "connections"
+    | "git"
+    | "about";
   navStack: Array<{ page: AppState["page"]; sessionId?: string }>;
   navIndex: number;
   error?: string | null;
@@ -70,7 +86,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   plugins: [],
   permission: null,
   page: "chat",
-  settingsTab: "providers",
+  settingsTab: "general",
   navStack: [{ page: "chat" }],
   navIndex: 0,
   toast: null,
