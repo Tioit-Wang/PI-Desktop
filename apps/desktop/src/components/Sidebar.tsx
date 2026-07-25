@@ -143,7 +143,7 @@ export function Sidebar({
           </button>
         </div>
       </div>
-      <div className="no-drag flex min-h-0 flex-1 flex-col px-2.5 pb-2">
+      <div className="no-drag flex min-h-0 flex-1 flex-col px-2 pb-1.5">
         <div className="sidebar-header">
           <div className="brand">{t("app.shellName")}</div>
           <button
@@ -159,7 +159,7 @@ export function Sidebar({
         </div>
 
         <button
-          className="nav-item new-task-btn mb-1.5"
+          className="nav-item new-task-btn mb-1"
           data-nav="new-task"
           onClick={() => void newSession()}
         >
@@ -167,7 +167,7 @@ export function Sidebar({
           <span>{t("nav.newTask")}</span>
         </button>
 
-        <nav className="mb-1 space-y-0.5 px-0.5">
+        <nav className="mb-0.5 space-y-0 px-0.5">
           <button
             className={`nav-item ${page === "projects" ? "active" : ""}`}
             data-nav="projects"
@@ -215,7 +215,7 @@ export function Sidebar({
           </div>
         )}
 
-        <div className="min-h-0 flex-1 space-y-0.5 overflow-auto px-0.5">
+        <div className="min-h-0 flex-1 space-y-0 overflow-auto px-0.5">
           {filtered.length === 0 ? (
             <div className="px-2 py-3 text-[12.5px] text-text-muted">
               {t("nav.noRecentTasks")}

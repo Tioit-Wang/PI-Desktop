@@ -103,8 +103,8 @@ async function withGitBranch<T extends { path?: string; name?: string } | null |
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1280,
-    height: 840,
+    width: 1200,
+    height: 800,
     minWidth: 960,
     minHeight: 640,
     title: APP_NAME,
@@ -125,26 +125,29 @@ async function createWindow() {
     return { action: "deny" };
   });
 
-  const ensureStableBounds = () => {
+  const CODEX_BOUNDS = { x: 160, y: 40, width: 1200, height: 800 } as const;
+  const ensureStableBounds = (force = false) => {
     if (!mainWindow) return;
     const bounds = mainWindow.getBounds();
     // Stage Manager / tiling can collapse the window; restore a Codex-like footprint.
-    if (bounds.width < 960 || bounds.height < 640) {
-      mainWindow.setBounds({ x: 160, y: 40, width: 1200, height: 800 }, false);
+    if (force || bounds.width < 1000 || bounds.height < 700) {
+      mainWindow.setMinimumSize(960, 640);
+      mainWindow.setBounds({ ...CODEX_BOUNDS }, false);
+      mainWindow.setSize(CODEX_BOUNDS.width, CODEX_BOUNDS.height, false);
     }
   };
 
-  mainWindow.on("show", ensureStableBounds);
-  mainWindow.on("focus", ensureStableBounds);
+  mainWindow.on("show", () => ensureStableBounds(false));
+  mainWindow.on("focus", () => ensureStableBounds(false));
+  mainWindow.on("restore", () => ensureStableBounds(true));
 
   mainWindow.once("ready-to-show", () => {
-    ensureStableBounds();
-    // Prefer a stable initial desktop footprint even when OS remaps windows.
-    if (mainWindow && mainWindow.getBounds().width < 1100) {
-      mainWindow.setBounds({ x: 160, y: 40, width: 1200, height: 800 }, false);
-    }
+    ensureStableBounds(true);
     mainWindow?.show();
     mainWindow?.focus();
+    // Re-assert after macOS Stage Manager finishes layout.
+    setTimeout(() => ensureStableBounds(true), 250);
+    setTimeout(() => ensureStableBounds(true), 1000);
     if (process.env.PI_DESKTOP_CAPTURE === "1") {
       setTimeout(() => {
         void (async () => {

@@ -54,8 +54,9 @@
   --ds-error: #ff6764;
   --ds-info: var(--blue-300);
   --ds-shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.55);
-  --ds-shadow-composer: 0 0 0 1px color-mix(in oklab, var(--gray-0) 8%, transparent),
-    0 8px 28px rgba(0, 0, 0, 0.35);
+  --ds-shadow-composer: 0 0 0 0.5px color-mix(in oklab, var(--gray-0) 12%, transparent),
+    0 3px 7.5px rgba(0, 0, 0, 0.22),
+    0 0 20px rgba(0, 0, 0, 0.18);
   --ds-sidebar-width: clamp(240px, 275px, min(520px, calc(100vw - 320px)));
   --ds-toolbar-height: 46px;
   --ds-composer-radius: 22px;
@@ -92,8 +93,9 @@
   --ds-error: #e02e2a;
   --ds-info: #0285ff;
   --ds-shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.12);
-  --ds-shadow-composer: 0 0 0 1px color-mix(in oklab, #1a1c1f 8%, transparent),
-    0 10px 30px rgba(0, 0, 0, 0.08);
+  --ds-shadow-composer: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
+    0 3px 7.5px rgba(0, 0, 0, 0.04),
+    0 0 20px rgba(0, 0, 0, 0.05);
 }
 
 @theme {
@@ -288,7 +290,7 @@ textarea:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 2px 6px 12px;
+  padding: 0 4px 8px;
 }
 
 .brand {
@@ -344,18 +346,18 @@ textarea:disabled {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
-  padding: 48px 28px 200px;
+  gap: 14px;
+  padding: 40px 28px 180px;
   text-align: center;
 }
 
 .empty-hero-icon {
   display: flex;
-  height: 44px;
-  width: 44px;
+  height: 40px;
+  width: 40px;
   align-items: center;
   justify-content: center;
-  color: color-mix(in oklab, var(--ds-text-primary) 28%, transparent);
+  color: color-mix(in oklab, var(--ds-text-primary) 22%, transparent);
 }
 
 .empty-hero h1 {
@@ -363,9 +365,9 @@ textarea:disabled {
   max-width: 820px;
   font-size: 28px;
   font-weight: 400;
-  letter-spacing: -0.03em;
-  line-height: 1.28;
-  color: color-mix(in oklab, var(--ds-text-primary) 88%, transparent);
+  letter-spacing: -0.025em;
+  line-height: 34px;
+  color: var(--ds-text-primary);
 }
 
 .empty-hero .project-underline {
@@ -382,7 +384,7 @@ textarea:disabled {
   bottom: 0;
   display: flex;
   justify-content: center;
-  padding: 0 24px 20px;
+  padding: 0 24px 16px;
   background: linear-gradient(
     to top,
     var(--ds-bg-primary) 52%,
@@ -545,7 +547,7 @@ textarea:disabled {
 .send-btn {
   display: inline-flex;
   height: 28px;
-  width: 28px;
+  width: 28px; /* Codex spacing-token-button-composer = 28px */
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -582,11 +584,12 @@ textarea:disabled {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border-radius: 10px;
-  padding: 7px 10px;
+  padding: 6px 8px;
+  min-height: 32px;
   color: var(--ds-text-secondary);
-  font-size: 13.5px;
+  font-size: 13px;
   text-align: left;
   transition: background 120ms ease, color 120ms ease;
 }
@@ -605,12 +608,13 @@ textarea:disabled {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   border-radius: 10px;
   background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
-  padding: 7px 10px;
+  padding: 6px 8px;
+  min-height: 32px;
   color: var(--ds-text-primary);
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 500;
   transition: background 120ms ease;
 }
@@ -624,9 +628,10 @@ textarea:disabled {
   width: 100%;
   overflow: hidden;
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 5px 8px;
+  min-height: 28px;
   color: var(--ds-text-secondary);
-  font-size: 13.5px;
+  font-size: 13px;
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -644,9 +649,9 @@ textarea:disabled {
 }
 
 .section-label {
-  padding: 14px 10px 6px;
+  padding: 12px 8px 4px;
   color: var(--ds-text-muted);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 500;
   letter-spacing: 0.01em;
 }
@@ -977,8 +982,8 @@ textarea:disabled {
 
 /* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
 :root[data-theme="light"] .composer-chips {
-  background: color-mix(in oklab, #1a1c1f 3%, #ffffff);
-  box-shadow: 0 0 0 1px color-mix(in oklab, #1a1c1f 6%, transparent);
+  background: color-mix(in oklab, #1a1c1f 2.5%, #ffffff);
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 10%, transparent);
 }
 
 :root[data-theme="light"] .new-task-btn {

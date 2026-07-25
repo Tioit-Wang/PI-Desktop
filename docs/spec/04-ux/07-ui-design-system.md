@@ -243,6 +243,11 @@ Light theme: minimal shadows only where layering is insufficient.
 | `elevation-2` | bg-tertiary | bg-tertiary + `shadow-md` | Hover, dropdowns |
 | `elevation-3` | bg-tertiary + border-accent | bg-white + `shadow-lg` | Dialogs, overlays |
 
+Composer elevation (Codex `elevation-prominent`):
+
+- stroke: `0 0 0 0.5px` border-heavy mix
+- soft: `0 3px 7.5px` + `0 0 20px` low-alpha black
+
 Shadow token values (light theme only):
 
 ```text

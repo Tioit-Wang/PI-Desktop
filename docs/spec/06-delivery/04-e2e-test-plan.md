@@ -540,3 +540,9 @@ This test plan spec is accepted when:
 ### US-UI-14 Semantic chrome tokens
 - Toggle theme system → light → dark without restart.
 - Shell chrome (sidebar items, chips, composer, icon buttons) follows semantic `--ds-text-*` / `--ds-bg-*` tokens in both themes; no hard-coded white (`gray-0`) text on light surfaces.
+
+### US-UI-15 Codex density + elevation
+- Sidebar nav rows use ~32px height / 13px type with 8px horizontal padding (Codex `radius-token-row` 10px).
+- Floating composer uses Codex elevation-prominent: 0.5px stroke + soft 3px/20px shadow (not heavy 10–30px drop).
+- Empty hero title is 28px / 34px line-height, weight 400.
+- Window restores ≥1000×700 (target 1200×800) if Stage Manager collapses it.
