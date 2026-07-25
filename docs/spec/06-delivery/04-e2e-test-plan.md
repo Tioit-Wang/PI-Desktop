@@ -668,7 +668,7 @@ This test plan spec is accepted when:
 ### US-UI-44 Settings Codex groups + rows
 - Open Settings light theme at ~1200×690.
 - Full-page shell: rail ~260px on `#f3f3f3`, main `#fff`; Back to app; search pill; General active pill with icon.
-- General content: large title, **Permissions** card with 3 toggles, **General** card with enter-to-send / mode rows.
+- General content: large title, **Permissions** card with 3 blue toggles, **General** card with default open target / language / menu bar / bottom panel rows.
 - Dark: rail `#000`, main `#181818`, cards elevated `#212121`.
 
 ### US-UI-38 Home chips without project
