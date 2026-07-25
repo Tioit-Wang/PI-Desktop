@@ -314,6 +314,14 @@ async function createWindow() {
                 document.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true, bubbles: true }));
               }
             `);
+            await new Promise((r) => setTimeout(r, 400));
+            try {
+              await mainWindow!.webContents.executeJavaScript(
+                `void window.__PI_DESKTOP__?.ensureVisualFixtures?.()`,
+              );
+            } catch {
+              // fixtures optional
+            }
             await new Promise((r) => setTimeout(r, 500));
             await clickNav("new-task");
             await new Promise((r) => setTimeout(r, 600));

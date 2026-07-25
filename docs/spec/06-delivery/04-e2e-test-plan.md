@@ -641,6 +641,10 @@ This test plan spec is accepted when:
 - Model chip shows the active model id; effort options remain in the model/intelligence menu.
 - Placeholder and approval chip remain legible on light and dark plates.
 
+### US-UI-39 Home mark + hero title optical
+- Empty-home Codex mark is visible (not near-invisible); stroke density closer to Codex gold than a 0.3 ghost.
+- Empty-home title with a project uses a readable project label span (short basenames may display as `PI-Desktop` for optical parity).
+
 ### US-UI-38 Home chips without project
 - On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).
 - Starting a transcript restores the workspace capsule above the docked composer.

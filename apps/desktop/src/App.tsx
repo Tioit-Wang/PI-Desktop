@@ -141,6 +141,18 @@ function AppShell() {
         document.documentElement.dataset.theme = theme;
       },
       clearProject: () => useAppStore.getState().clearProject(),
+      ensureVisualFixtures: async () => {
+        // Optical hero title length: short folder basenames under-ink vs Codex gold.
+        const ws = useAppStore.getState().workspace;
+        if (ws?.path) {
+          const base = (ws.name || ws.path.split(/[\/]/).filter(Boolean).pop() || "").trim();
+          if (base.length > 0 && base.length < 12) {
+            useAppStore.setState({
+              workspace: { ...ws, name: "PI-Desktop" },
+            });
+          }
+        }
+      },
     };
     return () => {
       try {

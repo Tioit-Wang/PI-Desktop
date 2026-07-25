@@ -611,7 +611,8 @@ textarea:disabled {
   align-items: center;
   justify-content: center;
   color: var(--ds-text-primary);
-  opacity: 0.34;
+  /* Icon mass already near gold; keep slightly soft */
+  opacity: 0.5;
   transition: opacity 120ms ease, transform 180ms ease;
   cursor: default;
   user-select: none;
@@ -626,9 +627,9 @@ textarea:disabled {
   max-width: min(100%, 42rem);
   font-size: 28px; /* Codex --text-xl / heading-xl */
   font-weight: 400;
-  letter-spacing: -0.025em;
+  letter-spacing: -0.02em;
   line-height: 1.2;
-  color: var(--ds-text-primary);
+  color: #1a1c1f;
   white-space: pre-wrap;
 }
 
@@ -1450,6 +1451,11 @@ textarea:disabled {
   padding: 4px 6px 8px;
   /* Codex footer has no hard separator; keep surface continuous */
   border-top: none;
+  background: transparent;
+}
+
+:root[data-theme="light"] .sidebar-footer {
+  background: #f3f3f3;
 }
 
 .sidebar-footer .nav-item {
