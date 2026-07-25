@@ -1,69 +1,106 @@
-# 10. Security
+# 01. Security
 
-## 1. 安全目标
+> Language: English (per ADR 0009). Statuses reflect the implementation as of
+> M5 hardening. Cross-references: [logging](../03-runtime/09-logging-and-observability.md)
+> · [process model](../03-runtime/07-process-model.md) · [plugin security](../07-plugins/04-plugin-security.md)
 
-1. 防止 renderer 获得无约束系统权限
-2. 保护 API Key
-3. 限制 agent 工具造成的破坏半径
-4. 保证关键操作可审计
+## 1. Security goals
 
-## 2. Electron 安全基线
+1. The renderer must never gain unconstrained system access
+2. Protect provider API keys
+3. Bound the blast radius of agent tool execution
+4. Keep sensitive operations auditable
 
-必须：
+## 2. Electron baseline
+
+Required (all **implemented**):
 
 - `contextIsolation: true`
 - `nodeIntegration: false`
-- `sandbox: true`（preload 设计允许时）
-- 关闭远程模块
-- 限制导航到非预期 URL
-- preload 仅暴露白名单 API
+- `sandbox: true` — the preload is a fully bundled CJS file with no runtime
+  module resolution, verified end-to-end by `test:e2e:boot`
+- No remote module (Electron ≥ 14 default)
+- Navigation locked down: `setWindowOpenHandler` denies and forwards to the
+  OS browser; `will-navigate` blocks all non-dev-server navigations
+- Preload exposes a whitelist-checked `invoke`/`on` bridge only
+  (`IPC_WHITELIST` enforced on both preload and main sides)
 
-## 3. 密钥安全
+### Content Security Policy
 
-- 使用 `safeStorage` 加密存放
-- UI 只显示“已配置/未配置”
-- 日志禁止打印 secret
-- 错误信息避免回显完整 key
+- Dev: `script-src 'self' 'unsafe-inline' 'unsafe-eval'` (required by Vite
+  HMR tooling), localhost websocket connect-src.
+- Production build: `'unsafe-eval'` and localhost connect-src are stripped
+  at build time (`tightenCsp` plugin in `electron.vite.config.ts`);
+  `connect-src 'self'` only. Provider network traffic happens in the Node
+  sidecar, never in the renderer.
 
-## 4. 工作区沙箱
+### Future hardening (tracked, post-MVP)
 
-- 文件工具默认限制在 project root
-- path normalize + root boundary check
-- 拒绝越界符号链接目标（能检测时）
+- Electron fuses (`runAsNode`, `nodeCliInspect` off) at package time
+- `webSecurity` assertions in an automated security e2e
 
-## 5. 命令执行安全
+## 3. Secrets
 
-- Bash 默认确认
-- timeout 强制存在
-- 输出截断
-- 记录完整命令审计信息
-- 后续支持 allowlist/denylist
+- Keys stored via Electron `safeStorage` encryption, managed by host-core
+  (see [14-secrets-storage](../03-runtime/14-secrets-storage.md))
+- UI shows configured/not-configured only; never echoes key material
+- Logs must never contain secrets: Logger redaction (key-name patterns +
+  `sk-`-style token pattern) in Electron main, `redact_value` in host-core
+  audit writes; verified by the no-secret-leak smoke check
+- Error messages must not echo full keys
 
-## 6. 供应链
+## 4. Workspace sandbox
 
-- 锁定依赖版本策略（实现时定）
-- 优先使用官方 pi 包
-- 不在 MVP 动态执行远程脚本插件
+- File tools are restricted to the project root by default
+- Path normalization + root boundary check in host-core
+  (`workspace::tests::blocks_escape` covers escape attempts)
+- Symlink targets outside the root are rejected when detectable
 
-## 7. 更新安全（后续）
+## 5. Command execution
 
-- 签名发布
-- 自动更新通道校验
-- 不在 MVP 强依赖
+- Bash requires confirmation by default (risk-tiered permission cards)
+- Timeouts are mandatory; output truncated at 256KB / 4000 lines with the
+  `[truncated: output exceeded 256KB or 4000 lines]` marker
+- Full command line recorded in the audit log (SQLite, redacted)
+- Allowlist/denylist refinement is a tracked follow-up
+  ([03-tools-and-permissions](../03-runtime/03-tools-and-permissions.md))
 
-## 8. 威胁模型（简版）
+## 6. Supply chain
 
-| 威胁 | 缓解 |
+- Dependency versions locked via `pnpm-lock.yaml` / `Cargo.lock` committed
+  to the repo; upgrades are explicit commits
+- Prefer official pi packages
+- No remote script execution for plugins in MVP (local install only, D009)
+
+## 7. Update security (post-MVP)
+
+- Signed releases (Developer ID + notarization lane exists in
+  [release runbook](../06-delivery/06-release-runbook.md))
+- Auto-update channel with signature verification — not an MVP dependency
+
+## 8. Host process attack surface
+
+- host-core speaks NDJSON JSON-RPC on stdio to the Electron main process
+  only; it binds no network ports
+- The agent sidecar reaches host services only through the main-process
+  proxy (`host.proxy`), inheriting the same permission checks
+- host-core child processes (Bash tool) run with the user's privileges;
+  containment relies on the permission layer, not OS sandboxing (documented
+  limitation for MVP)
+
+## 9. Threat model (summary)
+
+| Threat | Mitigation |
 |---|---|
-| 恶意网页内容进 renderer | 无 Node、限制导航、CSP 评估 |
-| Prompt 诱导删库/泄密 | 权限确认、路径限制、密钥隔离 |
-| 依赖投毒 | 锁版本、少依赖、审查原生模块 |
-| 本地恶意扩展 | MVP 不引入任意扩展执行 |
+| Malicious web content in renderer | no Node, sandbox, navigation lock, CSP |
+| Prompt-injected destructive tool use | permission confirmation, path boundary, secret isolation |
+| Dependency poisoning | lockfiles, few deps, native-module review |
+| Malicious local plugin | declared permissions, no secret access, process isolation tracked post-MVP (ADR 0008) |
 
-## 9. 安全验收门槛
+## 10. Security acceptance gates
 
-1. renderer 无法直接 require fs
-2. 未确认不能执行 Write/Edit/Bash
-3. workspace 外写文件失败
-4. API Key 不以明文出现在会话导出默认选项中
-5. IPC 非白名单 channel 不可用
+1. Renderer cannot `require('fs')` (sandbox + no nodeIntegration) — verified
+2. Write/Edit/Bash cannot run without confirmation — verified (M3)
+3. Writing outside the workspace fails — verified (host tests)
+4. API keys never appear in plaintext in exports/logs by default — verified
+5. Non-whitelisted IPC channels are rejected — verified (M1)

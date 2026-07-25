@@ -1,96 +1,105 @@
-# 13. Acceptance Criteria
+# 02. Acceptance Criteria
 
-## 1. MVP 验收总则
+> Language: English (per ADR 0009).
+> Sign-off state: M1–M4 accepted 2026-07-25 per `docs/project/BOARD.md`
+> validation snapshot; M5 items tracked in [milestones](01-mvp-milestones.md).
+> Evidence keys: `auto:<script>` = automated check, `manual:M<n>` = verified
+> during that milestone's exit review, `open` = not yet verified.
 
-MVP 通过的定义：
+## 1. MVP acceptance statement
 
-> 在 macOS 上，用户可配置模型、打开项目、完成一次含工具调用的受控任务，并在重启后恢复会话。
+MVP passes when:
 
-## 2. 功能验收
+> On macOS, a user can configure a model, open a project, complete one
+> permission-gated task that uses tools, and restore the session after an
+> app restart.
 
-### A. 应用启动
-- [ ] 应用可启动并显示主窗口
-- [ ] 主进程/渲染进程 bridge 正常
-- [ ] 显示应用版本信息
-- [ ] first-run inline checklist appears on fresh profile
+## 2. Functional acceptance
 
-### B. 模型配置
-- [ ] 可添加 provider
-- [ ] 可保存 API Key
-- [ ] 重启后 key 仍可用（不需重填，或按设计恢复）
-- [ ] 未配置模型时有清晰阻断提示
+### A. App startup
+- [x] App launches and shows the main window — auto:`test:e2e:boot`
+- [x] Main↔renderer bridge works — auto:`test:e2e:boot` (sandboxed preload + IPC round-trip)
+- [x] App version info is exposed — auto:`test:e2e:boot` (version + host protocol)
+- [x] First-run inline checklist appears on a fresh profile — manual:M2
 
-### C. 会话与流式对话
-- [ ] 可新建会话
-- [ ] 可发送消息
-- [ ] assistant 流式输出
-- [ ] 可 abort 生成
-- [ ] 可切换历史会话
+### B. Model configuration
+- [x] A provider can be added — auto:`test:e2e` (provider CRUD)
+- [x] An API key can be saved — auto:`test:e2e` (secret set/get via host)
+- [x] Key survives restart (no re-entry needed) — manual:M2 (safeStorage-backed store)
+- [x] Clear blocking message when no model is configured — manual:M2 (`MODEL_NOT_CONFIGURED`)
 
-### D. 工作区
-- [ ] 可选择项目目录
-- [ ] UI 显示当前项目
-- [ ] 工具路径基于该项目
+### C. Sessions and streaming chat
+- [x] New session can be created — auto:`test:e2e`
+- [x] Message can be sent — auto:`test:e2e` (live model, when key provided)
+- [x] Assistant output streams token-by-token — auto:`test:e2e` / `e2e-agent-live`
+- [x] Generation can be aborted — manual:M2 (abort → partial output preserved)
+- [x] Switching between history sessions works — manual:M2
 
-### E. 工具与权限
-- [ ] Chat mode cannot run Write/Edit/Bash
-- [ ] permission timeout (120s) becomes deny
-- [ ] Read/Glob/Grep 可在项目内工作
-- [ ] Write/Edit/Bash 触发确认
-- [ ] 拒绝后不会执行
-- [ ] 允许后结果回传模型与 UI
-- [ ] workspace 外路径被拒绝
+### D. Workspace
+- [x] A project directory can be selected — manual:M3
+- [x] UI shows the current project — manual:M3
+- [x] Tool paths resolve against the project root — auto:host-core tests (`workspace::tests`)
 
-### F. 持久化
-- [ ] 重启后会话仍在
-- [ ] 消息历史可恢复
-- [ ] 删除会话生效
+### E. Tools and permissions
+- [x] Chat mode cannot run Write/Edit/Bash — manual:M3 (D004)
+- [x] Permission timeout (120s) becomes deny — manual:M3 (D005)
+- [x] Read/Glob/Grep work inside the project — auto:`test:e2e` (glob tool)
+- [x] Write/Edit/Bash trigger a confirmation card — manual:M3
+- [x] Deny prevents execution — manual:M3
+- [x] Allow returns the result to model and UI — manual:M3
+- [x] Paths outside the workspace are rejected — auto:host-core tests (`blocks_escape`)
 
-### G. 插件系统（本地最小可用）
-- [ ] 可从本地目录加载插件
-- [ ] 插件命令出现在命令面板并执行成功
-- [ ] 插件可打开面板（若声明 panel）
-- [ ] 插件可注册并调用至少一个 agent tool
-- [ ] 禁用插件后命令与 tool 失效
-- [ ] 插件异常不导致应用退出
+### F. Persistence
+- [x] Sessions survive restart — manual:M2 (SQLite via host-core)
+- [x] Message history is restored — manual:M2
+- [x] Session deletion takes effect — auto:`test:e2e`
+
+### G. Plugin system (local minimum)
+- [x] Plugin loads from a local directory — auto:`test:e2e` (dev load)
+- [x] Plugin command appears in the palette and executes — manual:M4
+- [x] Plugin can open a panel (if declared) — manual:M4
+- [x] Plugin can register and serve at least one agent tool — manual:M4
+- [x] Disabling removes commands and tools — auto:`test:e2e` (plugin disable)
+- [x] A plugin exception does not crash the app — manual:M4
 
 ### H. Diagnostics
-- [ ] errors expose stable codes
-- [ ] logs folder can be opened
-- [ ] secrets not present in logs for normal flows
+- [x] Errors expose stable codes — auto:`test:e2e` (fatal-path assertions)
+- [x] Logs folder can be opened from the app — manual:M5 (Open logs action)
+- [x] Secrets never appear in logs on normal flows — auto:`test:e2e` (no-secret-leak)
 
-## 3. 安全验收
+## 3. Security acceptance
 
-- [ ] renderer 无 Node 集成
-- [ ] 非白名单 IPC 不可调用
-- [ ] secret 不以明文进普通日志
-- [ ] 高风险工具默认确认
-- [ ] 插件未授权权限不可调用
-- [ ] 插件无法读取 API Key
+- [x] Renderer has no Node integration (sandboxed, contextIsolation) — auto:`test:e2e:boot`
+- [x] Non-whitelisted IPC channels cannot be invoked — manual:M1 (preload whitelist assertion)
+- [x] Secrets are never written to plain logs — auto:`test:e2e` + Logger/audit redaction
+- [x] High-risk tools require confirmation by default — manual:M3
+- [ ] Plugin without a granted permission cannot call the API — open (enforcement matrix lands with plugin runtime isolation, see 07-plugins/13)
+- [x] Plugins cannot read provider API keys — manual:M4 (no secrets surface in plugin host services)
 
-## 4. 质量验收
+## 4. Quality acceptance
 
-- [ ] 主路径无崩溃
-- [ ] 错误有可读 message
-- [ ] 长输出不会冻死 UI（至少基本可用）
-- [ ] 关键操作有 loading/running 状态
+- [x] No crash on the main path — auto:`test:e2e:boot` + `test:e2e:supervision`
+- [x] Errors show a readable message — manual:M2 (AppError message surfaced)
+- [x] Long output does not freeze the UI — manual:M3 (256KB/4000-line truncation)
+- [x] Key operations show loading/running state — manual:M2
 
-## 5. 演示脚本（验收演示）
+## 5. Acceptance demo script
 
-1. 启动 PI-Desktop
-2. 配置一个可用模型
-3. 打开一个本地示例项目
-4. 提问：解释项目结构
-5. 要求：修改某个无害文件并写入注释
-6. 在权限卡上确认
-7. 中止一次生成
-8. 重启应用，确认会话仍在
-9. 加载示例插件，执行一条插件命令
-10. 禁用插件并确认命令消失
+1. Launch PI-Desktop
+2. Configure a working model
+3. Open a local sample project
+4. Ask: explain the project structure
+5. Ask: modify a harmless file and add a comment
+6. Approve on the permission card
+7. Abort one generation mid-stream
+8. Restart the app, confirm the session is still there
+9. Load the sample plugin, run one plugin command
+10. Disable the plugin and confirm the command disappears
 
-全部成功则 MVP 功能验收通过。
+All steps passing = MVP functional acceptance.
 
-## 6. 未通过时的处理
+## 6. Failure handling
 
-- 阻断项：A/B/C/E/F/G/安全项任一项失败，不可宣称 MVP 完成
-- 非阻断项：UI 细节、文案、非主路径 bug 可列入 known issues
+- Blocking: any failure in A/B/C/E/F/G or Security means MVP cannot be
+  declared complete.
+- Non-blocking: UI details, copy, off-main-path bugs go to known issues.
