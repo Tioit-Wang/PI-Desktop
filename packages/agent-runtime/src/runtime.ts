@@ -17,6 +17,7 @@ import type {
   AgentEventEnvelope,
   AgentStatus,
   Mode,
+  ThinkingLevel,
   UiMessage,
 } from "@pi-desktop/shared";
 import type { HostClient } from "./host-client.js";
@@ -28,6 +29,8 @@ export type RuntimeProviderConfig = {
   modelId: string;
   apiKey: string;
   authKind?: string;
+  supportsReasoning: boolean;
+  supportedThinkingLevels: ThinkingLevel[];
 };
 
 export type PluginToolDef = {
@@ -43,6 +46,7 @@ export type AgentRuntimeOptions = {
   sessionId: string;
   mode: Mode;
   provider: RuntimeProviderConfig;
+  thinkingLevel: ThinkingLevel;
   systemPrompt?: string;
   /** Persisted transcript to seed the agent with (session isolation: each
    * session's agent carries only its own history). */
@@ -56,17 +60,77 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function textFromContent(content: unknown): string {
-  if (typeof content === "string") return content;
-  if (!Array.isArray(content)) return "";
-  return content
-    .map((part) => {
-      if (!part || typeof part !== "object") return "";
-      const p = part as { type?: string; text?: string };
-      if (p.type === "text" && typeof p.text === "string") return p.text;
-      return "";
-    })
-    .join("");
+const THINKING_LEVELS: ThinkingLevel[] = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
+
+type AssistantContent = {
+  text: string;
+  thinking: string;
+  hasText: boolean;
+  hasThinking: boolean;
+};
+
+function assistantContent(content: unknown): AssistantContent {
+  if (typeof content === "string") {
+    return { text: content, thinking: "", hasText: true, hasThinking: false };
+  }
+  if (!Array.isArray(content)) {
+    return { text: "", thinking: "", hasText: false, hasThinking: false };
+  }
+
+  let text = "";
+  let thinking = "";
+  let hasText = false;
+  let hasThinking = false;
+  for (const part of content) {
+    if (!part || typeof part !== "object") continue;
+    const block = part as {
+      type?: string;
+      text?: string;
+      thinking?: string;
+    };
+    if (block.type === "text" && typeof block.text === "string") {
+      hasText = true;
+      text += block.text;
+    } else if (block.type === "thinking") {
+      hasThinking = true;
+      if (typeof block.thinking === "string") {
+        thinking += block.thinking;
+      } else if (typeof block.text === "string") {
+        // Accept OpenAI-compatible adapters that expose thinking as `text`.
+        thinking += block.text;
+      }
+    }
+  }
+  return { text, thinking, hasText, hasThinking };
+}
+
+function clampThinkingLevel(
+  provider: RuntimeProviderConfig,
+  requested: ThinkingLevel,
+): ThinkingLevel {
+  if (!provider.supportsReasoning) return "off";
+
+  const supported = new Set(provider.supportedThinkingLevels ?? ["off"]);
+  if (supported.has(requested)) return requested;
+
+  const requestedIndex = THINKING_LEVELS.indexOf(requested);
+  for (let index = requestedIndex; index < THINKING_LEVELS.length; index += 1) {
+    const candidate = THINKING_LEVELS[index];
+    if (supported.has(candidate)) return candidate;
+  }
+  for (let index = requestedIndex - 1; index >= 0; index -= 1) {
+    const candidate = THINKING_LEVELS[index];
+    if (supported.has(candidate)) return candidate;
+  }
+  return "off";
 }
 
 export class DesktopAgentRuntime {
@@ -76,6 +140,7 @@ export class DesktopAgentRuntime {
   readonly sessionId: string;
   private mode: Mode;
   private provider: RuntimeProviderConfig;
+  private thinkingLevel: ThinkingLevel;
   private host: HostClient;
   private onEvent: (envelope: AgentEventEnvelope) => void;
   private currentAssistant?: UiMessage;
@@ -85,6 +150,7 @@ export class DesktopAgentRuntime {
     this.sessionId = opts.sessionId;
     this.mode = opts.mode;
     this.provider = opts.provider;
+    this.thinkingLevel = clampThinkingLevel(opts.provider, opts.thinkingLevel);
     this.host = opts.host;
     this.onEvent = opts.onEvent;
     this.pluginTools = opts.pluginTools ?? [];
@@ -121,7 +187,7 @@ export class DesktopAgentRuntime {
           "You are PI-Desktop, a local-first coding agent. Prefer concise, actionable answers. Use tools when they help.",
         model,
         tools,
-        thinkingLevel: "off",
+        thinkingLevel: this.thinkingLevel,
         messages: this.historyToAgentMessages(opts.history ?? []),
       },
     });
@@ -135,10 +201,21 @@ export class DesktopAgentRuntime {
   matches(
     mode: Mode,
     provider: RuntimeProviderConfig,
+    thinkingLevel: ThinkingLevel,
     pluginToolNames: string[] = [],
   ): boolean {
     const current = this.pluginTools.map((t) => t.name).sort().join(",");
     const next = [...pluginToolNames].sort().join(",");
+    const currentThinkingLevels = [
+      ...(this.provider.supportedThinkingLevels ?? ["off"]),
+    ]
+      .sort()
+      .join(",");
+    const nextThinkingLevels = [
+      ...(provider.supportedThinkingLevels ?? ["off"]),
+    ]
+      .sort()
+      .join(",");
     return (
       !this.disposed &&
       this.mode === mode &&
@@ -147,6 +224,9 @@ export class DesktopAgentRuntime {
       (this.provider.baseUrl ?? "") === (provider.baseUrl ?? "") &&
       this.provider.apiKey === provider.apiKey &&
       this.provider.authKind === provider.authKind &&
+      this.provider.supportsReasoning === provider.supportsReasoning &&
+      currentThinkingLevels === nextThinkingLevels &&
+      this.thinkingLevel === clampThinkingLevel(provider, thinkingLevel) &&
       current === next
     );
   }
@@ -165,15 +245,22 @@ export class DesktopAgentRuntime {
     };
     const messages: AgentMessage[] = [];
     for (const m of history) {
-      const text = (m.content || "").trim();
-      if (!text) continue;
       const timestamp = Date.parse(m.createdAt) || Date.now();
       if (m.role === "user") {
+        if (!(m.content || "").trim()) continue;
         messages.push({ role: "user", content: m.content, timestamp });
       } else if (m.role === "assistant") {
+        const content = [];
+        if (m.thinking?.trim()) {
+          content.push({ type: "thinking" as const, thinking: m.thinking });
+        }
+        if (m.content?.trim()) {
+          content.push({ type: "text" as const, text: m.content });
+        }
+        if (content.length === 0) continue;
         messages.push({
           role: "assistant",
-          content: [{ type: "text", text: m.content }],
+          content,
           api: "openai-completions",
           provider: this.provider.id,
           model: this.provider.modelId,
@@ -187,20 +274,30 @@ export class DesktopAgentRuntime {
   }
 
   private buildModel(): Model<"openai-completions"> {
+    const thinkingLevelMap: Partial<Record<ThinkingLevel, string | null>> = {};
+    for (const level of THINKING_LEVELS) {
+      if (!(this.provider.supportedThinkingLevels ?? ["off"]).includes(level)) {
+        thinkingLevelMap[level] = null;
+      } else if (level === "xhigh" || level === "max") {
+        // pi-ai requires extended levels to be explicitly opted into.
+        thinkingLevelMap[level] = level;
+      }
+    }
+
     return {
       id: this.provider.modelId,
       name: this.provider.modelId,
       api: "openai-completions",
       provider: this.provider.id,
       baseUrl: this.provider.baseUrl ?? "https://api.openai.com/v1",
-      reasoning: false,
+      reasoning: this.provider.supportsReasoning,
+      thinkingLevelMap,
       input: ["text"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
       contextWindow: 128000,
       maxTokens: 8192,
       compat: {
         supportsDeveloperRole: false,
-        supportsReasoningEffort: false,
       },
     };
   }
@@ -295,11 +392,14 @@ export class DesktopAgentRuntime {
         break;
       case "message_start": {
         if (event.message.role === "assistant") {
-          const content = textFromContent((event.message as any).content);
+          const content = assistantContent((event.message as any).content);
           this.currentAssistant = {
             id: randomUUID(),
             role: "assistant",
-            content,
+            content: content.text,
+            ...(content.hasThinking && content.thinking
+              ? { thinking: content.thinking }
+              : {}),
             createdAt: nowIso(),
             status: "streaming",
           };
@@ -312,28 +412,59 @@ export class DesktopAgentRuntime {
       }
       case "message_update": {
         if (this.currentAssistant && event.message.role === "assistant") {
-          const content = textFromContent((event.message as any).content);
-          const prev = this.currentAssistant.content;
-          const delta = content.startsWith(prev) ? content.slice(prev.length) : content;
+          const content = assistantContent((event.message as any).content);
+          const previousText = this.currentAssistant.content;
+          const previousThinking = this.currentAssistant.thinking ?? "";
+          const nextText = content.hasText ? content.text : previousText;
+          const nextThinking = content.hasThinking
+            ? content.thinking
+            : previousThinking;
+          const deltaText = content.hasText
+            ? content.text.startsWith(previousText)
+              ? content.text.slice(previousText.length)
+              : content.text
+            : "";
+          const deltaThinking = content.hasThinking
+            ? content.thinking.startsWith(previousThinking)
+              ? content.thinking.slice(previousThinking.length)
+              : content.thinking
+            : "";
           this.currentAssistant = {
             ...this.currentAssistant,
-            content,
+            content: nextText,
+            ...(nextThinking
+              ? { thinking: nextThinking }
+              : content.hasThinking
+                ? { thinking: undefined }
+                : {}),
             status: "streaming",
           };
           this.emit({
             type: "message_update",
             message: this.currentAssistant,
-            deltaText: delta,
+            deltaText,
+            ...(deltaThinking ? { deltaThinking } : {}),
           });
         }
         break;
       }
       case "message_end": {
         if (this.currentAssistant && event.message.role === "assistant") {
-          const content = textFromContent((event.message as any).content);
+          const content = assistantContent((event.message as any).content);
+          const nextText = content.hasText
+            ? content.text
+            : this.currentAssistant.content;
+          const nextThinking = content.hasThinking
+            ? content.thinking
+            : this.currentAssistant.thinking ?? "";
           this.currentAssistant = {
             ...this.currentAssistant,
-            content,
+            content: nextText,
+            ...(nextThinking
+              ? { thinking: nextThinking }
+              : content.hasThinking
+                ? { thinking: undefined }
+                : {}),
             status: "complete",
           };
           this.emit({ type: "message_end", message: this.currentAssistant });

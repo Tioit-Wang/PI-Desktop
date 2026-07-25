@@ -7,7 +7,16 @@ import { createInterface } from "node:readline";
 import { randomUUID } from "node:crypto";
 import { ParentHostProxy } from "./parent-host-proxy.js";
 import { DesktopAgentRuntime } from "./runtime.js";
-import type { AgentEventEnvelope, Mode, UiMessage } from "@pi-desktop/shared";
+import {
+  normalizeSupportedThinkingLevels,
+  normalizeThinkingLevel,
+} from "./sidecar-config.js";
+import type {
+  AgentEventEnvelope,
+  Mode,
+  ThinkingLevel,
+  UiMessage,
+} from "@pi-desktop/shared";
 
 type RuntimeMap = Map<string, DesktopAgentRuntime>;
 
@@ -45,14 +54,25 @@ async function handle(method: string, params: any): Promise<unknown> {
       const sessionId = String(params.sessionId);
       const content = String(params.content ?? "");
       const mode = (params.mode as Mode) || "agent";
-      const provider = params.provider as {
+      const providerInput = params.provider as {
         id: string;
         name: string;
         baseUrl?: string;
         modelId: string;
         apiKey: string;
         authKind?: string;
+        supportsReasoning: boolean;
+        supportedThinkingLevels: ThinkingLevel[];
       };
+      const provider = {
+        ...providerInput,
+        supportsReasoning: providerInput?.supportsReasoning === true,
+        supportedThinkingLevels: normalizeSupportedThinkingLevels(
+          providerInput?.supportedThinkingLevels,
+          providerInput?.supportsReasoning === true,
+        ),
+      };
+      const thinkingLevel = normalizeThinkingLevel(params.thinkingLevel);
       const pluginTools = (params.pluginTools ?? []) as Array<{
         name: string;
         description?: string;
@@ -80,7 +100,12 @@ async function handle(method: string, params: any): Promise<unknown> {
           errorCode: "AGENT_BUSY",
         });
       }
-      let runtime = existing?.matches(mode, provider, pluginToolNames)
+      let runtime = existing?.matches(
+        mode,
+        provider,
+        thinkingLevel,
+        pluginToolNames,
+      )
         ? existing
         : undefined;
       if (existing && !runtime) {
@@ -109,6 +134,7 @@ async function handle(method: string, params: any): Promise<unknown> {
           sessionId,
           mode,
           provider,
+          thinkingLevel,
           history,
           pluginTools,
           onEvent: (envelope: AgentEventEnvelope) => {
