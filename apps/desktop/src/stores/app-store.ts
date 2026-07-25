@@ -21,6 +21,29 @@ import { rememberProject } from "../lib/recent-projects";
 // active locale's.
 const LEGACY_DEFAULT_TITLES = new Set(["new task", "new chat", "新建任务", "新对话"]);
 
+export type ToastVariant = "info" | "success" | "warning" | "error";
+
+export type ToastItem = {
+  id: number;
+  message: string;
+  variant: ToastVariant;
+  /** Auto-dismiss delay in ms; 0 keeps the toast until dismissed. */
+  duration: number;
+};
+
+export type ToastOptions = {
+  variant?: ToastVariant;
+  /** Override the variant default (4s, error 8s); 0 disables auto-dismiss. */
+  duration?: number;
+};
+
+// Design-system §11.8: default 4s auto-dismiss, errors linger 8s.
+const TOAST_DURATION_MS = 4000;
+const TOAST_ERROR_DURATION_MS = 8000;
+// Visible stack cap — oldest toasts drop first when exceeded.
+const TOAST_STACK_LIMIT = 4;
+let toastSeq = 0;
+
 function untitledTaskTitle() {
   return i18n.t("chat.untitledTask");
 }
@@ -51,7 +74,7 @@ type AppState = {
   onboarding?: OnboardingState;
   plugins: PluginSummary[];
   permission?: ToolPermissionRequest | null;
-  toast?: string | null;
+  toasts: ToastItem[];
   page: "chat" | "projects" | "pulls" | "scheduled" | "plugins" | "settings";
   settingsTab:
     | "general"
@@ -96,7 +119,8 @@ type AppState = {
   resolvePermission: (
     decision: "allow-once" | "allow-session" | "deny",
   ) => Promise<void>;
-  setToast: (message: string | null) => void;
+  showToast: (message: string, options?: ToastOptions) => void;
+  dismissToast: (id: number) => void;
   composerPrefill: string | null;
   prefillComposer: (text: string) => void;
   clearComposerPrefill: () => void;
@@ -116,7 +140,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   settingsTab: "general",
   navStack: [{ page: "chat" }],
   navIndex: 0,
-  toast: null,
+  toasts: [],
   composerPrefill: null,
   error: null,
   errorCode: null,
@@ -526,7 +550,22 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ permission: null });
     }
   },
-  setToast: (message) => set({ toast: message }),
+  showToast: (message, options) => {
+    const variant = options?.variant ?? "info";
+    const duration =
+      options?.duration ??
+      (variant === "error" ? TOAST_ERROR_DURATION_MS : TOAST_DURATION_MS);
+    set((state) => {
+      // Re-raising an identical toast restarts it instead of stacking a twin.
+      const kept = state.toasts.filter(
+        (item) => item.message !== message || item.variant !== variant,
+      );
+      const next = [...kept, { id: ++toastSeq, message, variant, duration }];
+      return { toasts: next.slice(-TOAST_STACK_LIMIT) };
+    });
+  },
+  dismissToast: (id) =>
+    set((state) => ({ toasts: state.toasts.filter((item) => item.id !== id) })),
 
   prefillComposer: (text) => set({ composerPrefill: text }),
   clearComposerPrefill: () => set({ composerPrefill: null }),

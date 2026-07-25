@@ -8,7 +8,7 @@ export function PluginsPage() {
   const { t } = useTranslation();
   const plugins = useAppStore((s) => s.plugins);
   const refreshPlugins = useAppStore((s) => s.refreshPlugins);
-  const setToast = useAppStore((s) => s.setToast);
+  const showToast = useAppStore((s) => s.showToast);
   const setSettingsTab = useAppStore((s) => s.setSettingsTab);
   const setPage = useAppStore((s) => s.setPage);
 
@@ -27,9 +27,9 @@ export function PluginsPage() {
                 try {
                   await api.loadDevPlugin();
                   await refreshPlugins();
-                  setToast(t("plugins.loadDev"));
+                  showToast(t("plugins.loadDev"), { variant: "success" });
                 } catch (e) {
-                  setToast(e instanceof Error ? e.message : String(e));
+                  showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                 }
               }}
             >
@@ -64,7 +64,7 @@ export function PluginsPage() {
                   await api.loadDevPlugin();
                   await refreshPlugins();
                 } catch (e) {
-                  setToast(e instanceof Error ? e.message : String(e));
+                  showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                 }
               }}
             >

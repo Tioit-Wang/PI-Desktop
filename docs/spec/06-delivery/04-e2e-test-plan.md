@@ -774,3 +774,10 @@ This test plan spec is accepted when:
 ### US-UI-53 Settings dark shell (D070)
 - Dark theme Settings General: black rail, elevated cards, blue on-toggles, Back returns to chat.
 
+### US-UI-54 Toast variants + lifecycle (D085)
+- Trigger a success (save provider), an error (run with an invalid key), and an info toast (branch chip).
+- Expect a bottom-right stack on an elevated plate with a tinted variant icon (green ✓ / red ! / info) and an X dismiss per card; newest enters at the corner.
+- Success/info auto-dismiss ~4s, error lingers ~8s; hovering a card pauses its countdown; X removes it immediately.
+- Repeating the same action restarts the existing toast instead of stacking a duplicate; stack never exceeds 4.
+- Capture rig scenes `pi-toasts-light` / `pi-toasts-dark` show the stack in both themes.
+

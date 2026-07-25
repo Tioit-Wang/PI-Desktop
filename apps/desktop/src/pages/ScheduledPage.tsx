@@ -8,7 +8,7 @@ import { IconClock } from "../components/icons";
 
 export function ScheduledPage() {
   const { t } = useTranslation();
-  const setToast = useAppStore((s) => s.setToast);
+  const showToast = useAppStore((s) => s.showToast);
   const selectSession = useAppStore((s) => s.selectSession);
   const setPage = useAppStore((s) => s.setPage);
   const sendPrompt = useAppStore((s) => s.sendPrompt);
@@ -24,7 +24,7 @@ export function ScheduledPage() {
       const res = await api.listScheduled();
       setTasks(res.tasks || []);
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
     } finally {
       setLoading(false);
     }
@@ -97,9 +97,9 @@ export function ScheduledPage() {
                   setPrompt("");
                   setCadence("manual");
                   await refresh();
-                  setToast(t("scheduled.create"));
+                  showToast(t("scheduled.create"), { variant: "success" });
                 } catch (e) {
-                  setToast(e instanceof Error ? e.message : String(e));
+                  showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                 }
               }}
             >
@@ -155,7 +155,7 @@ export function ScheduledPage() {
                         await sendPrompt(res.prompt);
                         await refresh();
                       } catch (e) {
-                        setToast(e instanceof Error ? e.message : String(e));
+                        showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                       }
                     }}
                   >

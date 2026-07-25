@@ -33,7 +33,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   const settings = useAppStore((s) => s.settings);
   const providers = useAppStore((s) => s.providers);
   const openProject = useAppStore((s) => s.openProject);
-  const setToast = useAppStore((s) => s.setToast);
+  const showToast = useAppStore((s) => s.showToast);
   const composerPrefill = useAppStore((s) => s.composerPrefill);
   const clearComposerPrefill = useAppStore((s) => s.clearComposerPrefill);
   const [value, setValue] = useState("");
@@ -121,7 +121,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
     if (!paths.length) return;
     const block = paths.map((p) => `@${p}`).join(" ");
     setValue((prev) => (prev.trim() ? `${prev.trimEnd()} ${block}` : block));
-    setToast(t("chat.filesAttached", { count: paths.length }));
+    showToast(t("chat.filesAttached", { count: paths.length }), { variant: "success" });
     ref.current?.focus();
   };
 
@@ -152,7 +152,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
             <button
               className="chip"
               onClick={() =>
-                setToast(
+                showToast(
                   workspace?.path
                     ? t("chat.localWorkspace", { path: workspace.path })
                     : t("project.open"),
@@ -167,7 +167,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
               className="chip"
               title={workspace?.branch ? `${t("chat.branch")} ${workspace.branch}` : t("chat.branch")}
               onClick={() =>
-                setToast(
+                showToast(
                   workspace?.branch
                     ? `${t("chat.branch")}: ${workspace.branch}`
                     : t("chat.noBranch"),
@@ -228,7 +228,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                           const res = await api.pickFiles();
                           if (!res.canceled) appendPaths(res.paths);
                         } catch (e) {
-                          setToast(e instanceof Error ? e.message : String(e));
+                          showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                         }
                       }}
                     >
@@ -244,7 +244,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                           const res = await api.pickPhotos();
                           if (!res.canceled) appendPaths(res.paths);
                         } catch (e) {
-                          setToast(e instanceof Error ? e.message : String(e));
+                          showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                         }
                       }}
                     >
@@ -256,7 +256,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                       role="menuitem"
                       onClick={() => {
                         setPlusOpen(false);
-                        setToast(t("chat.appshotSoon"));
+                        showToast(t("chat.appshotSoon"));
                       }}
                     >
                       <IconCamera size={15} />
@@ -287,7 +287,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                     try {
                       await api.setSettings({ ...settings, defaultMode: next });
                     } catch (e) {
-                      setToast(e instanceof Error ? e.message : String(e));
+                      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                     }
                   }
                 }}

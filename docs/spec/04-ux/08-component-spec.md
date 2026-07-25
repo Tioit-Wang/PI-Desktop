@@ -770,7 +770,74 @@ Overlay surface for the command palette (Cmd/Ctrl+Shift+P, per D014). Defined in
 
 ---
 
-## 17. Acceptance criteria (all components)
+## 17. Toast
+
+### 17.1 Purpose
+
+Transient, non-blocking feedback for completed actions and failures that have no inline surface (background events, cross-page confirmations). One global stack — never per-page toast markup.
+
+### 17.2 Anatomy
+
+```text
+                        ┌  toast-viewport (fixed bottom-right, z-toast) ┐
+                        │  ┌──────────────────────────────────────┐    │
+   oldest, pushed up →  │  │ (i)  Message text                 ✕  │    │
+                        │  ├──────────────────────────────────────┤    │
+   newest, at corner →  │  │ (✓)  Provider saved               ✕  │    │
+                        │  └──────────────────────────────────────┘    │
+                        └──────────────────────────────────────────────┘
+```
+
+- `ToastHost` (in `components/Toast.tsx`) renders the stack; mounted once per shell branch in `App.tsx`
+- Each card: 16px variant icon (semantic tint) · message · X dismiss button
+- Surface: `bg-elevated-opaque` + 1px `border-subtle` + `shadow-dialog`, radius-md-plus — same floating family as menus; metrics in [07-ui-design-system.md §11.8](07-ui-design-system.md#118-toast)
+
+### 17.3 API
+
+State lives in the app store (`useAppStore`):
+
+```ts
+showToast(message: string, options?: {
+  variant?: "info" | "success" | "warning" | "error"; // default "info"
+  duration?: number; // ms; default 4000 (error 8000); 0 = sticky
+});
+dismissToast(id: number); // ToastHost internal / tests
+```
+
+### 17.4 Usage rules
+
+| Rule | Detail |
+|---|---|
+| Variant semantics | `success` = a user action completed (saved, created, loaded). `error` = an operation failed (every `catch` path). `warning` = degraded/at-risk state that self-resolves. `info` = neutral notice (context echo, "not available yet"). |
+| Errors always toast as `error` | `showToast(e instanceof Error ? e.message : String(e), { variant: "error" })` — never the default variant |
+| No caller timers | Auto-dismiss is owned by the toast system; callers must not `setTimeout`-clear |
+| i18n | Messages come from the i18n catalog (D073); raw host/provider error strings pass through unchanged |
+| Not for blocking flows | Anything needing a decision uses PermissionDialog / dialog surfaces, not a toast |
+| Not for inline validation | Field-level errors render next to the field; the chat error banner (`MODEL_NOT_CONFIGURED` etc.) stays inline |
+| Host-pushed toasts | Plugin/main-process toasts arrive via `api.onToast` and render as `info` |
+
+### 17.5 Behavior
+
+- Auto-dismiss 4s (error 8s, `duration: 0` sticky); hovering a card pauses its timer, leaving resumes with remaining time
+- Stack caps at 4 — oldest drops first; re-raising an identical message+variant restarts the existing toast instead of stacking a twin
+- Newest toast enters at the corner (slide-up 200ms ease-out) pushing older cards up; exit is a 150ms ease-in fade
+- Dismiss X always available; reduced motion keeps animations near-zero-duration so removal (bound to `animationend`) still fires
+
+### 17.6 Accessibility
+
+- Viewport is `aria-live="polite"`; `success`/`info` cards are `role="status"`, `warning`/`error` are `role="alert"`
+- Dismiss button labeled with `toast.dismiss` catalog key
+- Icons are `aria-hidden`; the variant is conveyed by the announced role, not color alone
+
+### 17.7 MVP constraints
+
+- No action buttons inside toasts (post-MVP; use the inline error banner for actionable errors)
+- No progress/loading toasts — running state belongs to the working indicator
+- No toast history surface
+
+---
+
+## 18. Acceptance criteria (all components)
 
 1. All components use semantic color tokens from [07-ui-design-system.md](07-ui-design-system.md) — no raw hex
 2. All interactive elements have visible focus rings (2px accent, offset 2px)
@@ -784,3 +851,4 @@ Overlay surface for the command palette (Cmd/Ctrl+Shift+P, per D014). Defined in
 10. Empty states always provide an actionable next step, not just a message
 11. All components have correct ARIA roles and labels
 12. Responsive collapse works at 800px and 640px breakpoints
+13. Toasts stack bottom-right with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17

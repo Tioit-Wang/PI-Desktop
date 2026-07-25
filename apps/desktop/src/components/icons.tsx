@@ -11,6 +11,8 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  CircleAlert,
+  CircleCheck,
   CircleHelp,
   Clock,
   CloudDownload,
@@ -49,6 +51,7 @@ import {
   Square,
   Star,
   Sun,
+  TriangleAlert,
   UserRound,
   Webhook,
   X,
@@ -116,6 +119,10 @@ export const IconSnapshot = icon(RotateCw);
 export const IconGear = icon(Settings);
 export const IconPin = icon(Pin);
 export const IconStar = icon(Star);
+/* Toast status glyphs (see ToastHost) */
+export const IconCircleCheck = icon(CircleCheck);
+export const IconCircleAlert = icon(CircleAlert);
+export const IconTriangleAlert = icon(TriangleAlert);
 
 export function IconStop(props: IconProps) {
   return <Square size={16} strokeWidth={0} fill="currentColor" {...props} />;

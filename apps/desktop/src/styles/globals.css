@@ -1516,19 +1516,104 @@ textarea:disabled {
   padding: 18px;
 }
 
-.toast {
+/*
+  Toast notifications (design-system §11.8, component-spec §17).
+  Same floating-surface family as the elevated menus: elevated-opaque plate,
+  subtle 1px ring, dialog shadow. Variants tint the leading icon only —
+  surfaces stay neutral (restraint principle).
+*/
+.toast-viewport {
   position: fixed;
   right: 16px;
   bottom: 16px;
-  z-index: 50;
-  max-width: 360px;
-  border: 1px solid var(--ds-border-default);
+  z-index: 50; /* z-toast */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  width: min(360px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 100%;
+  border: 1px solid var(--ds-border-subtle);
   border-radius: var(--radius-md-plus);
   background: var(--ds-bg-elevated-opaque);
   box-shadow: var(--ds-shadow-dialog);
-  padding: 12px 14px;
+  padding: 10px 10px 10px 12px;
   color: var(--ds-text-primary);
+  animation: toast-in 200ms ease-out;
+}
+
+.toast.closing {
+  animation: toast-out 150ms ease-in forwards;
+}
+
+.toast-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  margin-top: 1px; /* optical center against first text line */
+}
+
+.toast.info .toast-icon {
+  color: var(--ds-info);
+}
+.toast.success .toast-icon {
+  color: var(--ds-success);
+}
+.toast.warning .toast-icon {
+  color: var(--ds-warning);
+}
+.toast.error .toast-icon {
+  color: var(--ds-error);
+}
+
+.toast-message {
+  min-width: 0;
   font-size: var(--text-md);
+  line-height: var(--leading-compact-plus);
+  overflow-wrap: anywhere;
+}
+
+.toast-dismiss {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  margin: -2px 0 -2px 2px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-2xs);
+  color: var(--ds-text-muted);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.toast-dismiss:hover {
+  background: var(--ds-bg-hover);
+  color: var(--ds-text-primary);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
 }
 
 .backend-banner {
@@ -1601,6 +1686,11 @@ textarea:disabled {
   }
   .tool-spinner {
     animation-duration: 1.6s;
+  }
+  /* Near-zero (not none): toast removal listens for animationend. */
+  .toast,
+  .toast.closing {
+    animation-duration: 0.01ms;
   }
 }
 

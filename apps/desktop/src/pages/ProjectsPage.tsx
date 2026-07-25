@@ -46,7 +46,7 @@ export function ProjectsPage() {
   const clearProject = useAppStore((s) => s.clearProject);
   const newSession = useAppStore((s) => s.newSession);
   const setPage = useAppStore((s) => s.setPage);
-  const setToast = useAppStore((s) => s.setToast);
+  const showToast = useAppStore((s) => s.showToast);
   const sessions = useAppStore((s) => s.sessions);
   const [recents, setRecents] = useState<RecentProject[]>(() => loadRecentProjects());
   const [query, setQuery] = useState("");
@@ -100,7 +100,7 @@ export function ProjectsPage() {
         setRecents(loadRecentProjects());
       }
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
     }
   };
 
@@ -110,7 +110,7 @@ export function ProjectsPage() {
       await newSession();
       setPage("chat");
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
     }
   };
 

@@ -295,6 +295,9 @@ export const zhCN = {
     fatal: "本地后端不可用",
     openLogs: "打开日志",
   },
+  toast: {
+    dismiss: "关闭通知",
+  },
   home: {
     suggestions: {
       explore: "探索并理解代码",

@@ -294,6 +294,9 @@ export const en = {
     fatal: "Local backend unavailable",
     openLogs: "Open logs",
   },
+  toast: {
+    dismiss: "Dismiss notification",
+  },
   home: {
     suggestions: {
       explore: "Explore and understand code",

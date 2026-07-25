@@ -484,6 +484,21 @@ async function createWindow() {
             await shot("pi-profile-menu");
             await setTheme("light");
             await setPage("chat");
+            // Toast stack proof (ToastHost variants) in both themes.
+            const raiseToasts = () =>
+              mainWindow!.webContents.executeJavaScript(`
+                window.__PI_DESKTOP__?.showToast?.("Provider saved", { variant: "success" });
+                window.__PI_DESKTOP__?.showToast?.("Reconnecting to local backend…", { variant: "warning" });
+                window.__PI_DESKTOP__?.showToast?.("Model request failed: 401 Unauthorized", { variant: "error" });
+              `);
+            await raiseToasts();
+            await new Promise((r) => setTimeout(r, 400));
+            await shot("pi-toasts-light");
+            await setTheme("dark");
+            await raiseToasts();
+            await new Promise((r) => setTimeout(r, 400));
+            await shot("pi-toasts-dark");
+            await setTheme("light");
             console.log("CAPTURE_DONE");
             await mainWindow!.webContents.executeJavaScript(`
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));

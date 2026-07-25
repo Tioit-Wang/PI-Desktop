@@ -513,16 +513,20 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 
 ### 11.8 Toast
 
+Full component contract and usage rules: [08-component-spec.md §17](08-component-spec.md#17-toast).
+
 | Property | Value |
 |---|---|
-| Position | bottom-right, offset 16px from edges |
-| Max width | 360px |
-| Font | text-sm |
-| Padding | px-4 py-3 |
-| Radius | radius-md |
-| Duration | 4s auto-dismiss (error: 8s, no auto-dismiss) |
-| Stack | vertical, newest on top |
-| Z-index | z-toast |
+| Position | bottom-right viewport, 16px from edges, `width: min(360px, 100vw − 32px)` |
+| Surface | `bg-elevated-opaque` + 1px `border-subtle` + `shadow-dialog` (same family as floating menus) |
+| Radius | radius-md-plus |
+| Font | text-md, leading-compact-plus |
+| Variants | `info` / `success` / `warning` / `error` — 16px Lucide status icon tinted with the semantic token; surface stays neutral (restraint principle) |
+| Duration | 4s auto-dismiss; error 8s; `duration: 0` = sticky; hover pauses the timer |
+| Stack | vertical, max 4 (oldest dropped), newest nearest the corner pushing older up; identical message+variant re-raises restart instead of stacking |
+| Dismiss | X button on every toast (`toast.dismiss` i18n label) |
+| Motion | enter 200ms ease-out slide-up/fade, exit 150ms ease-in fade; reduced-motion → near-zero duration (not `none`, removal listens for `animationend`) |
+| Z-index | z-toast (50) |
 
 ## 12. State patterns
 

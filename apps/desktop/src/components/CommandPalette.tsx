@@ -19,7 +19,7 @@ export function CommandPalette({
   const openProject = useAppStore((s) => s.openProject);
   const setPage = useAppStore((s) => s.setPage);
   const setSettingsTab = useAppStore((s) => s.setSettingsTab);
-  const setToast = useAppStore((s) => s.setToast);
+  const showToast = useAppStore((s) => s.showToast);
 
   useEffect(() => {
     if (!open) return;
@@ -86,6 +86,10 @@ export function CommandPalette({
           setSettingsTab("providers");
           setPage("settings");
           break;
+        case "builtin.settings.import":
+          setSettingsTab("import");
+          setPage("settings");
+          break;
         case "builtin.plugins.open":
           setPage("plugins");
           break;
@@ -101,7 +105,7 @@ export function CommandPalette({
       }
       onClose();
     } catch (e) {
-      setToast(e instanceof Error ? e.message : String(e));
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
     }
   };
 

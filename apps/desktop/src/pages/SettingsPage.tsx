@@ -165,7 +165,7 @@ export function SettingsPage() {
   const version = useAppStore((s) => s.version);
   const refreshProviders = useAppStore((s) => s.refreshProviders);
   const refreshPlugins = useAppStore((s) => s.refreshPlugins);
-  const setToast = useAppStore((s) => s.setToast);
+  const showToast = useAppStore((s) => s.showToast);
 
   const [query, setQuery] = useState("");
   const [name, setName] = useState("Compatible");
@@ -561,9 +561,9 @@ export function SettingsPage() {
                         });
                         setApiKey("");
                         await refreshProviders();
-                        setToast(t("settings.providerSaved"));
+                        showToast(t("settings.providerSaved"), { variant: "success" });
                       } catch (e) {
-                        setToast(e instanceof Error ? e.message : String(e));
+                        showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                       } finally {
                         setSaving(false);
                       }
@@ -602,7 +602,7 @@ export function SettingsPage() {
                                   defaultModelId: p.defaultModelId || settings.defaultModelId,
                                 });
                                 await refreshProviders();
-                                setToast(t("settings.defaultUpdated"));
+                                showToast(t("settings.defaultUpdated"), { variant: "success" });
                               }}
                             >
                               {t("settings.makeDefault")}
@@ -614,7 +614,7 @@ export function SettingsPage() {
                             onClick={async () => {
                               await api.deleteProvider(p.id);
                               await refreshProviders();
-                              setToast(t("settings.providerRemoved"));
+                              showToast(t("settings.providerRemoved"), { variant: "success" });
                             }}
                           >
                             {t("settings.delete")}
@@ -640,9 +640,9 @@ export function SettingsPage() {
                     try {
                       await api.loadDevPlugin();
                       await refreshPlugins();
-                      setToast(t("settings.devPluginLoaded"));
+                      showToast(t("settings.devPluginLoaded"), { variant: "success" });
                     } catch (e) {
-                      setToast(e instanceof Error ? e.message : String(e));
+                      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
                     }
                   }}
                 >

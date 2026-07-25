@@ -8,12 +8,14 @@ import { HomeSuggestions } from "./components/HomeSuggestions";
 import { OnboardingChecklist } from "./components/OnboardingChecklist";
 import { PermissionDialog } from "./components/PermissionDialog";
 import { CommandPalette } from "./components/CommandPalette";
+import { ToastHost } from "./components/Toast";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { PullRequestsPage } from "./pages/PullRequestsPage";
 import { ScheduledPage } from "./pages/ScheduledPage";
 import { PluginsPage } from "./pages/PluginsPage";
 import { useAppStore } from "./stores/app-store";
+import type { ToastOptions } from "./stores/app-store";
 import { api } from "./lib/api";
 import { IconCodexHome, IconPanel } from "./components/icons";
 
@@ -65,8 +67,7 @@ function AppShell() {
   const messages = useAppStore((s) => s.messages);
   const error = useAppStore((s) => s.error);
   const errorCode = useAppStore((s) => s.errorCode);
-  const toast = useAppStore((s) => s.toast);
-  const setToast = useAppStore((s) => s.setToast);
+  const showToast = useAppStore((s) => s.showToast);
   const handleAgentEvent = useAppStore((s) => s.handleAgentEvent);
   const isRunning = useAppStore((s) => s.isRunning);
   const abort = useAppStore((s) => s.abort);
@@ -105,16 +106,13 @@ function AppShell() {
   useEffect(() => {
     void bootstrap();
     const offEvent = api.onAgentEvent(handleAgentEvent);
-    const offToast = api.onToast((message) => {
-      setToast(message);
-      window.setTimeout(() => setToast(null), 2500);
-    });
+    // Host-pushed toasts (plugin runtime etc.) are informational.
+    const offToast = api.onToast((message) => showToast(message));
     const offHostStatus = api.onHostStatus((status) => {
       if (status.ok) {
         setBackendDown(null);
         if (status.restarted) {
-          setToast(t("status.restored"));
-          window.setTimeout(() => setToast(null), 2500);
+          showToast(t("status.restored"), { variant: "success" });
         }
       } else {
         setBackendDown({
@@ -150,7 +148,7 @@ function AppShell() {
       offHostStatus();
       window.removeEventListener("keydown", onKey);
     };
-  }, [bootstrap, handleAgentEvent, setToast, abort, t]);
+  }, [bootstrap, handleAgentEvent, showToast, abort, t]);
 
   const heroProject = useMemo(
     () => projectName(workspace?.path, workspace?.name),
@@ -173,6 +171,8 @@ function AppShell() {
         document.documentElement.dataset.theme = theme;
       },
       clearProject: () => useAppStore.getState().clearProject(),
+      showToast: (message: string, opts?: ToastOptions) =>
+        useAppStore.getState().showToast(message, opts),
       ensureVisualFixtures: async () => {
         // Destructive fixture seeding is capture-rig only; the rig sets
         // __PI_CAPTURE__ before invoking (see electron/main capture suite).
@@ -284,7 +284,7 @@ function AppShell() {
         <SettingsPage />
         <PermissionDialog />
         <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-        {toast && <div className="toast">{toast}</div>}
+        <ToastHost />
       </div>
     );
   }
@@ -420,7 +420,7 @@ function AppShell() {
 
       <PermissionDialog />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      {toast && <div className="toast">{toast}</div>}
+      <ToastHost />
     </div>
   );
 }
