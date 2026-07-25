@@ -641,6 +641,10 @@ This test plan spec is accepted when:
 - Model chip shows the active model id; effort options remain in the model/intelligence menu.
 - Placeholder and approval chip remain legible on light and dark plates.
 
+### US-UI-38 Home chips without project
+- On empty chat home with no workspace path, the project/Local/branch capsule is hidden (matches Codex empty gold).
+- Opening a project or switching to a transcript restores the workspace capsule above the composer.
+
 ### US-UI-37 Empty draft infinity + resize
 - Empty composer shows a left ∞ cue and visible placeholder ink (not a blank white/night hole).
 - Auto-resize never collapses empty textarea below ~28px.

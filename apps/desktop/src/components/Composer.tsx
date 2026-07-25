@@ -134,45 +134,48 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   return (
     <div className={`composer-dock composer-dock-${variant}`}>
       <div className="composer-stack">
-        <div className="composer-chips" role="group" aria-label="Workspace context">
-          <button
-            className="chip"
-            onClick={() => void openProject()}
-            title={workspace?.path ?? t("project.open")}
-          >
-            <IconFolder size={14} />
-            <span className="chip-label">
-              {projectName(workspace?.path, workspace?.name, t("project.none"))}
-            </span>
-          </button>
-          <span className="chip-sep" aria-hidden />
-          <button
-            className="chip"
-            onClick={() =>
-              setToast(
-                workspace?.path ? `Local workspace: ${workspace.path}` : t("project.open"),
-              )
-            }
-          >
-            <IconComputer size={14} />
-            <span>{t("chat.local")}</span>
-          </button>
-          <span className="chip-sep" aria-hidden />
-          <button
-            className="chip"
-            title={workspace?.branch ? `${t("chat.branch")} ${workspace.branch}` : t("chat.branch")}
-            onClick={() =>
-              setToast(
-                workspace?.branch
-                  ? `${t("chat.branch")}: ${workspace.branch}`
-                  : "No git branch detected",
-              )
-            }
-          >
-            <IconGitBranch size={14} />
-            <span className="chip-label">{branch}</span>
-          </button>
-        </div>
+        {/* Codex empty-home gold has no workspace capsule until a project is open */}
+        {(variant === "docked" || workspace?.path) && (
+          <div className="composer-chips" role="group" aria-label="Workspace context">
+            <button
+              className="chip"
+              onClick={() => void openProject()}
+              title={workspace?.path ?? t("project.open")}
+            >
+              <IconFolder size={14} />
+              <span className="chip-label">
+                {projectName(workspace?.path, workspace?.name, t("project.none"))}
+              </span>
+            </button>
+            <span className="chip-sep" aria-hidden />
+            <button
+              className="chip"
+              onClick={() =>
+                setToast(
+                  workspace?.path ? `Local workspace: ${workspace.path}` : t("project.open"),
+                )
+              }
+            >
+              <IconComputer size={14} />
+              <span>{t("chat.local")}</span>
+            </button>
+            <span className="chip-sep" aria-hidden />
+            <button
+              className="chip"
+              title={workspace?.branch ? `${t("chat.branch")} ${workspace.branch}` : t("chat.branch")}
+              onClick={() =>
+                setToast(
+                  workspace?.branch
+                    ? `${t("chat.branch")}: ${workspace.branch}`
+                    : "No git branch detected",
+                )
+              }
+            >
+              <IconGitBranch size={14} />
+              <span className="chip-label">{branch}</span>
+            </button>
+          </div>
+        )}
 
         <div className="composer-shell">
           <div className="composer-input-wrap">

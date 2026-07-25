@@ -140,6 +140,7 @@ function AppShell() {
       setThemeAttr: (theme: "light" | "dark") => {
         document.documentElement.dataset.theme = theme;
       },
+      clearProject: () => useAppStore.getState().clearProject(),
     };
     return () => {
       try {

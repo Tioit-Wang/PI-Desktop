@@ -309,6 +309,8 @@ async function createWindow() {
             await mainWindow!.webContents.executeJavaScript(`
               window.__PI_DESKTOP__?.setThemeAttr?.("light");
               window.__PI_DESKTOP__?.setPage?.("chat");
+              // Match Codex empty-home gold: no workspace capsule
+              void window.__PI_DESKTOP__?.clearProject?.();
               // ensure expanded sidebar if rail-only
               if (document.querySelector(".sidebar-rail") && !document.querySelector(".sidebar")) {
                 document.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true, bubbles: true }));
@@ -317,6 +319,11 @@ async function createWindow() {
             await new Promise((r) => setTimeout(r, 500));
             await clickNav("new-task");
             await new Promise((r) => setTimeout(r, 600));
+            // Re-clear after new-task nav in case it restored a workspace seed
+            await mainWindow!.webContents.executeJavaScript(
+              `void window.__PI_DESKTOP__?.clearProject?.()`,
+            );
+            await new Promise((r) => setTimeout(r, 300));
             try {
               if (mainWindow!.isMinimized()) mainWindow!.restore();
               mainWindow!.show();
