@@ -1,6 +1,6 @@
 # PI-Desktop Project Board
 
-GitHub Projects requires additional token scopes (`project`). 
+GitHub Projects requires additional token scopes (`project`).
 Until that is enabled, track delivery with:
 
 - GitHub Issues
@@ -16,6 +16,20 @@ Until that is enabled, track delivery with:
 | In Progress | Active work |
 | Review | Waiting validation |
 | Done | Completed |
+
+## Status snapshot (2026-07-25)
+
+| Milestone | GitHub | Local status |
+|---|---|---|
+| M0 Spec Freeze | [closed](https://github.com/vastsa/PI-Desktop/milestone/1) | Done |
+| M1 App Skeleton | [closed](https://github.com/vastsa/PI-Desktop/milestone/2) | Done |
+| M2 Pi Chat Runtime | [closed](https://github.com/vastsa/PI-Desktop/milestone/3) | Done |
+| M3 Workspace Tools | [closed](https://github.com/vastsa/PI-Desktop/milestone/4) | Done |
+| M4 Plugin Foundation | [closed](https://github.com/vastsa/PI-Desktop/milestone/5) | Done |
+| M5 Desktop Hardening | [open](https://github.com/vastsa/PI-Desktop/milestone/6) | In Progress |
+
+Open issue:
+- [#6 M5: Packaging and desktop hardening](https://github.com/vastsa/PI-Desktop/issues/6)
 
 ## Swimlanes
 
@@ -33,25 +47,20 @@ Until that is enabled, track delivery with:
 - M2 Pi Chat Runtime (provider/secrets, streaming chat, session persistence)
 - M3 Workspace Tools (Read/Glob/Grep/Write/Edit/Bash, permissions, path sandbox)
 - M4 Plugin Foundation (dev load, command palette, plugin tool registration)
+- M5 packaging scaffold (electron-builder macOS arm64 `--dir`, host/sidecar resources)
 
 ### In Progress
-- M5 polish (code signing, custom icon, full DMG notarization)
-
-### Done (continued)
-- M5 packaging scaffold (electron-builder macOS arm64 --dir, host/sidecar resources)
+- M5 polish for first macOS arm64 package
+  - code signing
+  - custom app icon
+  - full DMG notarization
+  - final isolation / logging hardening pass as needed
 
 ### Backlog
 - Playwright automated desktop e2e
 - Marketplace
 - Windows/Linux packaging
-
-## Milestone links
-
-- [M1 App Skeleton](https://github.com/vastsa/PI-Desktop/milestone/2)
-- [M2 Pi Chat Runtime](https://github.com/vastsa/PI-Desktop/milestone/3)
-- [M3 Workspace Tools](https://github.com/vastsa/PI-Desktop/milestone/4)
-- [M4 Plugin Foundation](https://github.com/vastsa/PI-Desktop/milestone/5)
-- [M5 Desktop Hardening](https://github.com/vastsa/PI-Desktop/milestone/6)
+- Skills depth / MCP / additional locales (post-MVP)
 
 ## Validation snapshot (2026-07-25)
 

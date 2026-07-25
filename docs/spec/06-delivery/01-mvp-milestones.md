@@ -82,6 +82,8 @@ Exit criteria:
 - disable removes contributions
 
 ### M5 — Desktop Hardening
+Status: **In Progress**
+
 Goal: daily-usable package.
 
 Deliverables:
@@ -90,6 +92,14 @@ Deliverables:
 - logging/error boundaries
 - session management basics
 - isolation verification
+
+Progress:
+- [x] packaging scaffold (electron-builder macOS arm64 `--dir`, host/sidecar resources)
+- [x] substantial settings/session/UI polish on main
+- [ ] code signing
+- [ ] custom app icon
+- [ ] full DMG + notarization
+- [ ] final isolation/logging hardening pass as needed for first package
 
 ### M6+ (Post-MVP)
 - Skills depth
