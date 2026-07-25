@@ -235,7 +235,7 @@ export function Sidebar({
           </div>
         )}
 
-        <div className="min-h-0 flex-1 space-y-0 overflow-auto px-0.5">
+        <div className="sidebar-recents min-h-0 flex-1 overflow-auto px-0.5">
           {filtered.length === 0 ? (
             <div className="px-2 py-3 text-[12.5px] text-text-muted">
               {t("nav.noRecentTasks")}
@@ -320,7 +320,7 @@ export function Sidebar({
             title={t("nav.openProfileMenu")}
           >
             <span className="footer-avatar" aria-hidden>
-              <IconSettings size={12} />
+              C
             </span>
             <span className="truncate">{t("nav.custom")}</span>
           </button>

@@ -620,6 +620,10 @@ This test plan spec is accepted when:
 ### US-UI-32 Dark floating box elevation
 - Given dark theme empty home, when the composer shell is painted, it uses elevated-primary `#212121` on `#181818` with elevation-prominent stroke+lift identical to light (no heavier custom dark shadow).
 
+### US-UI-33 Sidebar tasks section label
+- Sidebar recents section label matches Codex `sidebarElectron.recentChats`: EN `Tasks` / zh-CN `任务` (not “Recent tasks” / “最近任务”).
+- Section label uses compact `text-xs` tertiary styling (`px-2 py-1` rhythm).
+
 ### US-UI-31b (superseded)
 - Superseded by US-UI-31 split-grow layout.
 

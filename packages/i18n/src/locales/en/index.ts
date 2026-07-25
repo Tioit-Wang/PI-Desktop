@@ -11,7 +11,7 @@ export const en = {
     pullRequests: "Pull requests",
     scheduled: "Scheduled",
     plugins: "Plugins",
-    recents: "Recent tasks",
+    recents: "Tasks",
     settings: "Settings",
     custom: "Custom",
     profileLogs: "Logs",

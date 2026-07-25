@@ -14,7 +14,7 @@ export const zhCN = {
     pullRequests: "拉取请求",
     scheduled: "已安排",
     plugins: "插件",
-    recents: "最近任务",
+    recents: "任务",
     settings: "设置",
     custom: "Custom",
     profileLogs: "日志",

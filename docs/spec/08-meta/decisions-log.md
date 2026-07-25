@@ -68,6 +68,7 @@ This log freezes previously open questions into concrete decisions.
 | D045 | Home empty stack | **Empty chat keeps composer in home flow (not absolute bottom-only dock); refined by D047 split grow** | Initial fix for large empty gap; D047 corrects dual-grow vertical model |
 | D046 | Composer placeholder | **Empty draft uses Codex placeholder (EN/zh-CN) instead of blank** | Empty white plate read as broken without ink; match Codex `composer.placeholder.newTask.doAnything` |
 | D047 | Home split grow | **Empty home uses upper/lower grow regions (hero items-end + composer justify-end), not a single optical-center stack; dark box uses Codex elevation-prominent** | Match electron `home-main-content` dual grow + identical elevation-prominent dark/light |
+| D048 | Sidebar tasks label | **Recents section uses Codex `Tasks` / `任务` (`sidebarElectron.recentChats`)** | Match electron sidebar section heading, not “Recent tasks” |
 
 ## C. Still deferred (not blocking M1)
 
