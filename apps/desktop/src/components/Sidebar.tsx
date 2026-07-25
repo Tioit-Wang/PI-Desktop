@@ -238,20 +238,22 @@ export function Sidebar({
 
         <div className="sidebar-footer no-drag">
           <button
-            className={`nav-item ${page === "settings" ? "active" : ""}`}
+            className={`nav-item footer-profile ${page === "settings" ? "active" : ""}`}
             data-nav="settings"
             onClick={() => setPage("settings")}
             title={t("nav.custom")}
           >
-            <IconSettings size={15} />
-            <span>{t("nav.custom")}</span>
+            <span className="footer-avatar" aria-hidden>
+              <IconSettings size={12} />
+            </span>
+            <span className="truncate">{t("nav.custom")}</span>
           </button>
           <button
             className="footer-badge"
             title="Updates / cloud"
             aria-label="Updates"
             onClick={async () => {
-              // Codex uses this control for cloud/update status; surface logs as local stand-in.
+              // Codex sidebarFooter cloud/update control; open logs as local stand-in.
               try {
                 await (await import("../lib/api")).api.openLogs();
               } catch {

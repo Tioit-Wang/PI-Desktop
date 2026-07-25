@@ -563,3 +563,12 @@ This test plan spec is accepted when:
 - Attach/Photos open native multi-select dialogs and insert `@path` tokens into the draft.
 - Capture appshot shows a non-blocking "not available yet" toast until host capture lands.
 
+
+
+### US-UI-19 Permanent Stage Manager bounds restore
+- On macOS with Stage Manager, shrink or unfocus the PI window until width < 960 or height < 640.
+- Expect the shell to re-assert a Codex-like footprint (~1200×800, min 960×640) and keep restoring while still collapsed (not only during the first 20s after launch).
+
+### US-UI-20 Dark floating composer box
+- Switch to dark theme on chat home.
+- Expect main `#181818`, sidebar `#000000`, and the floating composer plate at solid elevated `#212121` with a visible 0.5px stroke + soft lift shadow so the box reads against the main surface (not flat same-gray).

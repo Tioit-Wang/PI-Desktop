@@ -558,3 +558,12 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 10. Layout shell metrics (topbar, sidebar, composer) match spec values in CSS
 11. Icon components use Lucide/Heroicons SVG — no emoji icon affordances
 12. Spacing values use the defined scale (no arbitrary pixel values in component code)
+
+## Dark floating surfaces (Codex parity)
+
+- Main surface: `#181818` (`gray-900`)
+- Sidebar / surface-under: `#000000`
+- Floating composer plate: solid `#212121` (`gray-800`) with elevation-prominent stroke + soft lift (dark uses slightly stronger shadow than light so the box reads)
+- Combined workspace chips: elevated translucent plate over main, not flat main gray
+- Stage Manager: host re-asserts min bounds while collapsed (permanent watchdog)
+
