@@ -56,21 +56,40 @@ export function PluginsPage() {
             <div className="mt-2 max-w-md text-[13px] text-text-secondary">
               {t("plugins.emptyBody")}
             </div>
+            <Button
+              className="mt-5"
+              variant="primary"
+              onClick={async () => {
+                try {
+                  await api.loadDevPlugin();
+                  await refreshPlugins();
+                } catch (e) {
+                  setToast(e instanceof Error ? e.message : String(e));
+                }
+              }}
+            >
+              {t("plugins.loadDev")}
+            </Button>
           </Panel>
         ) : (
-          <div className="space-y-2">
+          <div className="dest-list">
             {plugins.map((plugin) => (
-              <Panel key={plugin.id} className="flex items-center justify-between gap-3 p-3">
-                <div className="min-w-0">
-                  <div className="truncate text-[13.5px] font-medium">{plugin.name}</div>
-                  <div className="truncate text-[12px] text-text-muted">
+              <div key={plugin.id} className="dest-row">
+                <div className="dest-row-icon">
+                  <IconAt size={16} />
+                </div>
+                <div className="dest-row-body">
+                  <div className="dest-row-title">
+                    <span className="min-w-0 truncate">{plugin.name}</span>
+                    <Badge tone={plugin.enabled ? "success" : "neutral"}>
+                      {plugin.enabled ? t("plugins.enable") : t("plugins.disable")}
+                    </Badge>
+                  </div>
+                  <div className="dest-row-meta">
                     {plugin.id} · {plugin.version || "dev"}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge tone={plugin.enabled ? "success" : "neutral"}>
-                    {plugin.enabled ? t("plugins.enable") : t("plugins.disable")}
-                  </Badge>
+                <div className="dest-row-actions">
                   <Button
                     size="sm"
                     variant="secondary"
@@ -83,7 +102,7 @@ export function PluginsPage() {
                     {plugin.enabled ? t("plugins.disable") : t("plugins.enable")}
                   </Button>
                 </div>
-              </Panel>
+              </div>
             ))}
           </div>
         )}

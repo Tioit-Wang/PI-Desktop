@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PullRequestSummary } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import { Badge, Button, Panel } from "../components/ui";
 import { IconExternal, IconPullRequest } from "../components/icons";
+
+type Filter = "open" | "draft" | "all";
 
 export function PullRequestsPage() {
   const { t } = useTranslation();
@@ -16,6 +18,7 @@ export function PullRequestsPage() {
   const [pulls, setPulls] = useState<PullRequestSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [filter, setFilter] = useState<Filter>("open");
 
   const refresh = async () => {
     setLoading(true);
@@ -34,6 +37,21 @@ export function PullRequestsPage() {
   useEffect(() => {
     void refresh();
   }, [workspace?.path]);
+
+  const filtered = useMemo(() => {
+    if (filter === "all") return pulls;
+    if (filter === "draft") return pulls.filter((p) => p.isDraft);
+    return pulls.filter((p) => !p.isDraft);
+  }, [pulls, filter]);
+
+  const counts = useMemo(() => {
+    const draft = pulls.filter((p) => p.isDraft).length;
+    return {
+      open: pulls.length - draft,
+      draft,
+      all: pulls.length,
+    };
+  }, [pulls]);
 
   return (
     <div className="thread-scroll">
@@ -64,6 +82,32 @@ export function PullRequestsPage() {
           </div>
         </div>
 
+        {workspace?.path ? (
+          <div className="dest-toolbar">
+            <div className="dest-filters" role="tablist" aria-label={t("pulls.filters")}>
+              {(
+                [
+                  ["open", t("pulls.filterOpen"), counts.open],
+                  ["draft", t("pulls.filterDraft"), counts.draft],
+                  ["all", t("pulls.filterAll"), counts.all],
+                ] as const
+              ).map(([id, label, count]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={filter === id}
+                  className={`dest-filter ${filter === id ? "active" : ""}`}
+                  onClick={() => setFilter(id)}
+                >
+                  {label}
+                  <span className="ml-1 text-text-muted">{count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
         {!workspace?.path ? (
           <Panel className="page-card page-empty">
             <div className="page-empty-icon">
@@ -77,7 +121,7 @@ export function PullRequestsPage() {
               {t("project.open")}
             </Button>
           </Panel>
-        ) : pulls.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <Panel className="page-card page-empty">
             <div className="page-empty-icon">
               <IconPullRequest size={20} />
@@ -90,38 +134,57 @@ export function PullRequestsPage() {
             </div>
           </Panel>
         ) : (
-          <div className="space-y-2">
-            {pulls.map((pr) => (
-              <Panel key={pr.number} className="p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[12px] text-text-muted">#{pr.number}</span>
-                      <div className="truncate text-[13.5px] font-medium">{pr.title}</div>
-                      {pr.isDraft ? <Badge tone="warning">draft</Badge> : null}
-                    </div>
-                    <div className="mt-1 text-[12px] text-text-secondary">
-                      {[pr.author, pr.headRefName && pr.baseRefName ? `${pr.headRefName} → ${pr.baseRefName}` : null]
-                        .filter(Boolean)
-                        .join(" · ")}
-                    </div>
+          <div className="dest-list">
+            {filtered.map((pr) => (
+              <div key={pr.number} className="dest-row">
+                <div className="dest-row-icon">
+                  <IconPullRequest size={16} />
+                </div>
+                <div className="dest-row-body">
+                  <div className="dest-row-title">
+                    <span className="font-mono text-[12px] font-normal text-text-muted">
+                      #{pr.number}
+                    </span>
+                    <span className="min-w-0 truncate">{pr.title}</span>
+                    {pr.isDraft ? <Badge tone="warning">{t("pulls.draft")}</Badge> : (
+                      <Badge tone="success">{t("pulls.open")}</Badge>
+                    )}
                   </div>
-                  <a
-                    className="icon-btn no-underline"
-                    href={pr.url}
-                    target="_blank"
-                    rel="noreferrer"
+                  <div className="dest-row-meta">
+                    {[
+                      pr.author,
+                      pr.headRefName && pr.baseRefName
+                        ? `${pr.headRefName} → ${pr.baseRefName}`
+                        : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </div>
+                </div>
+                <div className="dest-row-actions">
+                  <button
+                    type="button"
+                    className="icon-btn"
                     title={pr.url}
-                    onClick={(e) => {
-                      // Electron may not open external by default; use shell via window open
-                      e.preventDefault();
-                      window.open(pr.url, "_blank");
-                    }}
+                    onClick={() => window.open(pr.url, "_blank")}
                   >
                     <IconExternal size={15} />
-                  </a>
+                  </button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={async () => {
+                      await newSession();
+                      setPage("chat");
+                      await sendPrompt(
+                        `Review pull request #${pr.number}${pr.title ? ` (${pr.title})` : ""}. Summarize changes, risks, and suggested next steps.`,
+                      );
+                    }}
+                  >
+                    {t("pulls.review")}
+                  </Button>
                 </div>
-              </Panel>
+              </div>
             ))}
           </div>
         )}

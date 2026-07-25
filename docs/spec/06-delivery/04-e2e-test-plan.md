@@ -589,3 +589,14 @@ This test plan spec is accepted when:
 - Open Settings (footer Custom → Settings, or settings nav).
 - Expect a left settings rail (General / Providers / Plugins / About) on the sidebar surface, with content pane on the main surface—not only a top tab strip.
 
+### US-UI-25 Pull requests destination chrome
+- Open Pull requests with a project selected.
+- Expect segmented filters Open/Draft/All with counts, and PR rows with icon plate, number, title, status badge, branch meta, external link, and Review action.
+
+### US-UI-26 Scheduled destination chrome
+- Open Scheduled.
+- Expect a create card, a Tasks section, and automation rows with cadence/enabled badges, prompt preview, last run, Run now / enable-toggle / Delete.
+
+### US-UI-27 Dark destination pages
+- Force dark theme and open Projects, Pull requests, and Settings.
+- Expect black sidebar, main `#181818`, and destination cards/rows readable on elevated dark plates (not flat same-gray).

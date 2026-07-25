@@ -1437,3 +1437,132 @@ textarea:disabled {
   font-size: 24px;
   font-weight: 560;
 }
+
+
+/* Destination list chrome (PRs / Scheduled / Plugins) */
+.dest-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.dest-filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--ds-text-primary) 5%, transparent);
+}
+
+.dest-filter {
+  border-radius: 999px;
+  padding: 5px 12px;
+  color: var(--ds-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.2;
+}
+
+.dest-filter:hover {
+  color: var(--ds-text-primary);
+  background: var(--ds-bg-hover);
+}
+
+.dest-filter.active {
+  background: var(--ds-bg-elevated-opaque);
+  color: var(--ds-text-primary);
+  box-shadow: 0 0 0 0.5px var(--ds-border-default);
+}
+
+.dest-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dest-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  border: 1px solid var(--ds-border-default);
+  border-radius: 14px;
+  background: color-mix(in oklab, var(--ds-text-primary) 2.5%, transparent);
+  padding: 12px 14px;
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+:root[data-theme="light"] .dest-row {
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 8%, transparent);
+}
+
+.dest-row:hover {
+  background: var(--ds-bg-hover);
+}
+
+.dest-row-icon {
+  display: inline-flex;
+  height: 32px;
+  width: 32px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
+  color: var(--ds-text-secondary);
+}
+
+.dest-row-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.dest-row-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  color: var(--ds-text-primary);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.dest-row-meta {
+  margin-top: 3px;
+  color: var(--ds-text-muted);
+  font-size: 12px;
+}
+
+.dest-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 0 0 auto;
+  align-items: center;
+}
+
+.dest-create {
+  margin-bottom: 16px;
+  border: 1px solid var(--ds-border-default);
+  border-radius: 16px;
+  background: color-mix(in oklab, var(--ds-text-primary) 2.5%, transparent);
+  padding: 14px;
+}
+
+:root[data-theme="light"] .dest-create {
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 8%, transparent);
+}
+
+.dest-section-label {
+  margin: 4px 0 10px;
+  color: var(--ds-text-muted);
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}

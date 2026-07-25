@@ -106,6 +106,12 @@ export const en = {
     emptyBodyWithProject:
       "No open pull requests detected for {{project}}. Start a task to inspect git status, branches, or draft a PR.",
     review: "Review with agent",
+    filters: "Pull request filters",
+    filterOpen: "Open",
+    filterDraft: "Draft",
+    filterAll: "All",
+    open: "Open",
+    draft: "Draft",
   },
   scheduled: {
     title: "Scheduled",
@@ -126,6 +132,7 @@ export const en = {
     delete: "Delete",
     lastRun: "Last run",
     never: "Never",
+    tasks: "Tasks",
   },
   permission: {
     title: "Permission required",
@@ -144,7 +151,7 @@ export const en = {
     disable: "Disable",
     uninstall: "Uninstall",
     empty: "No plugins installed",
-    emptyBody: "Load a local plugin folder to register commands and tool contributions.",
+    emptyBody: "Add plugins for the work you do. Load a local plugin folder to register commands and tools.",
   },
   status: {
     ready: "Ready",

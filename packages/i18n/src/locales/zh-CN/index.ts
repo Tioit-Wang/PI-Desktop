@@ -107,6 +107,12 @@ export const zhCN = {
     emptyBodyWithProject:
       "未检测到 {{project}} 的打开拉取请求。可新建任务检查 git 状态、分支或起草 PR。",
     review: "用助手审查",
+    filters: "拉取请求筛选",
+    filterOpen: "打开",
+    filterDraft: "草稿",
+    filterAll: "全部",
+    open: "打开",
+    draft: "草稿",
   },
   scheduled: {
     title: "已安排",
@@ -127,6 +133,7 @@ export const zhCN = {
     delete: "删除",
     lastRun: "上次运行",
     never: "从未",
+    tasks: "任务",
   },
   permission: {
     title: "需要权限",
@@ -145,7 +152,7 @@ export const zhCN = {
     disable: "禁用",
     uninstall: "卸载",
     empty: "未安装插件",
-    emptyBody: "加载本地插件目录以注册命令与工具扩展。",
+    emptyBody: "为你的工作添加插件。加载本地插件目录以注册命令与工具扩展。",
   },
   status: {
     ready: "就绪",

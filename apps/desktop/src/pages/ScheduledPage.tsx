@@ -8,16 +8,15 @@ import { IconClock } from "../components/icons";
 
 export function ScheduledPage() {
   const { t } = useTranslation();
-  const setPage = useAppStore((s) => s.setPage);
-  const selectSession = useAppStore((s) => s.selectSession);
-  const sendPrompt = useAppStore((s) => s.sendPrompt);
   const setToast = useAppStore((s) => s.setToast);
+  const selectSession = useAppStore((s) => s.selectSession);
+  const setPage = useAppStore((s) => s.setPage);
+  const sendPrompt = useAppStore((s) => s.sendPrompt);
   const [tasks, setTasks] = useState<ScheduledTask[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [prompt, setPrompt] = useState("");
   const [title, setTitle] = useState("");
+  const [prompt, setPrompt] = useState("");
   const [cadence, setCadence] = useState<ScheduledTask["cadence"]>("manual");
-  const [creating, setCreating] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const refresh = async () => {
     setLoading(true);
@@ -52,7 +51,7 @@ export function ScheduledPage() {
           </div>
         </div>
 
-        <Panel className="page-card mb-4 space-y-3 p-4">
+        <div className="dest-create space-y-3">
           <div className="text-[13.5px] font-medium">{t("scheduled.create")}</div>
           <Field label={t("nav.newTask")}>
             <Input
@@ -69,48 +68,49 @@ export function ScheduledPage() {
               placeholder="e.g. Summarize git status and open issues every morning"
             />
           </Field>
-          <Field label={t("scheduled.cadence")}>
-            <Select
-              value={cadence}
-              onChange={(e) => setCadence(e.target.value as ScheduledTask["cadence"])}
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[160px] flex-1">
+              <Field label={t("scheduled.cadence")}>
+                <Select
+                  value={cadence}
+                  onChange={(e) => setCadence(e.target.value as ScheduledTask["cadence"])}
+                >
+                  <option value="manual">{t("scheduled.cadenceManual")}</option>
+                  <option value="hourly">{t("scheduled.cadenceHourly")}</option>
+                  <option value="daily">{t("scheduled.cadenceDaily")}</option>
+                  <option value="weekly">{t("scheduled.cadenceWeekly")}</option>
+                </Select>
+              </Field>
+            </div>
+            <Button
+              variant="primary"
+              disabled={loading || !prompt.trim()}
+              onClick={async () => {
+                try {
+                  await api.createScheduled({
+                    title: title.trim() || t("chat.untitledTask"),
+                    prompt: prompt.trim(),
+                    cadence,
+                    enabled: true,
+                  });
+                  setTitle("");
+                  setPrompt("");
+                  setCadence("manual");
+                  await refresh();
+                  setToast(t("scheduled.create"));
+                } catch (e) {
+                  setToast(e instanceof Error ? e.message : String(e));
+                }
+              }}
             >
-              <option value="manual">{t("scheduled.cadenceManual")}</option>
-              <option value="hourly">{t("scheduled.cadenceHourly")}</option>
-              <option value="daily">{t("scheduled.cadenceDaily")}</option>
-              <option value="weekly">{t("scheduled.cadenceWeekly")}</option>
-            </Select>
-          </Field>
-          <Button
-            variant="primary"
-            disabled={creating || !prompt.trim()}
-            onClick={async () => {
-              setCreating(true);
-              try {
-                await api.createScheduled({
-                  title: title.trim() || prompt.trim().slice(0, 48),
-                  prompt: prompt.trim(),
-                  cadence,
-                  enabled: true,
-                });
-                setPrompt("");
-                setTitle("");
-                setCadence("manual");
-                await refresh();
-                setToast(t("scheduled.create"));
-              } catch (e) {
-                setToast(e instanceof Error ? e.message : String(e));
-              } finally {
-                setCreating(false);
-              }
-            }}
-          >
-            {creating ? "…" : t("scheduled.create")}
-          </Button>
-        </Panel>
+              {t("scheduled.create")}
+            </Button>
+          </div>
+        </div>
 
-        {loading && tasks.length === 0 ? (
-          <div className="py-10 text-center text-[13px] text-text-muted">…</div>
-        ) : tasks.length === 0 ? (
+        <div className="dest-section-label">{t("scheduled.tasks")}</div>
+
+        {tasks.length === 0 ? (
           <Panel className="page-card page-empty">
             <div className="page-empty-icon">
               <IconClock size={20} />
@@ -121,72 +121,71 @@ export function ScheduledPage() {
             </div>
           </Panel>
         ) : (
-          <div className="space-y-2">
+          <div className="dest-list">
             {tasks.map((task) => (
-              <Panel key={task.id} className="page-card p-3">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="truncate text-[13.5px] font-medium">{task.title}</div>
-                      <Badge tone={task.enabled ? "success" : "neutral"}>
-                        {task.enabled ? t("scheduled.enabled") : t("scheduled.disabled")}
-                      </Badge>
-                      <Badge>{cadenceLabel(task.cadence)}</Badge>
-                    </div>
-                    <div className="mt-1 line-clamp-2 text-[12.5px] text-text-secondary">
-                      {task.prompt}
-                    </div>
-                    <div className="mt-1 text-[11.5px] text-text-muted">
-                      {t("scheduled.lastRun")}:{" "}
-                      {task.lastRunAt
-                        ? new Date(task.lastRunAt).toLocaleString()
-                        : t("scheduled.never")}
-                    </div>
+              <div key={task.id} className="dest-row">
+                <div className="dest-row-icon">
+                  <IconClock size={16} />
+                </div>
+                <div className="dest-row-body">
+                  <div className="dest-row-title">
+                    <span className="min-w-0 truncate">{task.title}</span>
+                    <Badge tone={task.enabled ? "success" : "neutral"}>
+                      {task.enabled ? t("scheduled.enabled") : t("scheduled.disabled")}
+                    </Badge>
+                    <Badge tone="neutral">{cadenceLabel(task.cadence)}</Badge>
                   </div>
-                  <div className="flex shrink-0 flex-col gap-1">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={async () => {
-                        try {
-                          const res = await api.runScheduled(task.id);
-                          await selectSession(res.sessionId);
-                          setPage("chat");
-                          await sendPrompt(res.prompt);
-                          await refresh();
-                        } catch (e) {
-                          setToast(e instanceof Error ? e.message : String(e));
-                        }
-                      }}
-                    >
-                      {t("scheduled.runNow")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={async () => {
-                        await api.updateScheduled({
-                          id: task.id,
-                          enabled: !task.enabled,
-                        });
-                        await refresh();
-                      }}
-                    >
-                      {task.enabled ? t("scheduled.disabled") : t("scheduled.enabled")}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={async () => {
-                        await api.deleteScheduled(task.id);
-                        await refresh();
-                      }}
-                    >
-                      {t("scheduled.delete")}
-                    </Button>
+                  <div className="dest-row-meta line-clamp-2">{task.prompt}</div>
+                  <div className="dest-row-meta">
+                    {t("scheduled.lastRun")}:{" "}
+                    {task.lastRunAt
+                      ? new Date(task.lastRunAt).toLocaleString()
+                      : t("scheduled.never")}
                   </div>
                 </div>
-              </Panel>
+                <div className="dest-row-actions">
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={async () => {
+                      try {
+                        const res = await api.runScheduled(task.id);
+                        await selectSession(res.sessionId);
+                        setPage("chat");
+                        await sendPrompt(res.prompt);
+                        await refresh();
+                      } catch (e) {
+                        setToast(e instanceof Error ? e.message : String(e));
+                      }
+                    }}
+                  >
+                    {t("scheduled.runNow")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={async () => {
+                      await api.updateScheduled({
+                        id: task.id,
+                        enabled: !task.enabled,
+                      });
+                      await refresh();
+                    }}
+                  >
+                    {task.enabled ? t("scheduled.disabled") : t("scheduled.enabled")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      await api.deleteScheduled(task.id);
+                      await refresh();
+                    }}
+                  >
+                    {t("scheduled.delete")}
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         )}

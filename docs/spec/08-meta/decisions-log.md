@@ -64,6 +64,7 @@ This log freezes previously open questions into concrete decisions.
 | D041 | Profile footer | **Custom footer opens profile menu (Settings / Logs / Theme); cloud badge remains update stand-in** | Match Codex profileFooter + profileDropdown entry points |
 | D042 | Projects page | **Projects is a card grid of recent/active local workspaces with pin + glyph color (localStorage recents)** | Match Codex Projects destination density without cloud project backend |
 | D043 | Settings shell | **Settings uses left nav rail on sidebar surface + content pane (General/Providers/Plugins/About)** | Closer to Codex settings IA than a top-only tab strip |
+| D044 | Destination list chrome | **PRs/Scheduled/Plugins use shared dest-row list + filter chips; light cards white elevated** | Match Codex destination density without full cloud backends |
 
 ## C. Still deferred (not blocking M1)
 
