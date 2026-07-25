@@ -1,33 +1,33 @@
-# ADR 0006: 插件市场后置，先做本地插件运行时
+# ADR 0006: Postpone the plugin marketplace; build the local plugin runtime first
 
-- 状态：Accepted
-- 日期：2026-07-25
+- Status: Accepted
+- Date: 2026-07-25
 
-## 背景
+## Context
 
-Need plugin extensibility, and there is a choice between “先做市场还是先做本地插件运行时”的选择。
+We need plugin extensibility, and there is a choice between building the marketplace first or building the local plugin runtime first.
 
-## 决策
+## Decision
 
-1. 先完成 **本地插件系统**（加载、权限、命令、工具、生命周期）
-2. **插件市场**作为后置能力，先冻结协议与数据模型
-3. 市场第一版只做浏览/下载/校验/手动更新，不做交易与社交
+1. First complete the **local plugin system** (loading, permissions, commands, tools, lifecycle)
+2. Treat the **plugin marketplace** as a deferred capability; freeze the protocol and data model first
+3. The first version of the marketplace only does browse / download / verification / manual update, with no transactions or social features
 
-## 理由
+## Rationale
 
-1. 没有稳定运行时，市场只会分发无法安全运行的包
-2. 本地插件已能满足“用户自定义”核心诉求
-3. 市场涉及信任、签名、远程供应链，复杂度显著更高
+1. Without a stable runtime, the marketplace would only distribute packages that cannot run safely
+2. Local plugins already satisfy the core "user customization" demand
+3. The marketplace involves trust, signing, and a remote supply chain, which are significantly more complex
 
-## 后果
+## Consequences
 
-### 正向
-- 核心链路更稳
-- 可先用示例插件与内部分发验证
+### Positive
+- The core path is more stable
+- Can be validated first with sample plugins and internal distribution
 
-### 负向
-- 短期没有一键商店体验
+### Negative
+- No one-click store experience in the short term
 
-## 后续触发条件
+## Follow-up trigger conditions
 
-当 R1/R2 完成且插件 API 基本稳定后，再启动 R4 Marketplace。
+Once R1/R2 are complete and the plugin API is basically stable, start R4 Marketplace.

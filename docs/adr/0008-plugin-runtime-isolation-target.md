@@ -1,35 +1,35 @@
-# ADR 0008: 插件运行时以独立进程隔离为目标
+# ADR 0008: Plugin runtime targets isolation in a separate process
 
-- 状态：Accepted（Target）
-- 日期：2026-07-25
+- Status: Accepted (Target)
+- Date: 2026-07-25
 
-## 背景
+## Context
 
-插件代码不可信，需防止拖垮或入侵宿主。
+Plugin code is untrusted; we must prevent it from dragging down or intruding into the host.
 
-## 决策
+## Decision
 
-目标架构：插件 main 运行在 **独立进程**（UtilityProcess/Child Process），经 RPC 访问 Host API。
+Target architecture: the plugin main runs in a **separate process** (UtilityProcess/Child Process) and accesses the Host API via RPC.
 
-MVP 若进度受限，可临时采用更轻隔离，但不得破坏：
+If MVP progress is constrained, a lighter isolation may be adopted temporarily, but it must not break:
 
-- 权限网关
-- API 白名单
-- 贡献点统一注册
-- 崩溃不致命
+- The permission gateway
+- The API allowlist
+- Unified registration of contribution points
+- Crash non-fatality
 
-并需在实现 ADR 中注明临时方案与迁移计划。
+The temporary solution and its migration plan must be noted in the implementation ADR.
 
-## 理由
+## Rationale
 
-1. 崩溃隔离
-2. 权限代理更清晰
-3. 后续可加资源限制
+1. Crash isolation
+2. Clearer permission proxying
+3. Resource limits can be added later
 
-## 后果
+## Consequences
 
-### 正向
-- 安全性与稳定性更好
+### Positive
+- Better security and stability
 
-### 负向
-- 实现与调试成本更高
+### Negative
+- Higher implementation and debugging cost

@@ -1,34 +1,34 @@
-# ADR 0001: 使用 Electron 作为桌面壳
+# ADR 0001: Use Electron as the desktop shell
 
-- 状态：Accepted
-- 日期：2026-07-25
+- Status: Accepted
+- Date: 2026-07-25
 
-## 背景
+## Context
 
-PI-Desktop 需要桌面分发、本地权限控制、会话 UI 与系统集成能力。候选方案主要是 Electron 与 Tauri。
+PI-Desktop needs desktop distribution, local permission control, session UI, and system integration capabilities. The main candidate options are Electron and Tauri.
 
-## 决策
+## Decision
 
-采用 **Electron** 作为桌面壳。
+Adopt **Electron** as the desktop shell.
 
-## 理由
+## Rationale
 
-1. 与已调研的 ChatGPT Desktop / WorkBuddy 技术路径接近，便于借鉴工程经验
-2. Node 生态与 pi 的 TypeScript runtime 更顺滑
-3. 原生模块、调试链路、打包资料更成熟
-4. 团队当前路线明确偏好 Electron
+1. Close to the technical path of the already-researched ChatGPT Desktop / WorkBuddy, making it easier to draw on their engineering experience
+2. Smoother fit between the Node ecosystem and pi's TypeScript runtime
+3. More mature native modules, debugging toolchain, and packaging resources
+4. The team's current roadmap clearly prefers Electron
 
-## 后果
+## Consequences
 
-### 正向
-- 开发速度快
-- agent runtime 可直接放 main/node 侧
-- 后续集成 pty、sqlite、auto-update 更常规
+### Positive
+- Fast development speed
+- The agent runtime can be placed directly on the main/node side
+- Later integration of pty, sqlite, and auto-update is more conventional
 
-### 负向
-- 包体与内存相对 Tauri 更重
-- 需要严格执行 Electron 安全基线
+### Negative
+- Heavier bundle size and memory footprint relative to Tauri
+- Requires strict enforcement of the Electron security baseline
 
-## 替代方案
+## Alternatives
 
-- Tauri 2：更轻，但与当前路线不一致，已放弃作为 MVP 基线
+- Tauri 2: lighter, but inconsistent with the current roadmap; dropped as the MVP baseline

@@ -1,6 +1,6 @@
 # ADR 0003: Hybrid runtime — Rust host core + Node pi agent sidecar
 
-- Status: Superseded in part by ADR 0009 / ADR 0010
+- Status: Superseded in part by ADR 0010 / ADR 0011
 - Date: 2026-07-25
 - Updated: 2026-07-25
 

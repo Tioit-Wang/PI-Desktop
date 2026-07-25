@@ -1,32 +1,32 @@
-# ADR 0007: 插件分发包格式采用 .piplug（zip）
+# ADR 0007: Plugin distribution package format uses .piplug (zip)
 
-- 状态：Accepted
-- 日期：2026-07-25
+- Status: Accepted
+- Date: 2026-07-25
 
-## 背景
+## Context
 
-需要一种便于本地分享与市场下载的插件包格式。
+We need a plugin package format that is convenient for local sharing and marketplace download.
 
-## 决策
+## Decision
 
-采用 `.piplug` 作为产品层分发扩展名，内容为 zip 归档，根目录包含 `manifest.json`。
+Adopt `.piplug` as the product-level distribution extension. Its contents are a zip archive, with a `manifest.json` at the root.
 
-## 理由
+## Rationale
 
-1. 实现简单，跨平台
-2. 易做 checksum / 签名
-3. 对开发者友好（可本地解压检查）
+1. Simple to implement, cross-platform
+2. Easy to do checksum / signing
+3. Developer-friendly (can be unzipped and inspected locally)
 
-## 后果
+## Consequences
 
-### 正向
-- 工具链轻
-- 与本地目录包可统一校验逻辑
+### Positive
+- Lightweight toolchain
+- Can share unified verification logic with local directory packages
 
-### 负向
-- 需要防止 zip slip 与超大包攻击
+### Negative
+- Must guard against zip slip and oversized-package attacks
 
-## 约束
+## Constraints
 
-- 安装前必须做路径安全检查
-- 市场包至少提供 sha256
+- Path safety checks must be performed before installation
+- Marketplace packages must provide at least sha256
