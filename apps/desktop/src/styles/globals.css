@@ -366,15 +366,19 @@ textarea:disabled {
   container-name: home-main-content;
 }
 
-/* Upper half: hero sits at bottom of grow region (items-end + justify-center + pb-24) */
+/*
+  Codex electron home: dual grow regions.
+  upper: hero items-end + justify-center (source pb-24)
+  lower: composer justify-end (source pt-3 pb-4)
+*/
 .home-upper {
   display: flex;
   flex: 1 1 0;
-  min-height: fit-content;
+  min-height: 0;
   width: 100%;
   align-items: flex-end;
   justify-content: center;
-  padding: 24px 0 96px; /* pt-6 + pb-24 */
+  padding: 24px 0 64px; /* pt-6 + strong gap before composer (Codex pb-24) */
 }
 
 .home-upper-inner {
@@ -385,15 +389,15 @@ textarea:disabled {
   padding-inline: 24px; /* px-panel rhythm */
 }
 
-/* Lower half: composer docks to bottom of grow region */
 .home-lower {
   display: flex;
   flex: 1 1 0;
-  min-height: fit-content;
+  min-height: 0;
   min-width: 0;
   width: 100%;
   flex-direction: column;
   justify-content: flex-end;
+  padding-bottom: 16px; /* pb-4 */
 }
 
 .home-composer-wrap {
@@ -402,7 +406,7 @@ textarea:disabled {
   width: min(100%, 48rem);
   max-width: 100%;
   margin-inline: auto;
-  padding: 12px 24px 16px; /* pt-3 pb-4 + panel */
+  padding: 12px 24px 0; /* pt-3 */
 }
 
 /* legacy alias kept for capture hooks */
