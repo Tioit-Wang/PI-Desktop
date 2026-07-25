@@ -16,6 +16,12 @@ The static electron-builder config stays unsigned-friendly (`identity: null`)
 so contributors without certificates can always package. The release script
 injects the real identity via `-c.mac.identity` at build time.
 
+On macOS, the unpackaged `pnpm dev` process explicitly applies
+`build/icon_1024.png` to the Dock after Electron becomes ready. The packaged
+lanes continue to use `build/icon.icns` through electron-builder. This keeps
+development branding aligned with the installed application instead of showing
+Electron's default icon.
+
 ## 2. Prerequisites (release lane)
 
 1. Apple Developer account with a **Developer ID Application** certificate in
@@ -62,11 +68,13 @@ xcrun stapler validate "$APP"            # notarization staple (if notarized)
 
 Manual smoke on a clean profile (`PI_DESKTOP_DATA_DIR=$(mktemp -d)`):
 
-1. App launches from DMG install, window appears, icon correct in Dock.
-2. Onboarding checklist appears; configure provider; one streamed chat turn.
-3. One permissioned tool call (Write) allow + deny paths.
-4. Quit/relaunch → session history restored, window bounds restored.
-5. `~/.pi-desktop/logs/` contains `app.log` / `host.log` / `agent.log`.
+1. `pnpm dev` launches with the PI-Desktop icon rather than Electron's default
+   icon in the Dock.
+2. App launches from DMG install, window appears, icon correct in Dock.
+3. Onboarding checklist appears; configure provider; one streamed chat turn.
+4. One permissioned tool call (Write) allow + deny paths.
+5. Quit/relaunch → session history restored, window bounds restored.
+6. `~/.pi-desktop/logs/` contains `app.log` / `host.log` / `agent.log`.
 
 ## 6. Known limitations
 

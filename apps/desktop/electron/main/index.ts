@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  nativeImage,
   nativeTheme,
   shell,
 } from "electron";
@@ -53,6 +54,21 @@ const logger = new Logger(
   dataDir,
   process.env.NODE_ENV === "production" ? "info" : "debug",
 );
+
+function applyDevelopmentBranding() {
+  if (process.platform !== "darwin" || app.isPackaged || !app.dock) return;
+
+  const iconPath = join(app.getAppPath(), "build", "icon_1024.png");
+  const icon = nativeImage.createFromPath(iconPath);
+  if (icon.isEmpty()) {
+    logger.app("warn", "development dock icon missing", {
+      data: { iconPath },
+    });
+    return;
+  }
+
+  app.dock.setIcon(icon);
+}
 
 function sendToRenderer(channel: string, payload: unknown) {
   if (!IPC_WHITELIST.has(channel)) return;
@@ -1574,6 +1590,7 @@ function registerIpc() {
 }
 
 app.whenReady().then(async () => {
+  applyDevelopmentBranding();
   registerIpc();
   let bootError: unknown = null;
   try {

@@ -570,6 +570,16 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`tools::shell::tests`); scenario Documented
 
+#### E2E-044: Development launch uses PI-Desktop Dock branding
+
+- **Preconditions**: macOS development checkout with generated `build/icon_1024.png`.
+- **Steps**: 1) Run `pnpm dev`. 2) Inspect the running application's Dock icon.
+- **Expected**: The Dock shows the PI-Desktop brand icon, not Electron's default icon; packaged builds continue to use `build/icon.icns`.
+- **Specs linked**: `06-delivery/06-release-runbook.md`
+- **Acceptance**: Quality (development shell matches release branding)
+- **Milestone**: M5
+- **Status**: Unit-covered (`development-branding.test.mjs`); visual scenario Documented
+
 ---
 
 ## 8. Traceability Matrix
@@ -585,7 +595,7 @@ Each scenario is documented in this format:
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -593,7 +603,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
