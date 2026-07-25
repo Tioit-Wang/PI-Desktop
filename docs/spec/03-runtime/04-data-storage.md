@@ -1,4 +1,4 @@
-# 08. Data Storage
+# 04. Data Storage
 
 ## 0. Ownership decision
 
@@ -8,35 +8,35 @@
 - Electron main does not write DB files directly
 - All session/settings/plugin registry writes go through host RPC
 
-## 1. 目标
+## 1. Goal
 
-本地优先，重启可恢复，敏感数据隔离。
+Local-first, recoverable after restart, sensitive data isolated.
 
-## 2. 存储分区
+## 2. Storage Partitions
 
-| 分区 | 内容 | 建议介质 |
+| Partition | Contents | Suggested medium |
 |---|---|---|
-| settings | 非敏感配置 | SQLite / JSON |
-| secrets | API Key | OS safeStorage + 元数据索引 |
-| sessions | 会话与消息 | SQLite |
-| logs | 运行日志 | 文件 |
-| cache | 模型目录缓存等 | 文件/SQLite |
+| settings | Non-sensitive config | SQLite / JSON |
+| secrets | API keys | OS safeStorage + metadata index |
+| sessions | Sessions and messages | SQLite |
+| logs | Runtime logs | Files |
+| cache | Model catalog cache, etc. | Files/SQLite |
 
-## 3. 建议路径
+## 3. Suggested Paths
 
 ```text
 ~/.pi-desktop/
  ├── settings.sqlite
  ├── sessions.sqlite
  ├── secrets.meta.json
- ├── secrets.bin # 或平台安全存储
+ ├── secrets.bin # or platform secure storage
  ├── logs/app.log
  └── cache/
 ```
 
-具体文件名实现时可调整。
+Exact file names may be adjusted during implementation.
 
-## 4. Session 数据模型（逻辑）
+## 4. Session Data Model (logical)
 
 ### sessions
 - id
@@ -75,47 +75,47 @@
 - ended_at
 - error_code nullable
 
-## 5. Settings 模型（逻辑）
+## 5. Settings Model (logical)
 
 - providers[]
 - defaultProviderId
 - defaultModelId
 - permissionPolicy
 - uiPreferences
-- proxyConfig（后续）
+- proxyConfig (later)
 
-provider 项不直接存 apiKey 明文，只存：
+Provider entries do not store apiKey plaintext directly, only:
 
 - hasSecret
 - secretUpdatedAt
 
-## 6. Secrets 规则
+## 6. Secrets Rules
 
-1. renderer 永不持久化 secret
-2. main 使用 Electron `safeStorage`（可用时）
-3. 无法安全存储时，明确降级策略并提示风险
-4. 导出会话默认不含 secrets
+1. The renderer never persists secrets
+2. Main uses Electron `safeStorage` (when available)
+3. When secure storage is unavailable, define an explicit fallback policy and warn about the risk
+4. Exported sessions exclude secrets by default
 
-## 7. 一致性
+## 7. Consistency
 
-- 消息先写盘再确认 UI 最终态，或采用“运行中内存 + 终态落盘”二选一
-- MVP 推荐：
- - user message 立即落盘
- - assistant/tool 在 end 事件时落盘
- - running 状态可有轻量快照
+- Either write messages to disk before confirming the UI's final state, or use "in-memory while running + persist final state" — pick one
+- MVP recommendation:
+ - user message persisted immediately
+ - assistant/tool persisted on the end event
+ - running state may keep a lightweight snapshot
 
-## 8. 迁移
+## 8. Migration
 
-- schema_version 表
-- 启动时 migrate
-- 破坏性迁移必须可备份
+- schema_version table
+- migrate on startup
+- destructive migrations must be backup-able
 
-## 9. 备份与清理（后续）
+## 9. Backup and Cleanup (later)
 
-- 一键导出 session
-- 清理 cache
-- 日志轮转
+- one-click session export
+- clear cache
+- log rotation
 
-MVP 只需：
-- 不丢会话
-- 可删会话
+MVP only needs:
+- not losing sessions
+- being able to delete sessions

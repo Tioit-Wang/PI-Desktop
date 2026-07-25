@@ -1,6 +1,6 @@
 # 03. Tools and Permissions
 
-> Decisions applied: D003, D004, D005, D006, D013
+> Decisions applied: D003, D004, D005, D006, D013, D015
 
 ## 0. Frozen policy summary
 
@@ -13,104 +13,102 @@
 | allow-session scope | toolName |
 | Bash style (M3) | non-interactive (no PTY) |
 
-# 07. Tools and Permissions
+## 1. Goal
 
-## 1. 目标
+Let the agent get things done, but stay under control by default.
 
-让 agent 能做事，但默认不失控。
+## 2. MVP Built-in Tools
 
-## 2. MVP 内置工具
-
-| Tool | 风险 | 说明 |
+| Tool | Risk | Description |
 |---|---|---|
-| `Read` | low | 读取工作区内文件 |
-| `Glob` | low | 按模式列文件 |
-| `Grep` | low | 内容搜索 |
-| `Write` | high | 新建/覆盖文件 |
-| `Edit` | high | 修改文件 |
-| `Bash` | high | 执行命令 |
+| `Read` | low | Read files within the workspace |
+| `Glob` | low | List files by pattern |
+| `Grep` | low | Content search |
+| `Write` | high | Create/overwrite files |
+| `Edit` | high | Modify files |
+| `Bash` | high | Execute commands |
 
-> 名称可在实现时微调，但语义保持一致。
+> Names may be fine-tuned during implementation, but semantics stay consistent.
 
-## 3. 工具通用约束
+## 3. Common Tool Constraints
 
-每个工具都必须具备：
+Every tool must have:
 
-1. JSON schema / typebox 参数定义
+1. JSON schema / typebox parameter definition
 2. timeout
-3. 工作区路径校验
-4. 输出截断策略
+3. workspace path validation
+4. output truncation policy
 5. trace id
-6. 结构化结果
+6. structured results
 
-## 4. 路径规则
+## 4. Path Rules
 
-- 所有文件路径默认相对 `workspaceRoot`
-- 规范化后必须仍位于 workspace 内
-- 禁止 `..` 逃逸
-- 符号链接若逃出 workspace，则拒绝
-- 未设置 workspace 时，高风险工具不可用
+- All file paths are relative to `workspaceRoot` by default
+- After normalization they must still reside within the workspace
+- `..` escapes are forbidden
+- Symlinks that escape the workspace are rejected
+- When no workspace is set, high-risk tools are unavailable
 
-## 5. Bash 规则
+## 5. Bash Rules
 
-MVP 基线：
+MVP baseline:
 
-- 必须有 workspace
-- 默认 cwd = workspaceRoot
-- 默认需要确认
-- 设置 timeout（如 60s，可配）
-- 捕获 stdout/stderr
-- 大输出截断
-- 不提供交互式 TTY（MVP）
+- A workspace is required
+- Default cwd = workspaceRoot
+- Confirmation required by default
+- Set a timeout (e.g. 60s, configurable)
+- Capture stdout/stderr
+- Truncate large output
+- No interactive TTY (MVP)
 
-禁止清单（初稿，可配置加强）：
+Initial denylist (extensible):
 
-- 直接读写 workspace 外敏感路径
-- 无确认的破坏性操作策略由权限层控制
+- Directly reading/writing sensitive paths outside the workspace
+- Destructive operations without confirmation (policy governed by the permission layer)
 
-## 6. 权限模型
+## 6. Permission Model
 
-### 风险等级
+### Risk Levels
 
-| risk | 示例 | 默认策略 |
+| risk | Example | Default policy |
 |---|---|---|
-| low | Read/Glob/Grep | 自动允许 |
-| medium | 低危网络/元数据 | 确认或策略允许 |
-| high | Write/Edit/Bash | 默认确认 |
+| low | Read/Glob/Grep | Auto-allow |
+| medium | low-risk network/metadata | Confirm or allow by policy |
+| high | Write/Edit/Bash | Confirm by default |
 
-### 决策类型
+### Decision Types
 
 - `allow-once`
 - `allow-session`
 - `deny`
 
-后续可加：
+May be added later:
 - `allow-always-for-tool`
 - `allow-always-for-command-pattern`
 
-## 7. 权限流程
+## 7. Permission Flow
 
 ```text
 tool call
  → policy.evaluate()
- → allow? 执行
- → need confirm? 推 UI
- → deny? 返回 tool error result
+ → allow? execute
+ → need confirm? push to UI
+ → deny? return tool error result
 ```
 
-权限确认超时：
-- 默认 deny 或 pending cancel（实现时定，需一致）
+Permission confirmation timeout:
+- After 120s, auto-deny (D005: fail closed, do not hang forever)
 
-## 8. 工具结果对模型可见性
+## 8. Tool Result Visibility to the Model
 
-- 成功结果：给模型
-- 失败结果：给模型（带错误信息）
-- 用户拒绝：给模型明确 “user denied permission”
-- 敏感信息：脱敏后再入库/展示
+- Success result: given to the model
+- Failure result: given to the model (with error info)
+- User denial: give the model an explicit "user denied permission"
+- Sensitive info: redact before persisting/displaying
 
-## 9. 审计
+## 9. Auditing
 
-每次工具调用记录：
+Each tool call records:
 
 - sessionId
 - turnId
@@ -121,7 +119,7 @@ tool call
 - duration
 - success / error code
 
-MVP 可先写 SQLite 或日志文件。
+MVP may start by writing to SQLite or a log file.
 
 ## 10. Mode matrix (Chat vs Agent)
 
@@ -135,31 +133,23 @@ MVP 可先写 SQLite 或日志文件。
 - Agent mode uses permission cards for Write/Edit/Bash
 - allow-session is remembered per toolName for the active session only
 
-## 10b. Legacy section title retained below
+## 11. Plugin Tools
 
+Plugins can contribute tools via `agentTools`:
 
-| 模式 | 读工具 | 写工具 | Bash |
-|---|---|---|---|
-| Chat | 默认允许 | 默认禁用或强确认 | 默认禁用 |
-| Agent | 允许 | 确认后允许 | 确认后允许 |
+1. manifest declaration
+2. user grants `agent.tool.register`
+3. PluginManager registers them into the ToolHost
+4. execution goes through the unified permission/audit/timeout wrapper
 
-## 11. 插件工具
+Naming:
+- Internal full name: `plugin.<pluginId>.<toolName>`
+- Name exposed to the model: forced prefix `plugin_<pluginIdSafe>_<toolName>` (D015) to avoid conflicts
 
-插件可通过 `agentTools` 贡献工具：
-
-1. manifest 声明
-2. 用户授权 `agent.tool.register`
-3. PluginManager 注册到 ToolHost
-4. 执行时走统一权限/审计/超时包装
-
-命名建议：
-- 内部全名：`plugin.<pluginId>.<toolName>`
-- 对模型暴露名实现时固定一种策略，避免冲突
-
-## 12. 后续扩展
+## 12. Future Extensions
 
 - MCP tools
-- 工具分组开关
-- 命令白名单 / 黑名单
-- dry-run 模式
-- 补丁预览后应用
+- tool group toggles
+- command allowlist / denylist
+- dry-run mode
+- apply patches after preview

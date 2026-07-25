@@ -1,39 +1,39 @@
-# 05. IPC Protocol
+# 01. IPC Protocol
 
-## 1. 目标
+## 1. Goal
 
-定义 renderer 与 main 之间的稳定契约。
+Define a stable contract between the renderer and main.
 
-原则：
+Principles:
 
-1. 所有能力走 preload 白名单
-2. 请求/响应类型化
-3. 长任务用事件流，不用超大一次性返回
-4. 错误必须有 code + message
+1. All capabilities go through the preload allowlist
+2. Requests/responses are typed
+3. Long-running tasks use event streams, not a single oversized response
+4. Errors must have a code + message
 
-## 2. API 分组
+## 2. API Groups
 
-| Domain | 说明 |
+| Domain | Description |
 |---|---|
-| `app` | 应用信息、健康检查 |
-| `agent` | 对话、中断、状态 |
-| `session` | 会话 CRUD / 历史 |
-| `settings` | 配置读写 |
-| `secrets` | 密钥写/删/是否存在（不回传明文到 UI 日志） |
-| `project` | 工作区选择与查询 |
-| `tool` | 权限确认回传 |
-| `log` | 前端可展示的诊断信息 |
-| `plugin` | 插件安装/启停/查询/权限 |
-| `commandPalette` | 命令面板检索与执行 |
+| `app` | App info, health checks |
+| `agent` | Conversation, abort, status |
+| `session` | Session CRUD / history |
+| `settings` | Config read/write |
+| `secrets` | Secret write/delete/exists (never return plaintext to UI logs) |
+| `project` | Workspace selection and query |
+| `tool` | Permission confirmation callback |
+| `log` | Diagnostics that the frontend can display |
+| `plugin` | Plugin install/enable-disable/query/permissions |
+| `commandPalette` | Command palette search and execution |
 
-## 3. Channel 约定
+## 3. Channel Conventions
 
 ```text
 invoke: pi-desktop/<domain>/<action>
 event: pi-desktop/<domain>/event/<name>
 ```
 
-示例：
+Examples:
 
 - `pi-desktop/agent/prompt`
 - `pi-desktop/agent/abort`
@@ -41,7 +41,7 @@ event: pi-desktop/<domain>/event/<name>
 - `pi-desktop/session/list`
 - `pi-desktop/project/open`
 
-## 4. 通用响应包
+## 4. Common Response Envelope
 
 ```ts
 type Result<T> =
@@ -99,7 +99,7 @@ type AgentStatus = {
 
 ## 6. Agent Events
 
-main → renderer 推送：
+Pushed from main → renderer:
 
 ```ts
 type AgentEventEnvelope = {
@@ -125,8 +125,8 @@ type AgentEvent =
  | { type: "status"; status: AgentStatus };
 ```
 
-> 这里是 **UI 规范化事件**，不是 pi 原始事件的透传。 
-> `packages/agent-runtime` 负责把 pi 事件映射到该模型。
+> These are **UI-normalized events**, not a pass-through of raw pi events.
+> `packages/agent-runtime` is responsible for mapping pi events to this model.
 
 ## 7. Session API
 
@@ -145,7 +145,7 @@ type SessionDetail = SessionSummary & {
 };
 ```
 
-最小接口：
+Minimal interface:
 
 - `session/list`
 - `session/create`
@@ -156,30 +156,30 @@ type SessionDetail = SessionSummary & {
 ## 8. Settings / Secrets API
 
 ### settings
-可回传 UI 的非敏感配置：
+Non-sensitive config that can be returned to the UI:
 
-- provider 列表（不含 secret 明文）
-- 默认模型
-- 权限策略开关
-- UI 偏好
+- provider list (without secret plaintext)
+- default model
+- permission policy toggles
+- UI preferences
 
 ### secrets
 - `secrets/set(providerId, apiKey)`
 - `secrets/delete(providerId)`
 - `secrets/has(providerId) -> boolean`
 
-禁止：
-- 把完整 API Key 写入普通日志
-- 在 renderer 长期持有 API Key 明文
+Forbidden:
+- Writing the full API key into ordinary logs
+- Holding API key plaintext long-term in the renderer
 
 ## 9. Project API
 
-- `project/open()`：系统目录选择器
-- `project/get()`：当前工作区
-- `project/set(path)`：设置工作区
+- `project/open()`: system directory picker
+- `project/get()`: current workspace
+- `project/set(path)`: set workspace
 - `project/clear()`
 
-返回：
+Returns:
 
 ```ts
 type ProjectWorkspace = {
@@ -190,11 +190,11 @@ type ProjectWorkspace = {
 
 ## 10. Tool Permission API
 
-当工具需要确认：
+When a tool requires confirmation:
 
-1. main 发 `tool_permission_request`
-2. UI 展示确认卡
-3. UI 调 `tool/resolvePermission`
+1. main sends `tool_permission_request`
+2. UI shows a confirmation card
+3. UI calls `tool/resolvePermission`
 
 ```ts
 type ToolPermissionRequest = {
@@ -213,15 +213,15 @@ type ToolPermissionResolution = {
 };
 ```
 
-## 11. 版本兼容
+## 11. Version Compatibility
 
-- IPC contract 版本字段：`protocolVersion: 1`
-- 破坏性变更必须升版本并写 ADR
-- renderer 与 main 启动时校验版本，不匹配则提示升级/重装
+- IPC contract version field: `protocolVersion: 1`
+- Breaking changes must bump the version and record an ADR
+- renderer and main validate the version at startup; on mismatch, prompt to upgrade/reinstall
 
-## 12. Plugin API（宿主 UI 侧）
+## 12. Plugin API (host UI side)
 
-最小接口：
+Minimal interface:
 
 - `plugin/list`
 - `plugin/loadDev(path)`
@@ -230,9 +230,9 @@ type ToolPermissionResolution = {
 - `plugin/disable(id)`
 - `plugin/uninstall(id)`
 - `plugin/getPermissions(id)`
-- `plugin/setPermission(id, permission, allowed)`（可选细粒度）
+- `plugin/setPermission(id, permission, allowed)` (optional fine-grained)
 
-返回摘要：
+Returned summary:
 
 ```ts
 type PluginSummary = {
@@ -252,20 +252,20 @@ type PluginSummary = {
 - `commandPalette/search(query)`
 - `commandPalette/execute(commandId)`
 
-命令来源：
-- 内置命令
-- 插件 contributes.commands
+Command sources:
+- Built-in commands
+- Plugin contributes.commands
 
-## 14. 错误码（初稿）
+## 14. Error Codes — Initial registry (extensible)
 
-| code | 含义 |
+| code | Meaning |
 |---|---|
-| `AGENT_BUSY` | 当前会话已有运行中 turn |
-| `AGENT_NOT_FOUND` | session 不存在 |
-| `MODEL_NOT_CONFIGURED` | 无可用模型 |
-| `SECRET_MISSING` | 缺 API Key |
-| `TOOL_DENIED` | 权限拒绝 |
-| `TOOL_TIMEOUT` | 工具超时 |
-| `WORKSPACE_REQUIRED` | 需要项目目录 |
-| `PATH_OUTSIDE_WORKSPACE` | 路径越界 |
-| `INTERNAL` | 未分类内部错误 |
+| `AGENT_BUSY` | The current session already has a running turn |
+| `AGENT_NOT_FOUND` | Session does not exist |
+| `MODEL_NOT_CONFIGURED` | No available model |
+| `PROVIDER_SECRET_MISSING` | Missing API key |
+| `TOOL_DENIED` | Permission denied |
+| `TOOL_TIMEOUT` | Tool timed out |
+| `WORKSPACE_REQUIRED` | Project directory required |
+| `PATH_OUTSIDE_WORKSPACE` | Path out of bounds |
+| `INTERNAL` | Uncategorized internal error |
