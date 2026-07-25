@@ -216,10 +216,13 @@ function AppShell() {
                         )}
                       </h1>
                     </div>
+                    {/* Codex portals ambient cards under hero (top-full mt-8), not in lower flex flow */}
+                    <div className="home-suggestions-portal">
+                      <HomeSuggestions />
+                    </div>
                   </div>
                 </div>
                 <div className="home-lower">
-                  <HomeSuggestions />
                   {showComposer && (
                     <div className="home-composer-wrap">
                       <Composer variant="home" />

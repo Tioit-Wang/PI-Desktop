@@ -365,41 +365,63 @@ textarea:disabled {
   overflow-y: auto; /* Codex: allow chips+composer to fully paint in dual-grow */
   container-type: size;
   container-name: home-main-content;
+  padding-top: 24px; /* Codex min-h-full wrapper pt-6 */
 }
 
 /*
-  Codex electron home: dual grow regions.
-  upper: hero items-end + justify-center (source pb-24)
-  lower: composer justify-end (source pt-3 pb-4)
+  Codex electron home dual-grow (from app-main page):
+  upper: flex min-h-fit grow basis-0 items-end justify-center pb-24
+  lower: flex min-h-fit min-w-0 shrink-0 grow basis-0 flex-col justify-end
 */
 .home-upper {
   display: flex;
-  flex: 1 1 0;
-  min-height: 0;
+  flex-grow: 1;
+  flex-shrink: 1;
+  flex-basis: 0;
+  min-height: fit-content;
   width: 100%;
   align-items: flex-end;
   justify-content: center;
-  padding: 24px 0 40px; /* pt-6 + gap before composer */
+  padding: 0 0 96px; /* pb-24 */
+
+  overflow: visible;
 }
 
 .home-upper-inner {
+  position: relative;
   display: flex;
   width: min(100%, 48rem); /* max-w-3xl */
   max-width: 100%;
   justify-content: center;
   padding-inline: 24px; /* px-panel rhythm */
+
+  overflow: visible;
 }
 
 .home-lower {
   display: flex;
-  flex: 1 1 0;
-  min-height: min-content; /* never squeeze away workspace chips */
+  flex-grow: 1;
+  flex-shrink: 0; /* Codex shrink-0 */
+  flex-basis: 0;
+  min-height: fit-content;
   min-width: 0;
   width: 100%;
   flex-direction: column;
   justify-content: flex-end;
-  padding-bottom: 16px; /* pb-4 */
-  gap: 0;
+}
+
+/* Codex: -mt-16 flex min-w-0 flex-col gap-2 around ambient suggestions */
+/* Codex: absolute under hero (top-full mt-8) so lower flex only hosts composer */
+.home-suggestions-portal {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  z-index: 15;
+  margin-top: 32px; /* mt-8 Codex */
+  min-width: 0;
+  padding-inline: 24px;
+  box-sizing: border-box;
 }
 
 .home-composer-wrap {
@@ -408,20 +430,24 @@ textarea:disabled {
   width: min(100%, 48rem);
   max-width: 100%;
   margin-inline: auto;
-  padding: 12px 24px 0; /* pt-3 */
+  padding: 12px 24px 16px; /* pt-3 pb-4 */
 }
 
 /* Codex home ambient suggestion cards (electron cards mode) */
 .home-suggestions {
-  width: min(100%, 760px);
-  margin: 0 auto 12px;
+  width: 100%;
+  margin: 0 auto;
   container-type: inline-size;
+  box-sizing: border-box;
+  height: fit-content;
+  min-height: 0;
+  min-width: 0;
 }
 
 .home-suggestions-grid {
   display: grid;
-  /* Codex empty-home ambient cards read as 2x2 at desktop width */
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  /* Codex: auto-fit minmax(10rem,1fr) — 4-up single row at desktop width */
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
   gap: 12px;
 }
 

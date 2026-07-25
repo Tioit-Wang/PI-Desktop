@@ -625,8 +625,9 @@ This test plan spec is accepted when:
 - Section label uses compact `text-xs` tertiary styling (`px-2 py-1` rhythm).
 
 ### US-UI-34 Home suggestion cards
-- On empty chat home (light + dark), four ambient suggestion cards render above the composer: Explore / Build / Review / Fix (localized).
+- On empty chat home (light + dark), four ambient suggestion cards render in an auto-fit row under the hero (portal), not only as a 2x2 stack that collides with the composer.
 - Cards use Codex electron elevated plate chrome (hairline ring + shadow-md-strong); dark cards remain visible on `#181818`.
+- Hero dual-grow lands near mid/lower optical band (not pinned to the top third).
 - Activating a card prefills the composer with the matching starter prompt and focuses the input.
 
 ### US-UI-31b (superseded)
