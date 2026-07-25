@@ -4,12 +4,12 @@ import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import { Badge, Button, Field, Input, Select, cx } from "../components/ui";
 import {
+  IconArrowUpRight,
   IconAt,
   IconBrowser,
   IconChevronLeft,
   IconComputer,
   IconConfig,
-  IconExternal,
   IconGitBranch,
   IconHook,
   IconInfo,
@@ -186,46 +186,46 @@ export function SettingsPage() {
         key: "personal",
         headingKey: "settings.groupPersonal",
         items: [
-          { id: "general", labelKey: "settings.general", icon: <IconSettings size={15} /> },
-          { id: "appearance", labelKey: "settings.appearance", icon: <IconSun size={15} /> },
-          { id: "voice", labelKey: "settings.voice", icon: <IconMic size={15} /> },
-          { id: "agent", labelKey: "settings.configuration", icon: <IconConfig size={15} /> },
+          { id: "general", labelKey: "settings.general", icon: <IconSettings size={14} /> },
+          { id: "appearance", labelKey: "settings.appearance", icon: <IconSun size={14} /> },
+          { id: "voice", labelKey: "settings.voice", icon: <IconMic size={14} /> },
+          { id: "agent", labelKey: "settings.configuration", icon: <IconConfig size={14} /> },
           {
             id: "personalization",
             labelKey: "settings.personalization",
-            icon: <IconPerson size={15} />,
+            icon: <IconPerson size={14} />,
           },
-          { id: "pets", labelKey: "settings.pets", icon: <IconPet size={15} /> },
-          { id: "keyboard", labelKey: "settings.keyboard", icon: <IconKeyboard size={15} /> },
+          { id: "pets", labelKey: "settings.pets", icon: <IconPet size={14} /> },
+          { id: "keyboard", labelKey: "settings.keyboard", icon: <IconKeyboard size={14} /> },
           {
             id: "account",
             labelKey: "settings.account",
-            icon: <IconAt size={15} />,
+            icon: <IconAt size={14} />,
             external: true,
           },
-          { id: "providers", labelKey: "settings.providers", icon: <IconServer size={15} /> },
-          { id: "about", labelKey: "settings.about", icon: <IconInfo size={15} /> },
+          { id: "providers", labelKey: "settings.providers", icon: <IconServer size={14} /> },
+          { id: "about", labelKey: "settings.about", icon: <IconInfo size={14} /> },
         ],
       },
       {
         key: "integrations",
         headingKey: "settings.groupIntegrations",
         items: [
-          { id: "appshots", labelKey: "settings.appshots", icon: <IconSnapshot size={15} /> },
-          { id: "plugins", labelKey: "settings.plugins", icon: <IconPlug size={15} /> },
-          { id: "browser", labelKey: "settings.browser", icon: <IconBrowser size={15} /> },
-          { id: "computer", labelKey: "settings.computer", icon: <IconComputer size={15} /> },
+          { id: "appshots", labelKey: "settings.appshots", icon: <IconSnapshot size={14} /> },
+          { id: "plugins", labelKey: "settings.plugins", icon: <IconPlug size={14} /> },
+          { id: "browser", labelKey: "settings.browser", icon: <IconBrowser size={14} /> },
+          { id: "computer", labelKey: "settings.computer", icon: <IconComputer size={14} /> },
           // Local-first extra after Codex-ordered items.
-          { id: "mcp", labelKey: "settings.mcp", icon: <IconSparkles size={15} /> },
+          { id: "mcp", labelKey: "settings.mcp", icon: <IconSparkles size={14} /> },
         ],
       },
       {
         key: "coding",
         headingKey: "settings.groupCoding",
         items: [
-          { id: "hooks", labelKey: "settings.hooks", icon: <IconHook size={15} /> },
-          { id: "connections", labelKey: "settings.connections", icon: <IconLink size={15} /> },
-          { id: "git", labelKey: "settings.git", icon: <IconGitBranch size={15} /> },
+          { id: "hooks", labelKey: "settings.hooks", icon: <IconHook size={14} /> },
+          { id: "connections", labelKey: "settings.connections", icon: <IconLink size={14} /> },
+          { id: "git", labelKey: "settings.git", icon: <IconGitBranch size={14} /> },
         ],
       },
     ],
@@ -255,7 +255,7 @@ export function SettingsPage() {
             className="settings-back no-drag"
             onClick={() => setPage("chat")}
           >
-            <IconChevronLeft size={16} />
+            <IconChevronLeft size={15} />
             <span>{t("settings.backToApp")}</span>
           </button>
           <div className="settings-search-wrap no-drag">
@@ -287,7 +287,7 @@ export function SettingsPage() {
                     <span className="settings-nav-label">{t(item.labelKey)}</span>
                     {item.external ? (
                       <span className="settings-nav-external">
-                        <IconExternal size={12} />
+                        <IconArrowUpRight size={12} />
                       </span>
                     ) : null}
                   </button>

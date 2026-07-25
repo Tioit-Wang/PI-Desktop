@@ -4,7 +4,7 @@
 
 Settings is a **full-window page** that replaces the app sidebar + main chrome (Codex electron behavior):
 
-- Left settings rail only (sidebar surface `#f3f3f3` light / `#000` dark), ~260px
+- Left settings rail only (sidebar surface `#f4f4f4` light / `#000` dark), **~275px** (Codex gold at 1200-wide)
 - Top of rail: traffic-light clearance, **Back to app** (`返回应用`), pill **Search settings…**
 - Grouped navigation with icons:
   1. **Personal** — General, Appearance, Voice, Configuration, Personalization, Pets, Keyboard shortcuts, Account (+ local-first Providers, About)
@@ -57,3 +57,22 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 3. General shows Permissions (with Learn more) + General cards matching Codex row set
 4. Open-target control shows VS Code glyph in the pill
 5. Provider secrets never display raw key values
+
+## 5. General chrome metrics (Codex gold)
+
+Measured against `cx-settings-try` / `cx-settings-cmdcomma` (~1200×690):
+
+| Token | Value |
+|---|---|
+| Rail width | ~275px |
+| Rail light bg | `#f4f4f4` |
+| Active nav pill | denser 6px/10px pad, ~8px radius, gray mix on rail |
+| Section title | 28px / 560, first baseline ~y70 |
+| Content max | ~720px, left-aligned in pane |
+| Card radius | ~14px elevated stroke |
+| Toggle | **32×20** thumb 16, accent blue on (not green) |
+| Account external | arrow-up-right only (no box) |
+| Open-target pill | leading VS Code glyph |
+
+Local-first **Providers** + **About** remain after Account in Personal; they are intentional PI extensions and shift lower groups vs pure Codex gold (accepted residual).
+

@@ -148,9 +148,12 @@ export function IconStop(props: IconProps) {
 
 export function IconComputer(props: IconProps) {
   return (
-    <svg {...base(props)}>
-      <rect x="3.75" y="5" width="16.5" height="11" rx="1.8" />
-      <path d="M8 19h8M12 16v3" />
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <path d="M8 8 H4 v4" />
+      <path d="M4 8l5 5" />
+      <path d="M16 16 h4 v-4" />
+      <path d="M20 16l-5-5" />
+      <rect x="8.5" y="8.5" width="7" height="7" rx="1.2" />
     </svg>
   );
 }
@@ -213,16 +216,19 @@ export function IconVSCode(props: IconProps) {
       {...rest}
     >
       <path
-        d="M21 4.8 14.2 2.2a1.2 1.2 0 0 0-1.1.2L3.8 9.1a1 1 0 0 0 0 1.5l2.7 2.1-2.7 2.1a1 1 0 0 0 0 1.5l9.3 6.7c.3.2.7.3 1.1.2L21 19.2V4.8Z"
+        d="M17.5 2.6 21 4.2v15.6l-3.5 1.6-9.2-7.2L3 17V7l5.3-2.8 9.2 7.2V2.6Z"
         fill="#0078D4"
       />
       <path
-        d="M9.2 12 3.8 9.1l5.4 2.9 5.4-2.9L9.2 12Z"
-        fill="#0065A9"
-        opacity="0.9"
+        d="M17.5 2.6v11.4L8.3 7.2 17.5 2.6Z"
+        fill="#0090F1"
+        opacity="0.92"
       />
-      <path d="m14.2 2.2 6.8 2.6v14.4l-6.8 2.6V2.2Z" fill="#1F9CF0" />
-      <path d="M9.2 12 3.8 14.9l5.4-2.9 5.4 2.9L9.2 12Z" fill="#0065A9" opacity="0.75" />
+      <path
+        d="M8.3 16.8 17.5 21.4V10.6L8.3 16.8Z"
+        fill="#0065A9"
+        opacity="0.95"
+      />
     </svg>
   );
 }
@@ -257,6 +263,16 @@ export function IconExternal(props: IconProps) {
       <path d="M14 5h5v5" />
       <path d="M10 14 19 5" />
       <path d="M19 13v5a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5" />
+    </svg>
+  );
+}
+
+/** Codex settings Account trailing mark (arrow only, no box). */
+export function IconArrowUpRight(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M7 17 17 7" />
+      <path d="M8 7h9v9" />
     </svg>
   );
 }
@@ -495,8 +511,8 @@ export function IconPerson(props: IconProps) {
   return (
     <svg {...base(props)} viewBox="0 0 24 24">
       <circle cx="12" cy="12" r="9" />
-      <circle cx="12" cy="10" r="2.6" />
-      <path d="M7.2 17.2c1.2-2.1 2.9-3.1 4.8-3.1s3.6 1 4.8 3.1" />
+      <path d="M8.2 10.2h.01M15.8 10.2h.01" />
+      <path d="M8.8 14.2c1.1 1.3 2.5 2 3.2 2s2.1-.7 3.2-2" />
     </svg>
   );
 }
@@ -544,8 +560,8 @@ export function IconPet(props: IconProps) {
 export function IconSnapshot(props: IconProps) {
   return (
     <svg {...base(props)} viewBox="0 0 24 24">
-      <path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2" />
-      <circle cx="12" cy="12" r="3" />
+      <path d="M20 12a8 8 0 1 1-2.2-5.4" />
+      <path d="M20 5.5V12h-6.5" />
     </svg>
   );
 }

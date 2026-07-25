@@ -717,3 +717,13 @@ This test plan spec is accepted when:
 - Open Projects, Pull requests, Scheduled, Plugins.
 - Expect large section titles (~28px) consistent with Codex destination/index pages.
 - Dark home New task remains a ghost row (no solid selected chip) unless genuinely active.
+
+### US-UI-52 Settings gold chrome metrics (D070)
+- Open Settings light General at ~1200×690.
+- Expect ~275px `#f4f4f4` rail, single active General pill, Back + search.
+- Expect compact ~32×20 accent-blue toggles; Account arrow-up-right; VS Code open-target glyph.
+- Expect Permissions + General elevated cards; local Providers/About may follow Account.
+
+### US-UI-53 Settings dark shell (D070)
+- Dark theme Settings General: black rail, elevated cards, blue on-toggles, Back returns to chat.
+
