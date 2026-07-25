@@ -361,7 +361,8 @@ textarea:disabled {
   min-height: 0;
   width: 100%;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto; /* Codex: allow chips+composer to fully paint in dual-grow */
   container-type: size;
   container-name: home-main-content;
 }
@@ -378,7 +379,7 @@ textarea:disabled {
   width: 100%;
   align-items: flex-end;
   justify-content: center;
-  padding: 24px 0 64px; /* pt-6 + strong gap before composer (Codex pb-24) */
+  padding: 24px 0 40px; /* pt-6 + gap before composer */
 }
 
 .home-upper-inner {
@@ -392,7 +393,7 @@ textarea:disabled {
 .home-lower {
   display: flex;
   flex: 1 1 0;
-  min-height: 0;
+  min-height: min-content; /* never squeeze away workspace chips */
   min-width: 0;
   width: 100%;
   flex-direction: column;
@@ -503,6 +504,7 @@ textarea:disabled {
   width: 100%;
   max-width: 100%;
   gap: 8px; /* chips sit tight above shell */
+  overflow: visible;
 }
 
 .composer-stack {
@@ -1099,7 +1101,9 @@ textarea:disabled {
 /* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
 :root[data-theme="light"] .composer-chips {
   background: #ffffff;
-  box-shadow: var(--ds-elevation-stroke), 0 1px 2px rgba(0, 0, 0, 0.03);
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 16%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.04);
+  color: #1a1c1f;
 }
 
 :root[data-theme="light"] .composer-shell {
@@ -1125,7 +1129,8 @@ textarea:disabled {
 
 :root[data-theme="light"] .composer-chips .chip,
 :root[data-theme="light"] .composer-chips .chip-label {
-  color: color-mix(in oklab, #1a1c1f 78%, transparent);
+  color: #1a1c1f;
+  opacity: 0.82;
 }
 
 :root[data-theme="light"] .composer-toolbar .icon-btn,

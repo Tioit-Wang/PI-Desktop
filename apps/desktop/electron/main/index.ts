@@ -300,7 +300,16 @@ async function createWindow() {
             `);
             await new Promise((r) => setTimeout(r, 500));
             await clickNav("new-task");
-            await new Promise((r) => setTimeout(r, 400));
+            await new Promise((r) => setTimeout(r, 600));
+            try {
+              if (mainWindow!.isMinimized()) mainWindow!.restore();
+              mainWindow!.show();
+              mainWindow!.focus();
+              mainWindow!.moveTop();
+            } catch {
+              // ignore
+            }
+            await new Promise((r) => setTimeout(r, 350));
             await shot("pi-final");
             // Open composer + menu for chrome parity proof.
             await mainWindow!.webContents.executeJavaScript(`
