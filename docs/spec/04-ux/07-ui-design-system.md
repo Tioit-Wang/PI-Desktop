@@ -342,7 +342,7 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 
 - Column `flex: 1; min-height: 0; overflow: hidden` (not a single optical-center stack)
 - **Upper grow** (`.home-upper`): `flex: 1 1 0; align-items: flex-end; justify-content: center; padding-bottom: 96px` holds hero (icon + `heading-xl`)
-- **Upper grow**: `min-h-fit grow basis-0 items-end justify-center` with ~74px bottom pad (tuned from pb-24 so hero first-ink ≈y305 at 1200×690); ambient suggestion cards portal under hero (`absolute top-full mt-8`) so they do not steal lower flex height
+- **Upper grow**: `min-h-fit grow basis-0 items-end justify-center` with ~62px bottom pad (tuned from pb-24 so hero first-ink ≈y305 at 1200×690); ambient suggestion cards portal under hero (`absolute top-full mt-8`) so they do not steal lower flex height
 - **Lower grow**: `min-h-fit shrink-0 grow basis-0 flex-col justify-end` holds workspace chips + floating composer only (`pt-3 pb-4`)
 - Suggestion cards: Codex auto-fit grid (`minmax(10rem,1fr)`, often **4-up single row** at desktop width), `min-height: 104px` (`min-h-26`), `rounded-2xl`; electron ring `0.5px` border-heavy + `shadow-md-strong`; dark uses elevated-secondary wash on `#181818`
 - Card actions prefill composer with Codex starter prompts (Explore / Build / Review / Fix)

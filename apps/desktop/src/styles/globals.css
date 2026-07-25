@@ -95,8 +95,8 @@
   --ds-error: #e02e2a;
   --ds-info: #0285ff;
   --ds-shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.12);
-  --ds-elevation-stroke: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent);
-  --ds-shadow-composer: var(--ds-elevation-stroke), 0 3px 7.5px #0000000a, 0 0 20px #0000000d;
+  --ds-elevation-stroke: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 16%, transparent);
+  --ds-shadow-composer: var(--ds-elevation-stroke), 0 3px 7.5px #00000012, 0 0 22px #00000014;
   --ds-bg-elevated-primary: color-mix(in oklab, #ffffff 70%, transparent);
 }
 
@@ -382,8 +382,8 @@ textarea:disabled {
   width: 100%;
   align-items: flex-end;
   justify-content: center;
-  /* Gold hero first-ink ~y305; compact project titles need less than full pb-24 */
-  padding: 0 0 74px;
+  /* Gold hero first-ink ~y305 at 1200x690 */
+  padding: 0 0 62px;
 
   overflow: visible;
 }
@@ -431,7 +431,7 @@ textarea:disabled {
   width: min(100%, 48rem);
   max-width: 100%;
   margin-inline: auto;
-  padding: 8px 24px 16px; /* slightly tighter top so plate sits closer to gold band */
+  padding: 10px 24px 18px; /* match Codex home composer footing */
 }
 
 /* Codex home ambient suggestion cards (electron cards mode) */
@@ -547,8 +547,8 @@ textarea:disabled {
 :root[data-theme="light"] .home-suggestion-card {
   background: #ffffff;
   box-shadow:
-    0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
-    0 2px 4px -1px #0000001a;
+    0 0 0 0.5px color-mix(in oklab, #1a1c1f 14%, transparent),
+    0 2px 4px -1px #0000001f;
 }
 
 :root[data-theme="light"] .home-suggestion-card:hover {
@@ -678,7 +678,7 @@ textarea:disabled {
 .composer-dock-home .composer-stack {
   width: 100%;
   max-width: 100%;
-  gap: 8px; /* chips sit tight above shell */
+  gap: 10px; /* Codex chips-to-shell breathing room */
   overflow: visible;
 }
 
@@ -1276,16 +1276,19 @@ textarea:disabled {
 
 /* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
 :root[data-theme="light"] .composer-chips {
-  /* Codex utility capsule reads slightly elevated gray, not pure white-on-white */
-  background: #f4f4f4;
-  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
-    0 1px 2px rgba(0, 0, 0, 0.04);
+  /* Codex utility capsule: elevated gray plate */
+  background: #f3f3f3;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 14%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.05);
   color: #1a1c1f;
 }
 
 :root[data-theme="light"] .composer-shell {
   background: #ffffff;
   box-shadow: var(--ds-shadow-composer);
+  /* Keep plate edge readable on pure white main */
+  outline: 0.5px solid color-mix(in oklab, #1a1c1f 8%, transparent);
+  outline-offset: 0;
 }
 
 .composer-dock-home .composer-shell {
@@ -1319,7 +1322,8 @@ textarea:disabled {
 }
 
 :root[data-theme="light"] .composer-input::placeholder {
-  color: color-mix(in oklab, #1a1c1f 52%, transparent);
+  /* Gold empty-home placeholder ink ~#8b8c8e–#8f9092 */
+  color: color-mix(in oklab, #1a1c1f 58%, transparent);
 }
 
 :root[data-theme="light"] .composer-thread-mark {
