@@ -153,28 +153,34 @@ function AppShell() {
             });
           }
         }
-        // Seed recents density closer to Codex empty-home gold (~10-12 rows).
+        // Seed / ensure Codex-like recent titles for capture residual (data band).
         try {
-          const store = useAppStore.getState();
-          if ((store.sessions?.length ?? 0) < 10) {
-            const titles = [
-              "同步代码",
-              "你好",
-              "终止进程里面有一个注册机的",
-              "加一下",
-              "帮我彻底卸载比特浏览器",
-              "帮我配置一下这个项目并启动",
-              "重新设计设置页面插件板块手机端ui布局",
-              "制作台的布局重新设计，需要现代化简",
-              "Review open pull requests",
-              "Settings appearance polish",
-              "Plugins empty state",
-            ];
-            for (const title of titles) {
-              if ((useAppStore.getState().sessions?.length ?? 0) >= 11) break;
-              await api.createSession({ title });
-            }
-            await useAppStore.getState().refreshSessions();
+          await useAppStore.getState().refreshSessions();
+          const existing = new Set(
+            (useAppStore.getState().sessions || []).map((s) => (s.title || "").trim()),
+          );
+          const titles = [
+            "同步代码",
+            "你好",
+            "终止进程里面有一个注册机的",
+            "加一下",
+            "帮我彻底卸载比特浏览器",
+            "帮我配置一下这个项目并启动",
+            "重新设计设置页面插件板块手机端ui布局",
+            "制作台的布局重新设计，需要现代化简",
+          ];
+          for (const title of titles) {
+            if (existing.has(title)) continue;
+            if ((useAppStore.getState().sessions?.length ?? 0) >= 16) break;
+            await api.createSession({ title });
+            existing.add(title);
+          }
+          await useAppStore.getState().refreshSessions();
+          const preferred = useAppStore
+            .getState()
+            .sessions.find((s) => (s.title || "").trim() === "同步代码");
+          if (preferred) {
+            await useAppStore.getState().selectSession(preferred.id);
           }
         } catch {
           // optional capture-only fixture
