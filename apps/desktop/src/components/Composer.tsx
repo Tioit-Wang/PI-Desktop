@@ -123,7 +123,7 @@ export function Composer() {
         <div className="composer-shell">
           <div className="composer-input-wrap">
             <div className="composer-thread-mark" aria-hidden>
-              <span className="infinity-mark">∞</span>
+              <span className="infinity-mark" title="Thread">∞</span>
             </div>
             <textarea
               ref={ref}
@@ -187,8 +187,8 @@ export function Composer() {
                   useAppStore.getState().setPage("settings");
                 }}
               >
-                <span className="max-w-[190px] truncate text-[12px] text-text-secondary">
-                  {t("chat.effortCustom")} {effortLabel}
+                <span className="max-w-[190px] truncate text-[12px] leading-none text-text-secondary">
+                  {t("chat.effortCustom")}&nbsp;{effortLabel}
                 </span>
               </button>
 

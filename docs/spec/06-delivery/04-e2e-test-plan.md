@@ -546,3 +546,8 @@ This test plan spec is accepted when:
 - Floating composer uses Codex elevation-prominent: 0.5px stroke + soft 3px/20px shadow (not heavy 10–30px drop).
 - Empty hero title is 28px / 34px line-height, weight 400.
 - Window restores ≥1000×700 (target 1200×800) if Stage Manager collapses it.
+
+### US-UI-16 Sidebar footer cloud control
+- On light/dark home shell, sidebar footer shows Custom + a circular blue cloud/update badge (~20px, Codex charts-blue).
+- Badge click remains available (local stand-in opens logs until real update channel lands).
+- Traffic lights sit at Codex `{x:16,y:16}` with 46px toolbar; back/forward nav lives in the drag row after lights.

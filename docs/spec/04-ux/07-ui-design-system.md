@@ -243,6 +243,10 @@ Light theme: minimal shadows only where layering is insufficient.
 | `elevation-2` | bg-tertiary | bg-tertiary + `shadow-md` | Hover, dropdowns |
 | `elevation-3` | bg-tertiary + border-accent | bg-white + `shadow-lg` | Dialogs, overlays |
 
+Sidebar footer cloud control: `20×20` (`h-5`) rounded-full charts-blue (`#0285ff`), white glyph; Custom + badge in footer band.
+
+Toolbar: traffic lights `{x:16,y:16}` in 46px titlebar.
+
 Composer elevation (Codex `elevation-prominent`):
 
 - stroke: `0 0 0 0.5px` border-heavy mix
