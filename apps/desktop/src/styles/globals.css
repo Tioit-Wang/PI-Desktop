@@ -773,7 +773,7 @@ textarea:disabled {
 .composer-dock-home .composer-stack {
   width: 100%;
   max-width: 100%;
-  gap: 8px; /* chips sit just above elevated shell */
+  gap: 0;
   overflow: visible;
 }
 
@@ -783,23 +783,30 @@ textarea:disabled {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 8px; /* gold: chips tightly above shell */
+  gap: 0;
 }
 
 .composer-chips {
+  position: relative;
+  z-index: 1;
   display: inline-flex;
   flex-wrap: nowrap;
   gap: 0;
   align-items: center;
   align-self: flex-start;
   width: auto;
-  max-width: 100%;
+  max-width: calc(100% - 24px);
+  margin-inline-start: 12px;
+  margin-bottom: -1px;
   overflow: hidden;
-  border-radius: var(--radius-full);
-  background: var(--ds-bg-elevated);
-  box-shadow: 0 0 0 1px var(--ds-border-default);
+  border-radius: var(--radius-md-plus) var(--radius-md-plus) 0 0;
+  background: var(--ds-bg-composer);
+  box-shadow:
+    -0.5px 0 var(--ds-border-default),
+    0.5px 0 var(--ds-border-default),
+    0 -0.5px var(--ds-border-default);
   padding: 3px 6px;
-  backdrop-filter: blur(16px);
+  backdrop-filter: none;
   min-height: 32px;
   max-height: 34px;
 }
@@ -1756,10 +1763,12 @@ textarea:disabled {
 
 /* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
 :root[data-theme="light"] .composer-chips {
-  /* Codex utility capsule: elevated gray plate */
-  background: #f3f3f3;
-  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 14%, transparent),
-    0 1px 2px rgba(0, 0, 0, 0.05);
+  /* Attached context rail shares the composer surface and elevation. */
+  background: var(--ds-bg-composer);
+  box-shadow:
+    -0.5px 0 color-mix(in oklab, #1a1c1f 14%, transparent),
+    0.5px 0 color-mix(in oklab, #1a1c1f 14%, transparent),
+    0 -0.5px color-mix(in oklab, #1a1c1f 14%, transparent);
   color: #1a1c1f;
 }
 
@@ -1779,8 +1788,7 @@ textarea:disabled {
 }
 
 .composer-dock-home .composer-chips {
-  /* gold: compact capsule, not full plate width */
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md-plus) var(--radius-md-plus) 0 0;
   padding: 3px 6px;
   min-height: 32px;
   max-height: 34px;
@@ -2031,9 +2039,13 @@ textarea:disabled {
 
 /* DARK_COMPOSER_BOX — Codex elevated-primary + elevation-prominent */
 :root[data-theme="dark"] .composer-chips {
-  background: color-mix(in oklab, var(--gray-0) 6%, transparent); /* elevated-secondary on #181818 */
-  box-shadow: 0 0 0 0.5px color-mix(in oklab, var(--gray-0) 10%, transparent);
-  backdrop-filter: blur(16px);
+  background: var(--ds-bg-elevated-primary);
+  background-color: #212121f5;
+  box-shadow:
+    -0.5px 0 color-mix(in oklab, var(--gray-0) 10%, transparent),
+    0.5px 0 color-mix(in oklab, var(--gray-0) 10%, transparent),
+    0 -0.5px color-mix(in oklab, var(--gray-0) 10%, transparent);
+  backdrop-filter: none;
 }
 
 :root[data-theme="dark"] .composer-shell {
@@ -2052,8 +2064,7 @@ textarea:disabled {
 }
 
 .composer-dock-home .composer-chips {
-  /* gold: compact capsule, not full plate width */
-  border-radius: var(--radius-full);
+  border-radius: var(--radius-md-plus) var(--radius-md-plus) 0 0;
   padding: 3px 6px;
   min-height: 32px;
   max-height: 34px;

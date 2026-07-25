@@ -576,7 +576,10 @@ This test plan spec is accepted when:
 - Expect only one empty "New task" draft in Recent tasks and the home hero remains visible.
 
 ### US-UI-12 Combined workspace chips
-- On chat home, expect project / Local / branch controls to share one capsule bar above the composer.
+- On project home and in a thread, expect project / Local / branch controls to
+  share one context rail attached directly to the composer shell.
+- The rail and shell use one surface and one outer elevation with no visible
+  gap, independent rail shadow, or bottom seam; internal separators remain.
 
 ### US-UI-13 Light theme shell parity
 - Set theme to system/light on a light macOS appearance.
@@ -650,7 +653,8 @@ This test plan spec is accepted when:
 
 ### US-UI-28 Home empty composer association
 - On empty chat home (light + dark), expect hero in the upper grow region and composer in the lower grow region (Codex dual-grow), not a large empty gap with a wrongly absolute-docked box.
-- Workspace chips remain directly associated with the composer plate.
+- When present, the workspace context rail is visually integrated into the
+  composer plate rather than floating above it.
 - Starting a transcript restores the bottom-docked composer with fade veil.
 
 ### US-UI-29 Light composer plate legibility
@@ -687,7 +691,8 @@ This test plan spec is accepted when:
 ### US-UI-36 Hero Y + night box elevation
 - At ~1200×690 light home, hero first dark ink is near y≈300 (±12px) vs Codex gold.
 - Dark home composer plate reads as elevated-primary `#212121f5` with elevation-prominent against `#181818` (not flat same-surface).
-- Light workspace chips capsule is elevated gray (`#f4f4f4`), distinct from main white.
+- Light workspace context rail shares the solid composer surface and has no
+  independent elevation.
 - Model chip shows the active model id; effort options remain in the model/intelligence menu.
 - Placeholder and approval chip remain legible on light and dark plates.
 
@@ -745,7 +750,9 @@ This test plan spec is accepted when:
 
 ### US-UI-46 Home-with-project composer chrome
 - Open a project on empty home (no transcript).
-- Expect workspace chips (project / Local / branch) above the plate; no ∞ draft mark; placeholder is Ask anything / 随心输入.
+- Expect workspace controls (project / Local / branch) attached to the plate as
+  one seamless context rail; no ∞ draft mark; placeholder is Ask anything /
+  随心输入.
 - Model chip shows Custom + effort (e.g. 自定义 最高); footer profile uses gear + Custom and help control.
 
 ### US-UI-47 Projects index parity

@@ -389,7 +389,13 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 
 ## 8.1 Composer workspace chips (Codex parity)
 
-The project / Local / branch controls share **one** capsule bar above the composer (not three independent pills). On empty home the capsule is omitted (Codex empty-home gold); it returns in thread-docked composer. Internal 1px separators match Codex electron-dark chrome.
+The project / Local / branch controls share one context rail (not three
+independent pills). The rail docks directly into the composer shell with no
+visible gap, uses the same theme surface, and has no independent drop shadow
+or bottom edge. Its rounded top corners, the shell outline, and the shell's
+single elevation read as one immersive composite surface. Internal 1px
+separators remain. On an empty home without a project the rail is omitted; it
+appears on project home and in the thread-docked composer.
 
 ## 8.2 Composer plus menu (Codex parity)
 

@@ -550,6 +550,9 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 ### 11.3 Layout
 
 - Height: min 80px, max 320px (auto-grow with content)
+- Workspace context rail: attached to the shell's upper-left edge with zero
+  visible gap; project / Local / branch retain internal separators but share
+  the shell surface and its single elevation
 - Background: one solid semantic composer surface; no internal gradient,
   background image, or decorative wash
 - Elevation: 20px radius with a hairline stroke and restrained soft shadow;
