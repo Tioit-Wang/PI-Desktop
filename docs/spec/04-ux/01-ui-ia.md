@@ -1,122 +1,118 @@
-# 09. UI Information Architecture
+# 01. UI Information Architecture
 
-## 1. 目标
+> Language: English (per ADR 0009). This describes the shipped Codex-aligned
+> shell (D034+). Component detail: [08-component-spec](08-component-spec.md);
+> visual tokens: [07-ui-design-system](07-ui-design-system.md); behavior:
+> [09-interaction-patterns](09-interaction-patterns.md).
 
-先做清晰、克制、开发者友好的工作台，不先追求视觉炫技。
+## 1. Goal
 
-## 2. 主界面布局
+A clear, restrained, developer-first workbench: one window, one active
+destination, chat as the home surface, tools and permissions inline.
+
+## 2. Shell regions
 
 ```text
-+------------------+------------------------------+------------------+
-| Sidebar | Main Chat | Context Panel |
-| - New Chat | - message stream | - Project |
-| - session list | - tool call cards | - status |
-| - search (后) | - composer | - files (后) |
-+------------------+------------------------------+------------------+
-| Topbar: project / model / mode / abort / settings entry |
-+--------------------------------------------------------------------+
++--------------------------------------------------------------+
+| Titlebar row (46px): traffic lights · back/forward · actions |
++------------------+-------------------------------------------+
+| Sidebar (~275px) | Main pane (active destination)            |
+|  New task        |  chat home / transcript                   |
+|  Projects        |  or Projects / Pull requests /            |
+|  Pull requests   |     Scheduled / Plugins page              |
+|  Scheduled       |                                           |
+|  Plugins         |  [Context panel overlays on toggle]       |
+|  Recents (pins)  |                                           |
+|  Footer: Custom  |  Floating composer (chat destination)     |
++------------------+-------------------------------------------+
 ```
 
-## 3. 页面结构
+- **Sidebar**: primary navigation — New task, destination entries
+  (Projects / Pull requests / Scheduled / Plugins), Recents thread list
+  (with pin + open-in-panel row actions, D068), profile footer (Custom →
+  Settings / Logs / Theme, D041). Collapsible to an icon rail (Cmd/Ctrl+B).
+- **Main pane**: exactly one destination at a time; destinations replace the
+  pane (they are pages, not modals).
+- **Titlebar**: hiddenInset traffic lights; back/forward controls traverse
+  destination history; context-panel toggle on the right.
+- **Composer**: floating pill anchored to the chat destination — split-grow
+  centered on the empty home (D045/D047), bottom-docked in a transcript.
+- **Backend status capsule**: appears under the titlebar while the backend
+  restarts or is fatally degraded (D080), with an Open-logs action.
 
-### 3.1 Home / Workspace
-默认进入主工作台，不必单独 dashboard。
+## 3. Destinations
 
-### 3.2 Settings
-独立路由/模态均可，MVP 用独立页面更清晰：
+### 3.1 Chat home (default)
+- Empty state: hero title ("What should we build?" — project name becomes a
+  dotted-underline button when a workspace is open), suggestion cards
+  (D049/D067), centered composer.
+- With transcript: message stream + tool disclosure rows (D071), docked
+  composer, permission cards inline.
 
-- Providers
-- Models
-- Permissions
-- Appearance（可选）
-- About
+### 3.2 Projects
+Codex index table (search, name/sources/updated columns, expand, actions;
+D066). Opening/switching a project rebinds the workspace for tools and chips.
 
-### 3.3 Session
-每个 session 一页状态：
-- messages
-- running state
-- permission prompts
+### 3.3 Pull requests
+Segmented Open/Draft/All filters with counts; rows carry icon plate, number,
+title, status badge, branch meta, external link, and "Review with agent"
+(creates a chat turn). Requires an active workspace and `gh`.
 
-## 4. 关键组件
+### 3.4 Scheduled
+Create card + task rows (cadence/enabled badges, prompt preview, last run,
+Run now / toggle / Delete). Run now opens a session seeded with the prompt.
 
-| 组件 | 职责 |
+### 3.5 Plugins
+Installed plugin list (enable/disable/uninstall), dev-load entry, permission
+declarations.
+
+### 3.6 Settings (full-page takeover)
+Settings replaces the whole shell (D062/D063): back-to-app + search + grouped
+rail (Personal / Integrations / Coding), elevated content cards. Providers
+and Plugins management live here; General holds permissions, appearance,
+language, and configuration rows (D064/D065).
+
+## 4. Overlays
+
+| Overlay | Trigger | Notes |
+|---|---|---|
+| Command palette | Cmd/Ctrl+K (also Cmd/Ctrl+Shift+P per D014) | builtin + plugin commands |
+| Permission dialog | tool permission request | risk copy, args preview, allow-once / allow-session / deny, 120s countdown → deny |
+| Context panel | titlebar toggle | project/status/context info |
+| Plus menu | composer `+` | attach files/photos, capture appshot (stub), open project |
+| Model/effort menu | composer model chip | effort radio + model heading + settings entry (D040) |
+| Profile menu | sidebar footer | Settings / Logs / Theme cycle (D041) |
+| Toasts | events (plugin toast, backend restored, copy) | bottom-right, ~2.5s |
+
+## 5. Navigation model
+
+- `page` state: `chat | projects | pulls | scheduled | plugins | settings`.
+- Destination history is linear; titlebar back/forward traverse it.
+- Selecting a recent thread switches to `chat` with that session.
+- New task reuses an existing empty draft instead of stacking drafts (D-series
+  "empty draft reuse"; US-UI-11).
+
+## 6. Keyboard map (IA level)
+
+| Keys | Action |
 |---|---|
-| SessionList | 会话切换/新建/删除 |
-| ChatTranscript | 消息与流式渲染 |
-| ToolCallCard | 工具参数/结果/状态 |
-| PermissionDialog | 高风险操作确认 |
-| Composer | 输入、发送、附件预留 |
-| ModelSelector | provider/model 切换 |
-| ProjectPicker | 打开/显示工作区 |
-| StatusBar | running/error/idle |
+| Cmd/Ctrl+K, Cmd/Ctrl+Shift+P | command palette |
+| Cmd/Ctrl+B | toggle sidebar |
+| Cmd/Ctrl+. | abort current run |
+| Enter / Shift+Enter | send / newline (configurable Enter-to-send) |
+| Esc | dismiss overlay/menu |
 
-## 5. 消息展示规则
+## 7. State-dependent chrome
 
-- user：纯文本为主
-- assistant：markdown 流式渲染
-- tool：独立卡片，不与正文混淆
-- error：明确、可操作
+- No provider configured → blocking guidance toward Settings before first run
+  (`MODEL_NOT_CONFIGURED`).
+- No workspace → home hero without project underline; composer chips hidden
+  on empty home (D056); Pull requests shows workspace-required empty state.
+- Backend degraded → status capsule (restarting) or fatal banner with Open
+  logs (D080); composer submits are rejected with readable errors while down.
 
-工具卡片最小字段：
-- tool name
-- status（running/success/error/denied）
-- args preview
-- result preview
-- duration
+## 8. i18n
 
-## 6. Composer 交互
-
-- Enter 发送（可改）
-- Shift+Enter 换行
-- 运行中可 Abort
-- 未配置模型时发送按钮禁用并提示
-- 无 workspace 时高风险模式提示
-
-## 7. 权限确认 UX
-
-出现高风险工具时：
-
-1. 聊天流内插入 permission card，或模态确认
-2. 展示工具名、风险、关键参数
-3. 操作：
- - 允许一次
- - 本会话允许
- - 拒绝
-4. 决策后卡片转为终态
-
-## 8. 空状态
-
-- 无会话：引导新建
-- 无 provider：引导去 Settings
-- 无 project：提示打开文件夹（Agent 模式更明显）
-
-## 9. 主题
-
-MVP：
-- 跟随系统 light/dark
-- 先保证对比度与可读性
-
-不做：
-- 复杂主题市场
-
-## 10. 可访问性与效率
-
-- 关键操作键盘可达
-- 长输出可折叠
-- 工具结果默认截断，可展开
-
-## 11. 明确延后的 UI
-
-- 完整文件树编辑
-- 分屏 diff editor
-- 多终端矩阵
-- 插件市场页
-- 复杂仪表盘
-
-
-## Projects index (Codex parity)
-
-- Full destination under app sidebar (not settings takeover)
-- Header: title + search + New
-- Table: Name / Sources / Updated + row actions
-- Expandable rows for recent tasks in project
+English is the source locale; zh-CN ships in parallel for shell chrome
+(labels asserted by US-UI e2e scenarios). Copy rules live in
+[02-i18n-english-first](02-i18n-english-first.md).

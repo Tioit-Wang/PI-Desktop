@@ -6,6 +6,14 @@
 
 
 > Shell layout is Codex-aligned: left thread sidebar (~275px), main transcript, floating bottom composer with project/model chips. Prefer neutral charcoal surfaces over blue-slate chrome.
+>
+> **Precedence rule**: where a metric or copy string below disagrees with a
+> Codex parity decision in [decisions-log §D](../08-meta/decisions-log.md)
+> (D034+), the decision log wins — it tracks the live gold captures. Known
+> updated values: sidebar ~275px (not 240px), toolbar 46px (not 44px),
+> composer placeholder per D046/D066, home split-grow per D045/D047,
+> Projects index table per D066, settings full-page shell per D062/D063,
+> session pinning shipped per D068.
 
 ## 1. AppShell
 
@@ -18,9 +26,9 @@ Outer frame that positions Topbar, Sidebar, MainChat, and ContextPanel. Owns res
 ```text
 +------------------+------------------------------+------------------+
 | Sidebar          | MainChat                     | ContextPanel     |
-| (240px / 48px)   | (flex-1)                     | (280px / hidden) |
+| (275px / 48px)   | (flex-1)                     | (280px / hidden) |
 +------------------+------------------------------+------------------+
-| Topbar: 44px fixed top, spans full width                           |
+| Titlebar row: 46px, traffic lights at {x:16,y:16} (D034/D070)      |
 +--------------------------------------------------------------------+
 ```
 
@@ -68,7 +76,7 @@ Global controls bar: project identity, model selection, mode indicator, abort bu
 
 ### 2.3 Layout
 
-- Height: 44px (per [07-ui-design-system.md](07-ui-design-system.md) §10)
+- Height: 46px (Codex toolbar rhythm, D034; supersedes the old 44px)
 - Background: bg-secondary
 - Border: border-subtle bottom
 - Sticky: `z-sticky`
@@ -105,7 +113,7 @@ Session navigation and management. Toggle between expanded (session list) and co
 ### 3.2 Anatomy
 
 ```text
-Expanded (240px):
+Expanded (~275px, D034/D070):
 +---------------------------+
 | [+ New Chat] button       |
 | [🔍 Search] (deferred)    |
@@ -175,7 +183,8 @@ Primary chat area containing ChatTranscript and Composer. Scrollable, center of 
 |   PermissionCard                     |
 |   ...                                |
 +--------------------------------------+
-| Composer (bottom-anchored, fixed)    |
+| Composer (docked in thread view;     |
+| home uses split-grow, D045/D047)     |
 +--------------------------------------+
 ```
 
@@ -287,7 +296,7 @@ Each session item:
 ### 6.6 MVP constraints
 
 - No session search/filter
-- No session grouping/pinning
+- No session grouping; pinning shipped (D068: pin/panel row actions)
 - Max 50 sessions shown; older sessions accessible via scroll
 
 ---
@@ -529,7 +538,10 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 | [model: provider/model · mode badge]         |
 | ───────────────────────────                  |
 | textarea (auto-growing, min 1 line)          |
-| placeholder: "Send a message..."             |
+| placeholder: "Ask Codex to do anything"      |
+| (D046; zh-CN 向 Codex 下达任意指令; home     |
+|  variant "Ask anything" when project open,   |
+|  D066)                                       |
 | ───────────────────────────                  |
 | [⏹ Abort (when running)] [→ Send / Enter]   |
 +----------------------------------------------+
@@ -686,7 +698,7 @@ Guidance surfaces when key data is absent. Must always provide an **action link*
 | No provider | "No model provider configured" | "Add provider" link → settings/providers |
 | No project (Agent mode) | "No project open — local tools unavailable" | "Open folder" button → ProjectPicker |
 | No project (Chat mode) | "Open a project for context" (muted warning) | "Open folder" button |
-| Session empty (first message) | "Ask anything..." placeholder in composer | N/A |
+| Session empty (first message) | "Ask Codex to do anything" placeholder (home variant "Ask anything", D046/D066) | N/A |
 
 ### 15.3 Layout
 
@@ -762,7 +774,7 @@ Overlay surface for the command palette (Cmd/Ctrl+Shift+P, per D014). Defined in
 
 1. All components use semantic color tokens from [07-ui-design-system.md](07-ui-design-system.md) — no raw hex
 2. All interactive elements have visible focus rings (2px accent, offset 2px)
-3. Layout shell metrics (44px topbar, 240/48 sidebar, 280 context, 80–320 composer) match spec
+3. Layout shell metrics (46px titlebar row, ~275/48 sidebar, 280 context, 80–320 composer) match spec (D034/D070)
 4. Chat messages constrained to 720px max width
 5. ToolCallCard shows status, args preview, result preview, duration per [01-ui-ia.md](01-ui-ia.md) §5
 6. PermissionCard shows tool name, risk, args, countdown, and three action buttons per [03-permission-ux.md](03-permission-ux.md)

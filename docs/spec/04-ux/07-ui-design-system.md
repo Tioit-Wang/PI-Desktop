@@ -182,29 +182,45 @@ Implementation note: Tailwind v4 supports CSS-first configuration. The `@theme` 
 
 ### 5.2 Type scale
 
-| Token | Size (px/rem) | Weight | Line-height | Usage |
-|---|---|---|---|---|
-| `text-xs` | 12px / 0.75rem | 400 | 1.5 | Timestamps, badges, hints |
-| `text-sm` | 13px / 0.8125rem | 400 | 1.5 | Secondary text, labels, sidebar items |
-| `text-base` | 14px / 0.875rem | 400 | 1.6 | Body text, chat messages, input |
-| `text-lg` | 16px / 1rem | 500 | 1.5 | Section headers, card titles |
-| `text-xl` | 18px / 1.125rem | 600 | 1.4 | Page titles, topbar heading |
-| `text-2xl` | 20px / 1.25rem | 700 | 1.3 | Hero empty states (rare) |
+All font sizes come from the `--text-*` ramp defined in the `@theme` block of `globals.css`. Raw px literals for `font-size`, `font-weight`, `line-height`, and `letter-spacing` are **forbidden** in component CSS and TSX arbitrary utilities (`text-[13px]` etc.) — enforced by `scripts/check-style-tokens.mjs` (runs in `pnpm lint`). `-plus` suffixed tokens are the Codex half-steps between named sizes.
+
+| Token | Size | Usage |
+|---|---|---|
+| `--text-3xs` | 10.5px | Smallest chrome (kbd hints) |
+| `--text-xs` (alias `--text-2xs`) | 11px | Timestamps, badges, tool status |
+| `--text-xs-plus` | 11.5px | Muted metadata, menu subtitles |
+| `--text-sm` | 12px | Secondary labels, tool rows |
+| `--text-sm-plus` | 12.5px | Chips, working indicator, code text |
+| `--text-md` | 13px | Sidebar items, menus, status bar |
+| `--text-md-plus` | 13.5px | Composer labels, list rows |
+| `--text-base` | 14px | Body text, chat messages, input |
+| `--text-base-plus` | 15px | Brand, prominent labels |
+| `--text-lg` | 16px | Section headers, card titles |
+| `--text-lg-plus` | 18px | Large card titles |
+| `--text-xl` | 20px | Page-level emphasis |
+| `--text-2xl` | 28px | Destination page titles, home hero |
+
+Line-height tokens: `--leading-none` 1, `--leading-heading` 1.15, `--leading-tighter` 1.2, `--leading-tight` 1.25, `--leading-compact` 1.3, `--leading-compact-plus` 1.35, `--leading-normal` 1.4, `--leading-body` 1.45 (app default), `--leading-relaxed` 1.5, `--leading-chat` 1.55, `--leading-prose` 1.6, `--leading-row` 18px (fixed-height sidebar rows).
+
+Letter-spacing tokens: `--tracking-tighter` −0.03em, `--tracking-tight` −0.02em, `--tracking-normal` 0, `--tracking-wide` 0.02em.
 
 > Note: 14px base is intentional for developer-density. Do not bump to 16px default.
 
 ### 5.3 Code text sizing
 
-- Code blocks and tool output: `text-sm` (13px) with `font-mono`
-- Inline code within messages: `text-sm` `font-mono`, background `bg-inset`, px-1 py-0.5 rounded
+- Code blocks and tool output: `--text-sm`/`--text-sm-plus` with `font-mono`
+- Inline code within messages: `--text-sm-plus` `font-mono`, soft text-tint background, rounded
 
 ### 5.4 Weight rules
 
-- 400: all default body/label text
-- 500: section headers, emphasis
-- 600: page titles, CTA buttons
-- 700: hero/empty-state headings (rare)
-- Never use 800–900
+Weights use `--font-weight-*` tokens only (Codex uses variable-font intermediate weights):
+
+- `--font-weight-normal` 400: default body/label text
+- `--font-weight-medium` 500: emphasis, chips, row titles
+- `--font-weight-medium-plus` 520: select Codex chrome labels
+- `--font-weight-strong` 560: destination page titles (Codex electron metric)
+- `--font-weight-semibold` 600: brand, CTA buttons
+- Never use 700+
 
 ## 6. Spacing, radius, elevation, borders
 
@@ -223,13 +239,22 @@ Implementation note: Tailwind v4 supports CSS-first configuration. The `@theme` 
 
 ### 6.2 Radius scale
 
+All radii come from `--radius-*` tokens (raw px forbidden, same guard as typography):
+
 | Token | Value | Usage |
 |---|---|---|
-| `radius-none` | 0 | Full-bleed panels, code blocks |
-| `radius-sm` | 4px | Buttons, inputs, inline badges |
-| `radius-md` | 6px | Cards, tool call cards |
-| `radius-lg` | 8px | Dialogs, modals |
-| `radius-xl` | 12px | Large panels (rare) |
+| `--radius-3xs` | 5px | Inline code |
+| `--radius-2xs` | 6px | Small inline chips |
+| `--radius-xs` | 7px | Compact buttons, copy buttons |
+| `--radius-sm` | 8px | Menu items, tool rows, kbd |
+| `--radius-md` | 10px | Buttons, inputs, menus |
+| `--radius-md-plus` | 12px | Cards, code blocks, dialogs |
+| `--radius-lg` | 14px | Panels, settings cards |
+| `--radius-lg-plus` | 16px | Large panels |
+| `--radius-xl` | 18px | Message bubbles |
+| `--radius-2xl` | 22px | Composer-adjacent large surfaces |
+| `--radius-full` | 9999px | Pills, badges, scroll thumbs |
+| `--radius-round` | 50% | Circular buttons, avatars, dots |
 
 ### 6.3 Elevation / shadows
 
@@ -390,12 +415,13 @@ Rules:
 ## 10. Layout shell metrics
 
 These metrics define the AppShell frame. See [08-component-spec.md](08-component-spec.md) for component detail.
+Codex parity decisions (D034/D070) supersede any older value here.
 
 | Metric | Value | Notes |
 |---|---|---|
-| Topbar height | 44px | Compact; contains project, model, mode, abort, settings |
+| Titlebar row height | 46px | Codex toolbar rhythm (D034); traffic lights {x:16,y:16} |
 | Sidebar width (collapsed) | 48px | Icon-only rail |
-| Sidebar width (expanded) | 240px | Session list + labels |
+| Sidebar width (expanded) | ~275px | Codex sidebar width (D034/D070) |
 | Context panel width (collapsed) | 0px | Hidden by default |
 | Context panel width (expanded) | 280px | Project/status panel |
 | Composer min height | 80px | Single-line + padding |
@@ -554,7 +580,7 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 - Collapse long content by default (tool results, long messages) — see [09-interaction-patterns.md](09-interaction-patterns.md) §4
 - Use Lucide/Heroicons SVG icons — never emoji as UI affordances
 - Use compact padding and tight spacing — developer density, not consumer spacing
-- Default to dark theme for first launch experience
+- First launch follows the system theme (see §Theme switching); dark is the primary design target
 
 ### Don't
 
@@ -595,6 +621,9 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 
 ## Destination pages
 
-- **Projects**: card grid (`minmax(280px,1fr)`), 14px radius cards, 32px colored glyph, pin/remove row, active accent ring
-- **Settings**: 200px left rail on `--ds-bg-sidebar`, main content on `--ds-bg-primary`, topbar 46px
+- **Projects**: Codex index table (search / columns / expand / actions) per
+  D066 — the earlier card grid (D042) is superseded
+- **Settings**: full-page Codex shell per D062/D063 (275px grouped rail
+  `#f4f4f4` light, elevated content cards, Back to app) — the earlier
+  in-shell 200px rail is superseded
 - Light destination cards use white elevated plates (not flat gray fills)
