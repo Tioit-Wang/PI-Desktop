@@ -172,7 +172,7 @@ Agent calls high-risk tool
 
 - Never use toast for errors that are tied to a specific message or tool call
 - Never use inline error for transient background operations (plugin load, connection test)
-- Toasts stack vertically, newest on top, at bottom-right
+- Toasts stack vertically, newest on top, at top-right
 - Error toasts require manual dismiss or timeout at 8s (longer than success)
 - Success toasts auto-dismiss at 4s
 
