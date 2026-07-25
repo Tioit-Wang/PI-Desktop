@@ -86,6 +86,7 @@ This log freezes previously open questions into concrete decisions.
 | D063 | Settings full-page takeover | **Settings replaces app sidebar with Codex full-page shell: back+search+icon groups (Personal/Integrations/Coding), elevated permission/general cards, local Providers/Plugins retained** | Nested settings-inside-main-pane diverged from live Codex settings gold |
 | D064 | Settings general content parity | **General card rows match Codex: default open target, language, menu bar, bottom panel; nav adds Pets/Appshots; sun/pet/snapshot icons; pill selects** | Closer 1:1 to live Codex settings gold content band |
 | D065 | Settings general gold polish | **Permission rows include blue Learn more links + full-access risk copy; open-target pill shows VS Code glyph; Configuration uses circular-arrow icon; Integrations order Appshots→Plugins→Browser→Computer→MCP; Enter-to-send moves to Configuration** | Residual gaps vs cx-settings-try after full-page shell |
+| D066 | Home-with-project chrome + projects index | **Home shows workspace chips when project open (no ∞); home placeholder 随心输入/Ask anything; model chip Custom+effort; footer gear+help; Projects page is Codex index (search/columns/expand/actions) using setProject** | Gold cx-home-clean with project + projects-index-page parity |
 
 ## C. Still deferred (not blocking M1)
 

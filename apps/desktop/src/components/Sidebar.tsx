@@ -10,6 +10,7 @@ import {
   IconFolder,
   IconCloudDown,
   IconHelp,
+  IconGear,
   IconPullRequest,
   IconSearch,
   IconSettings,
@@ -319,25 +320,16 @@ export function Sidebar({
             onClick={() => setProfileOpen((v) => !v)}
             title={t("nav.openProfileMenu")}
           >
-            <span className="footer-avatar" aria-hidden>
-              C
-            </span>
+            <IconGear size={15} />
             <span className="truncate">{t("nav.custom")}</span>
           </button>
           <button
-            className="footer-badge"
-            title="Updates / cloud"
-            aria-label="Updates"
-            onClick={async () => {
-              // Codex sidebarFooter cloud/update control; open logs as local stand-in.
-              try {
-                await (await import("../lib/api")).api.openLogs();
-              } catch {
-                // ignore
-              }
-            }}
+            className="footer-help"
+            title={t("nav.help")}
+            aria-label={t("nav.help")}
+            onClick={() => setPage("settings")}
           >
-            <IconCloudDown size={11} />
+            <IconHelp size={14} />
           </button>
         </div>
       </div>

@@ -112,3 +112,11 @@ MVP：
 - 多终端矩阵
 - 插件市场页
 - 复杂仪表盘
+
+
+## Projects index (Codex parity)
+
+- Full destination under app sidebar (not settings takeover)
+- Header: title + search + New
+- Table: Name / Sources / Updated + row actions
+- Expandable rows for recent tasks in project

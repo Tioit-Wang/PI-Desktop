@@ -689,3 +689,14 @@ This test plan spec is accepted when:
 ### US-UI-31b (superseded)
 - Superseded by US-UI-31 split-grow layout.
 
+
+
+### US-UI-46 Home-with-project composer chrome
+- Open a project on empty home (no transcript).
+- Expect workspace chips (project / Local / branch) above the plate; no ∞ draft mark; placeholder is Ask anything / 随心输入.
+- Model chip shows Custom + effort (e.g. 自定义 最高); footer profile uses gear + Custom and help control.
+
+### US-UI-47 Projects index parity
+- Open Projects destination.
+- Expect large title, search pill, New button, and table columns Name / Sources / Updated.
+- Rows expand for recent tasks + actions (pin, start task, remove/close); activating a recent path uses setProject without re-picking via dialog when possible.

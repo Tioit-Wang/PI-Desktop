@@ -134,8 +134,8 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   return (
     <div className={`composer-dock composer-dock-${variant}`}>
       <div className="composer-stack">
-        {/* Codex empty-home gold: no workspace capsule above the plate; show in thread dock */}
-        {variant === "docked" && (
+        {/* Codex home-with-project gold shows workspace capsule; bare empty home hides it */}
+        {(variant === "docked" || !!workspace?.path) && (
           <div className="composer-chips" role="group" aria-label="Workspace context">
             <button
               className="chip"
@@ -179,15 +179,17 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
 
         <div className="composer-shell">
           <div className="composer-input-wrap">
-            {/* Codex empty/thread cue: infinity mark left of draft */}
-            <span className="composer-thread-mark" aria-hidden>
-              <span className="infinity-mark">∞</span>
-            </span>
+            {/* Thread dock keeps ∞ cue; home-with-project gold has plain draft */}
+            {variant === "docked" ? (
+              <span className="composer-thread-mark" aria-hidden>
+                <span className="infinity-mark">∞</span>
+              </span>
+            ) : null}
             <textarea
               ref={ref}
-              className="composer-input"
+              className={variant === "docked" ? "composer-input" : "composer-input composer-input-home"}
               rows={1}
-              placeholder={t("chat.placeholder")}
+              placeholder={t(variant === "home" ? "chat.placeholderHome" : "chat.placeholder")}
               value={value}
               onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => {
@@ -309,9 +311,11 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                   }}
                 >
                   <span className="max-w-[190px] truncate text-[12px] leading-none">
-                    {modelLabel}
+                    {variant === "home"
+                      ? `${t("chat.effortCustom")} ${effortLabel}`
+                      : modelLabel}
                   </span>
-                  <IconChevronDown size={12} />
+                  {variant === "home" ? null : <IconChevronDown size={12} />}
                 </button>
                 {modelOpen && (
                   <div className="composer-model-menu" role="menu">
