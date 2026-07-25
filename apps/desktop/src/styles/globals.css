@@ -219,7 +219,8 @@ textarea:disabled {
   display: flex;
   flex-direction: column;
   background: var(--ds-bg-sidebar, var(--ds-bg-primary));
-  border-right: 1px solid var(--ds-border-subtle);
+  /* Codex expanded shell: continuous sidebar/main edge (hairline only) */
+  border-right: 1px solid color-mix(in oklab, var(--ds-text-primary) 4%, transparent);
 }
 
 .sidebar-rail {
@@ -1007,8 +1008,9 @@ textarea:disabled {
 
 /* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
 :root[data-theme="light"] .composer-chips {
-  background: color-mix(in oklab, #1a1c1f 2.5%, #ffffff);
-  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 10%, transparent);
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
 :root[data-theme="light"] .new-task-btn {
@@ -1064,10 +1066,10 @@ textarea:disabled {
 .sidebar-footer {
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-height: 48px;
+  gap: 6px;
+  min-height: 44px;
   margin-top: auto;
-  padding: 8px 4px 10px;
+  padding: 6px 6px 10px;
   /* Codex footer has no hard separator; keep surface continuous */
   border-top: none;
 }
