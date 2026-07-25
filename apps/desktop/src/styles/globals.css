@@ -2031,8 +2031,8 @@ textarea:disabled {
 }
 
 .settings-content-inner {
-  width: min(100%, 720px);
-  margin: 0 auto 0 24px;
+  width: min(100%, 760px);
+  margin: 0 auto 0 28px;
 }
 
 .settings-section-title {
@@ -2093,8 +2093,8 @@ textarea:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 18px;
-  padding: 14px 16px;
+  gap: 20px;
+  padding: 13px 16px;
   border-bottom: 1px solid var(--ds-border-subtle);
 }
 
@@ -2117,8 +2117,8 @@ textarea:disabled {
   margin-top: 3px;
   color: var(--ds-text-muted);
   font-size: 12px;
-  line-height: 1.4;
-  max-width: 52ch;
+  line-height: 1.45;
+  max-width: 62ch;
 }
 
 .settings-row-control {
