@@ -1,6 +1,6 @@
 # PI-Desktop Spec
 
-> Baseline: `0.3.4` 
+> Baseline: `0.4.0` 
 > Updated: `2026-07-25` 
 > Language: **English-first** 
 > Stack: Electron + **Rust host core** + pi Agent Harness + user-installable plugins
@@ -52,7 +52,7 @@ docs/spec/
 4. `03-runtime/02-agent-runtime.md`
 5. `03-runtime/01-ipc-protocol.md`
 6. `03-runtime/11-provider-model-system.md`
-6. `07-plugins/01-plugin-system.md`
+7. `07-plugins/01-plugin-system.md`
 
 ### Plugin authors
 1. `07-plugins/01-plugin-system.md`

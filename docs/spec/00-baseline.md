@@ -1,10 +1,16 @@
 # PI-Desktop Baseline Freeze
 
-- Baseline Version: `0.3.4`
+- Baseline Version: `0.4.0`
 - Date: `2026-07-25`
-- Status: `Frozen for implementation details (provider + runtime safety)`
+- Status: `Frozen for implementation details (provider + runtime safety + M5 hardening)`
 - Language policy: **English-first**
 - Backend policy: **Rust host core + pi agent sidecar**
+
+> Version history: `0.3.4` froze provider/runtime-safety decisions
+> (D001–D033). `0.4.0` absorbs the Codex visual-parity decision series
+> (D034+, gold source = decisions-log §D) and the M5 hardening decisions
+> (D078–D083: signing lanes, brand icon, supervision, renderer sandbox,
+> log channels, window state).
 
 ## Frozen Decisions
 

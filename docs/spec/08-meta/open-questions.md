@@ -1,14 +1,22 @@
 # Open Questions
 
-> Updated for baseline `0.3.4`.  
-> High-priority questions were frozen in `decisions-log.md`.
+> Updated for baseline `0.4.0` (M5 hardening).
+> Frozen decisions live in [decisions-log.md](decisions-log.md); resolved
+> items move there instead of lingering here.
 
-## Still open (non-blocking for M1)
+## Recently resolved (see decisions-log)
 
-### Packaging / release
-1. Final Node pi sidecar packaging format for release builds (bundled Node vs single-binary approach)
-2. Code signing / notarization operational setup for macOS distribution
-3. Auto-update channel design (post-MVP)
+- Sidecar packaging format → `ELECTRON_RUN_AS_NODE` on the Electron binary (D008)
+- Code signing / notarization operational setup → dual lanes + release runbook (D072)
+- App icon / brand mark v1 → generated pi mark (D073)
+- zh-CN locale timeline → zh-CN strings ship alongside English and are
+  asserted by UI e2e scenarios (English remains the source language)
+
+## Still open
+
+### Release / distribution (post-first-release)
+1. Auto-update channel design (D020: post-MVP; signed channel per security spec §7)
+2. Distribution beyond DMG (Homebrew cask? direct download page?)
 
 ### Marketplace (post-MVP)
 1. Official marketplace domain and provider IDs
@@ -17,9 +25,11 @@
 4. Whether `.zip` remains accepted beside `.piplug`
 
 ### Plugin advanced policy
-1. When to enforce strict separate-process plugin runtime (M4 vs later)
+1. When to enforce strict separate-process plugin runtime (ADR 0008 target)
 2. Whether future plugin settings may include secret fields under special storage
 3. Optional “keep data on uninstall” UX copy/defaults beyond hard default delete
+4. Whether `ui.panel` contribution implies the panel permission or must declare it
+   (tracked from 07-plugins/02-plugin-manifest-schema)
 
 ### Provider / model
 1. Remote catalog distribution channel (signed app update vs dedicated catalog feed)
@@ -27,12 +37,12 @@
 3. Azure deployment-name UX details vs raw model id
 4. Bedrock region/profile advanced UI beyond aws_sdk_default in MVP
 
-### Product polish
-1. Exact app icon / brand system
-2. Timeline for additional locales (e.g. zh-CN)
+### Tooling
+1. JS linter choice (biome vs oxlint) — style tokens are already enforced by
+   `scripts/check-style-tokens.mjs`; a general linter remains unpicked
 
 ## Decision rules
 
-- D001–D020 style decisions go into `decisions-log.md`
-- Architecture boundary changes require ADR
-- Non-blocking polish can remain here until implementation nears
+- Frozen decisions go to `decisions-log.md` (D-entries)
+- Architecture boundary changes require an ADR
+- Non-blocking polish stays here until implementation nears

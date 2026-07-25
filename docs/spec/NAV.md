@@ -24,12 +24,12 @@
 - [08-error-codes.md](03-runtime/08-error-codes.md)
 - [09-logging-and-observability.md](03-runtime/09-logging-and-observability.md)
 - [10-session-state-machine.md](03-runtime/10-session-state-machine.md)
-- [13-model-catalog-and-selection.md](03-runtime/13-model-catalog-and-selection.md)
-- [16-tool-result-limits.md](03-runtime/16-tool-result-limits.md)
-- [15-workspace-ignore-rules.md](03-runtime/15-workspace-ignore-rules.md)
-- [14-secrets-storage.md](03-runtime/14-secrets-storage.md)
-- [12-provider-config-schema.md](03-runtime/12-provider-config-schema.md)
 - [11-provider-model-system.md](03-runtime/11-provider-model-system.md)
+- [12-provider-config-schema.md](03-runtime/12-provider-config-schema.md)
+- [13-model-catalog-and-selection.md](03-runtime/13-model-catalog-and-selection.md)
+- [14-secrets-storage.md](03-runtime/14-secrets-storage.md)
+- [15-workspace-ignore-rules.md](03-runtime/15-workspace-ignore-rules.md)
+- [16-tool-result-limits.md](03-runtime/16-tool-result-limits.md)
 
 ## 4. UX
 - [01-ui-ia.md](04-ux/01-ui-ia.md)
