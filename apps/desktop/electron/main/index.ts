@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   dialog,
   ipcMain,
+  nativeTheme,
   shell,
 } from "electron";
 import { join } from "node:path";
@@ -107,7 +108,7 @@ async function createWindow() {
     minWidth: 960,
     minHeight: 640,
     title: APP_NAME,
-    backgroundColor: "#181818",
+    backgroundColor: nativeTheme.shouldUseDarkColors ? "#181818" : "#ffffff",
     show: false,
     titleBarStyle: "hiddenInset",
     trafficLightPosition: { x: 16, y: 16 },
