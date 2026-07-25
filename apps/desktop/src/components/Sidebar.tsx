@@ -68,6 +68,18 @@ export function Sidebar({
   };
 
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem("pi.desktop.pinnedSessions");
+      const parsed = raw ? JSON.parse(raw) : [];
+      if (Array.isArray(parsed)) {
+        setPinnedIds(parsed.filter((x) => typeof x === "string"));
+      }
+    } catch {
+      // ignore
+    }
+  }, [sessions]);
+
+  useEffect(() => {
     if (!profileOpen) return;
     const onPointer = (e: MouseEvent) => {
       if (!profileRef.current?.contains(e.target as Node)) setProfileOpen(false);
