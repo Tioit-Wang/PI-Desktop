@@ -10,6 +10,8 @@ use tokio::process::Command;
 
 use crate::workspace::resolve_in_workspace;
 
+pub mod shell;
+
 pub const MAX_RESULT_BYTES: usize = 256 * 1024;
 pub const MAX_RESULT_LINES: usize = 4000;
 
@@ -79,10 +81,7 @@ pub async fn execute_tool(
             "toolName": other,
             "args": args,
         })),
-        other => Err((
-            "TOOL_NOT_FOUND".into(),
-            format!("unknown tool: {other}"),
-        )),
+        other => Err(("TOOL_NOT_FOUND".into(), format!("unknown tool: {other}"))),
     };
 
     match result {
@@ -108,12 +107,7 @@ pub async fn execute_tool(
 }
 
 fn require_workspace(workspace: Option<&Path>) -> Result<&Path, (String, String)> {
-    workspace.ok_or_else(|| {
-        (
-            "WORKSPACE_REQUIRED".into(),
-            "No workspace is open".into(),
-        )
-    })
+    workspace.ok_or_else(|| ("WORKSPACE_REQUIRED".into(), "No workspace is open".into()))
 }
 
 fn tool_read(workspace: Option<&Path>, args: &Value) -> Result<Value, (String, String)> {
@@ -136,12 +130,8 @@ fn tool_read(workspace: Option<&Path>, args: &Value) -> Result<Value, (String, S
             ));
         }
     }
-    let content = std::fs::read_to_string(&resolved).map_err(|e| {
-        (
-            "TOOL_FAILED".into(),
-            format!("read failed: {e}"),
-        )
-    })?;
+    let content = std::fs::read_to_string(&resolved)
+        .map_err(|e| ("TOOL_FAILED".into(), format!("read failed: {e}")))?;
     let (content, truncated) = truncate_output(&content);
     Ok(json!({
         "path": relative_display(root, &resolved),
@@ -162,19 +152,11 @@ fn tool_write(workspace: Option<&Path>, args: &Value) -> Result<Value, (String, 
         .ok_or_else(|| ("INVALID_ARGUMENT".into(), "content required".into()))?;
     let resolved = resolve_in_workspace(root, path).map_err(|e| (e.clone(), e))?;
     if let Some(parent) = resolved.parent() {
-        std::fs::create_dir_all(parent).map_err(|e| {
-            (
-                "TOOL_FAILED".into(),
-                format!("mkdir failed: {e}"),
-            )
-        })?;
+        std::fs::create_dir_all(parent)
+            .map_err(|e| ("TOOL_FAILED".into(), format!("mkdir failed: {e}")))?;
     }
-    std::fs::write(&resolved, content).map_err(|e| {
-        (
-            "TOOL_FAILED".into(),
-            format!("write failed: {e}"),
-        )
-    })?;
+    std::fs::write(&resolved, content)
+        .map_err(|e| ("TOOL_FAILED".into(), format!("write failed: {e}")))?;
     Ok(json!({
         "path": relative_display(root, &resolved),
         "bytes": content.len(),
@@ -198,25 +180,14 @@ fn tool_edit(workspace: Option<&Path>, args: &Value) -> Result<Value, (String, S
         .and_then(|v| v.as_str())
         .ok_or_else(|| ("INVALID_ARGUMENT".into(), "new_string required".into()))?;
     let resolved = resolve_in_workspace(root, path).map_err(|e| (e.clone(), e))?;
-    let original = std::fs::read_to_string(&resolved).map_err(|e| {
-        (
-            "TOOL_FAILED".into(),
-            format!("read failed: {e}"),
-        )
-    })?;
+    let original = std::fs::read_to_string(&resolved)
+        .map_err(|e| ("TOOL_FAILED".into(), format!("read failed: {e}")))?;
     if !original.contains(old_str) {
-        return Err((
-            "TOOL_FAILED".into(),
-            "old_string not found in file".into(),
-        ));
+        return Err(("TOOL_FAILED".into(), "old_string not found in file".into()));
     }
     let updated = original.replacen(old_str, new_str, 1);
-    std::fs::write(&resolved, &updated).map_err(|e| {
-        (
-            "TOOL_FAILED".into(),
-            format!("write failed: {e}"),
-        )
-    })?;
+    std::fs::write(&resolved, &updated)
+        .map_err(|e| ("TOOL_FAILED".into(), format!("write failed: {e}")))?;
     Ok(json!({
         "path": relative_display(root, &resolved),
         "replacements": 1,
@@ -320,13 +291,21 @@ async fn tool_bash(
         .and_then(|v| v.as_str())
         .ok_or_else(|| ("INVALID_ARGUMENT".into(), "command required".into()))?;
 
-    let mut child = Command::new("bash")
-        .arg("-lc")
+    let resolved =
+        shell::resolve_shell().map_err(|message| ("SHELL_NOT_FOUND".to_string(), message))?;
+    let mut cmd = Command::new(&resolved.program);
+    cmd.args(resolved.args)
         .arg(command)
         .current_dir(root)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .kill_on_drop(true)
+        .kill_on_drop(true);
+    #[cfg(windows)]
+    {
+        // CREATE_NO_WINDOW: bash.exe must not flash a console over the GUI.
+        cmd.creation_flags(0x0800_0000);
+    }
+    let mut child = cmd
         .spawn()
         .map_err(|e| ("TOOL_FAILED".into(), format!("spawn failed: {e}")))?;
 
@@ -352,11 +331,8 @@ async fn tool_bash(
         buf
     });
 
-    let wait = tokio::time::timeout(
-        std::time::Duration::from_millis(timeout_ms),
-        child.wait(),
-    )
-    .await;
+    let wait =
+        tokio::time::timeout(std::time::Duration::from_millis(timeout_ms), child.wait()).await;
 
     match wait {
         Ok(Ok(status)) => {

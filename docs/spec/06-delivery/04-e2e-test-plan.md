@@ -446,6 +446,16 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Documented
 
+#### E2E-035: Bash tool resolves a platform shell or fails with guidance
+
+- **Preconditions**: Workspace open; agent mode.
+- **Steps**: 1) Run a Bash tool call (e.g. `echo ok`) and observe success on a machine with bash. 2) Set `PI_DESKTOP_BASH` to a non-executable path, restart host-core, run a Bash tool call.
+- **Expected**: With a resolvable bash the command runs (Unix `bash -lc`, Windows Git-for-Windows `bash -c`); with a broken override the tool fails fast with stable `SHELL_NOT_FOUND` and a message naming `PI_DESKTOP_BASH`/Git for Windows; no partial execution.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md`, `03-runtime/08-error-codes.md`
+- **Acceptance**: H (errors expose stable codes)
+- **Milestone**: M5
+- **Status**: Unit-covered (`tools::shell::tests`); scenario Documented
+
 ---
 
 ## 8. Traceability Matrix

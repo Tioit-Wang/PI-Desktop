@@ -74,6 +74,7 @@ Rules:
 | `TOOL_DENIED` | no | permission denied / mode forbidden |
 | `TOOL_TIMEOUT` | yes | tool execution timeout |
 | `TOOL_FAILED` | maybe | tool executed but failed |
+| `SHELL_NOT_FOUND` | no | no usable bash on the machine; message carries install guidance |
 | `PERMISSION_TIMEOUT` | no | permission prompt timed out (mapped to deny) |
 | `PERMISSION_REQUIRED` | no | waiting for user decision |
 | `BASH_DISABLED_IN_CHAT` | no | chat mode hard-deny for bash |

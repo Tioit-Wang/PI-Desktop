@@ -61,6 +61,16 @@ MVP baseline:
 - Truncate large output
 - No interactive TTY (MVP)
 
+Shell resolution (D084 — bash on every platform, resolved once per process):
+
+1. `PI_DESKTOP_BASH` env override (path to a bash executable)
+2. Unix: well-known locations (`/bin/bash`, `/usr/bin/bash`, `/usr/local/bin/bash`, Homebrew), then PATH
+3. Windows: `bash.exe` from Git for Windows — derived from the `git` on PATH, then standard install dirs, then PATH excluding the WSL launcher in `System32`
+
+- Unix invokes `bash -lc` (login shell keeps profile PATH for Finder/Dock launches); Windows invokes `bash -c` with `CREATE_NO_WINDOW`
+- No bash bundled in the installer: Git for Windows is the Windows prerequisite (the app requires git anyway)
+- Resolution failure returns stable `SHELL_NOT_FOUND` with install guidance
+
 Initial denylist (extensible):
 
 - Directly reading/writing sensitive paths outside the workspace
