@@ -201,11 +201,23 @@ export class DesktopAgentRuntime {
   matches(
     mode: Mode,
     provider: RuntimeProviderConfig,
-    thinkingLevel: ThinkingLevel,
+    thinkingLevelOrPluginToolNames: ThinkingLevel | string[] = this.thinkingLevel,
     pluginToolNames: string[] = [],
   ): boolean {
+    // Keep the pre-thinking overload usable for callers that passed plugin
+    // names as the third argument. New callers pass the selected level.
+    const legacyPluginToolNames = Array.isArray(thinkingLevelOrPluginToolNames)
+      ? thinkingLevelOrPluginToolNames
+      : undefined;
+    const thinkingLevel: ThinkingLevel = Array.isArray(
+      thinkingLevelOrPluginToolNames,
+    )
+      ? this.thinkingLevel
+      : thinkingLevelOrPluginToolNames;
+    const effectivePluginToolNames =
+      legacyPluginToolNames ?? pluginToolNames;
     const current = this.pluginTools.map((t) => t.name).sort().join(",");
-    const next = [...pluginToolNames].sort().join(",");
+    const next = [...effectivePluginToolNames].sort().join(",");
     const currentThinkingLevels = [
       ...(this.provider.supportedThinkingLevels ?? ["off"]),
     ]
