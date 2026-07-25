@@ -17,7 +17,7 @@ Until that is enabled, track delivery with:
 | Review | Waiting validation |
 | Done | Completed |
 
-## Status snapshot (2026-07-25)
+## Status snapshot (2026-07-25, evening)
 
 | Milestone | GitHub | Local status |
 |---|---|---|
@@ -26,7 +26,7 @@ Until that is enabled, track delivery with:
 | M2 Pi Chat Runtime | [closed](https://github.com/vastsa/PI-Desktop/milestone/3) | Done |
 | M3 Workspace Tools | [closed](https://github.com/vastsa/PI-Desktop/milestone/4) | Done |
 | M4 Plugin Foundation | [closed](https://github.com/vastsa/PI-Desktop/milestone/5) | Done |
-| M5 Desktop Hardening | [open](https://github.com/vastsa/PI-Desktop/milestone/6) | In Progress |
+| M5 Desktop Hardening | [open](https://github.com/vastsa/PI-Desktop/milestone/6) | Done except notarization (credential-gated) |
 
 Open issue:
 - [#6 M5: Packaging and desktop hardening](https://github.com/vastsa/PI-Desktop/issues/6)
@@ -47,28 +47,44 @@ Open issue:
 - M2 Pi Chat Runtime (provider/secrets, streaming chat, session persistence)
 - M3 Workspace Tools (Read/Glob/Grep/Write/Edit/Bash, permissions, path sandbox)
 - M4 Plugin Foundation (dev load, command palette, plugin tool registration)
-- M5 packaging scaffold (electron-builder macOS arm64 `--dir`, host/sidecar resources)
+- M5 packaging: unsigned DMG builds locally (`PI-Desktop-0.1.0-arm64.dmg`)
+  with custom icon, host binary + sidecar resources; signed/notarized lane
+  scripted (`scripts/release-macos.sh`, D078)
+- M5 hardening: renderer sandbox + prod CSP (D081), NDJSON log channels
+  with redaction/rotation (D082), crash supervision + degradation UI
+  (D080), window state persistence (D083), app icon (D079)
+- Spec corpus 0.4.0: English-first everywhere (translated runtime/plugins/
+  ADR docs), error-code registry unified to shared/errors.ts, e2e statuses
+  synced to real automation, decisions-log restructured (A–G) with
+  supersession chains, acceptance criteria evidence-tagged
+- Codex visual parity pass (D034–D072 series; capture suite)
 
 ### In Progress
-- M5 polish for first macOS arm64 package
-  - code signing
-  - custom app icon
-  - full DMG notarization
-  - final isolation / logging hardening pass as needed
+- Codex visual gold polish (ongoing capture-driven iteration)
+
+### Blocked (external)
+- Full DMG notarization — needs Apple Developer credentials; runbook ready
+  ([06-release-runbook](../spec/06-delivery/06-release-runbook.md))
 
 ### Backlog
-- Playwright automated desktop e2e
+- Playwright automated desktop e2e (UI-driven journeys)
 - Marketplace
 - Windows/Linux packaging
 - Skills depth / MCP / additional locales (post-MVP)
 
-## Validation snapshot (2026-07-25)
+## Validation snapshot (2026-07-25, evening)
 
-- `cargo test -p host-core` — pass
-- `pnpm --filter @pi-desktop/shared test` — pass
-- `node scripts/e2e-smoke.mjs` — 15/15 pass (with live model)
-- `node scripts/e2e-agent-live.mjs` — pass (streaming assistant)
-- Electron boot smoke — host + sidecar host-proxy mode OK
+- `cargo test -p host-core` — pass (2)
+- `pnpm --filter @pi-desktop/shared test` — pass (4)
+- `pnpm typecheck` — pass (all packages)
+- `node scripts/e2e-smoke.mjs` — 13/13 pass without live key
+  (15/15 with `PI_DESKTOP_TEST_API_KEY` live-model lane)
+- `node scripts/e2e-electron-boot.mjs` — PASS (sandboxed preload + IPC
+  round-trip, dev build AND packaged .app)
+- `node scripts/e2e-supervision.mjs` — PASS (host-core SIGKILL →
+  supervised restart → healthy RPC)
+- `electron-builder --mac --arm64` — DMG built with icon + resources;
+  packaged-app boot probe PASS
 
 ## Upgrade to GitHub Projects later
 
