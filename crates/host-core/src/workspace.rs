@@ -46,7 +46,30 @@ impl WorkspaceState {
     }
 }
 
+/// Lexically resolve `.` / `..` components without touching the filesystem.
+/// `..` at the filesystem root clamps (stays at root); the caller's
+/// starts_with check then rejects anything that climbed out of the workspace.
+fn normalize_lexical(path: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for component in path.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                out.pop();
+            }
+            other => out.push(other.as_os_str()),
+        }
+    }
+    out
+}
+
 /// Resolve a user-provided path against workspace root and ensure it stays inside.
+///
+/// Two layers of defense:
+/// 1. Lexical normalization of `.`/`..` before any check, so traversal via
+///    nonexistent parents cannot hide behind an uncanonicalizable path.
+/// 2. Canonicalization of the deepest existing ancestor, so symlinks inside
+///    the workspace cannot smuggle a target outside it.
 pub fn resolve_in_workspace(workspace_root: &Path, input: &str) -> Result<PathBuf, String> {
     let root = workspace_root
         .canonicalize()
@@ -57,47 +80,30 @@ pub fn resolve_in_workspace(workspace_root: &Path, input: &str) -> Result<PathBu
         root.join(input)
     };
 
-    // Reject parent escapes before canonicalize when possible
-    if candidate
-        .components()
-        .any(|c| matches!(c, Component::ParentDir))
-    {
-        // still allow if canonical form stays inside
+    let normalized = normalize_lexical(&candidate);
+    if !normalized.starts_with(&root) {
+        return Err("PATH_OUTSIDE_WORKSPACE".into());
     }
 
-    let resolved = if candidate.exists() {
-        candidate
-            .canonicalize()
-            .map_err(|e| format!("path canonicalize failed: {e}"))?
-    } else {
-        // For write paths that don't exist yet, canonicalize parent
-        let parent = candidate
-            .parent()
-            .ok_or_else(|| "invalid path".to_string())?;
-        let file = candidate
-            .file_name()
-            .ok_or_else(|| "invalid path".to_string())?;
-        if parent.as_os_str().is_empty() {
-            root.join(file)
-        } else {
-            let parent_canon = if parent.exists() {
-                parent
-                    .canonicalize()
-                    .map_err(|e| format!("parent canonicalize failed: {e}"))?
-            } else {
-                // ensure parent is under root by lexical join
-                if !parent.starts_with(&root) && parent != root {
-                    let joined = root.join(parent);
-                    if !joined.starts_with(&root) {
-                        return Err("PATH_OUTSIDE_WORKSPACE".into());
-                    }
-                    return Ok(joined.join(file));
-                }
-                parent.to_path_buf()
-            };
-            parent_canon.join(file)
+    // Canonicalize the deepest existing ancestor (resolves symlinks), then
+    // re-append the not-yet-existing tail.
+    let mut existing = normalized.clone();
+    let mut tail: Vec<std::ffi::OsString> = Vec::new();
+    while !existing.exists() {
+        match (existing.parent(), existing.file_name()) {
+            (Some(parent), Some(name)) => {
+                tail.push(name.to_os_string());
+                existing = parent.to_path_buf();
+            }
+            _ => break,
         }
-    };
+    }
+    let mut resolved = existing
+        .canonicalize()
+        .map_err(|e| format!("path canonicalize failed: {e}"))?;
+    for part in tail.iter().rev() {
+        resolved.push(part);
+    }
 
     if !resolved.starts_with(&root) {
         return Err("PATH_OUTSIDE_WORKSPACE".into());
@@ -117,6 +123,45 @@ mod tests {
         let root = dir.path();
         fs::write(root.join("a.txt"), "x").unwrap();
         let err = resolve_in_workspace(root, "../outside.txt").unwrap_err();
+        assert_eq!(err, "PATH_OUTSIDE_WORKSPACE");
+    }
+
+    #[test]
+    fn blocks_escape_via_nonexistent_parent() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        // `sub` does not exist; lexical traversal must still be caught.
+        let err = resolve_in_workspace(root, "sub/../../evil/new.txt").unwrap_err();
+        assert_eq!(err, "PATH_OUTSIDE_WORKSPACE");
+        let err = resolve_in_workspace(root, "a/b/../../../evil.txt").unwrap_err();
+        assert_eq!(err, "PATH_OUTSIDE_WORKSPACE");
+    }
+
+    #[test]
+    fn blocks_absolute_outside() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let err = resolve_in_workspace(root, "/etc/hosts").unwrap_err();
+        assert_eq!(err, "PATH_OUTSIDE_WORKSPACE");
+    }
+
+    #[test]
+    fn allows_new_nested_path() {
+        let dir = tempdir().unwrap();
+        let root = dir.path();
+        let p = resolve_in_workspace(root, "newdir/sub/file.txt").unwrap();
+        assert!(p.starts_with(root.canonicalize().unwrap()));
+        assert!(p.ends_with("newdir/sub/file.txt"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn blocks_symlink_escape() {
+        let dir = tempdir().unwrap();
+        let outside = tempdir().unwrap();
+        let root = dir.path();
+        std::os::unix::fs::symlink(outside.path(), root.join("link")).unwrap();
+        let err = resolve_in_workspace(root, "link/new.txt").unwrap_err();
         assert_eq!(err, "PATH_OUTSIDE_WORKSPACE");
     }
 

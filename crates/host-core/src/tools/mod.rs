@@ -123,6 +123,19 @@ fn tool_read(workspace: Option<&Path>, args: &Value) -> Result<Value, (String, S
         .and_then(|v| v.as_str())
         .ok_or_else(|| ("INVALID_ARGUMENT".into(), "path required".into()))?;
     let resolved = resolve_in_workspace(root, path).map_err(|e| (e.clone(), e))?;
+    const MAX_READ_BYTES: u64 = 512 * 1024;
+    if let Ok(meta) = std::fs::metadata(&resolved) {
+        if meta.len() > MAX_READ_BYTES {
+            return Err((
+                "TOOL_FAILED".into(),
+                format!(
+                    "file too large for Read ({} bytes > {} limit); use Grep or Bash to sample it",
+                    meta.len(),
+                    MAX_READ_BYTES
+                ),
+            ));
+        }
+    }
     let content = std::fs::read_to_string(&resolved).map_err(|e| {
         (
             "TOOL_FAILED".into(),
@@ -239,7 +252,7 @@ fn tool_glob(workspace: Option<&Path>, args: &Value) -> Result<Value, (String, S
         let rel = path.strip_prefix(root).unwrap_or(path);
         if set.is_match(rel) {
             matches.push(rel.to_string_lossy().to_string());
-            if matches.len() >= 500 {
+            if matches.len() >= 2000 {
                 break;
             }
         }
@@ -317,6 +330,28 @@ async fn tool_bash(
         .spawn()
         .map_err(|e| ("TOOL_FAILED".into(), format!("spawn failed: {e}")))?;
 
+    // Drain pipes concurrently with waiting: a child producing more than the
+    // OS pipe buffer (~64KB) would otherwise block forever on write and only
+    // die at the timeout.
+    let mut stdout_pipe = child.stdout.take();
+    let mut stderr_pipe = child.stderr.take();
+    let stdout_task = tokio::spawn(async move {
+        use tokio::io::AsyncReadExt;
+        let mut buf = Vec::new();
+        if let Some(out) = stdout_pipe.as_mut() {
+            let _ = out.read_to_end(&mut buf).await;
+        }
+        buf
+    });
+    let stderr_task = tokio::spawn(async move {
+        use tokio::io::AsyncReadExt;
+        let mut buf = Vec::new();
+        if let Some(err) = stderr_pipe.as_mut() {
+            let _ = err.read_to_end(&mut buf).await;
+        }
+        buf
+    });
+
     let wait = tokio::time::timeout(
         std::time::Duration::from_millis(timeout_ms),
         child.wait(),
@@ -325,22 +360,10 @@ async fn tool_bash(
 
     match wait {
         Ok(Ok(status)) => {
-            let stdout = if let Some(mut out) = child.stdout.take() {
-                use tokio::io::AsyncReadExt;
-                let mut buf = Vec::new();
-                let _ = out.read_to_end(&mut buf).await;
-                String::from_utf8_lossy(&buf).to_string()
-            } else {
-                String::new()
-            };
-            let stderr = if let Some(mut err) = child.stderr.take() {
-                use tokio::io::AsyncReadExt;
-                let mut buf = Vec::new();
-                let _ = err.read_to_end(&mut buf).await;
-                String::from_utf8_lossy(&buf).to_string()
-            } else {
-                String::new()
-            };
+            let stdout_buf = stdout_task.await.unwrap_or_default();
+            let stderr_buf = stderr_task.await.unwrap_or_default();
+            let stdout = String::from_utf8_lossy(&stdout_buf).to_string();
+            let stderr = String::from_utf8_lossy(&stderr_buf).to_string();
             let (stdout, trunc_out) = truncate_output(&stdout);
             let (stderr, trunc_err) = truncate_output(&stderr);
             Ok(json!({
@@ -353,6 +376,8 @@ async fn tool_bash(
         Ok(Err(e)) => Err(("TOOL_FAILED".into(), format!("bash failed: {e}"))),
         Err(_) => {
             let _ = child.start_kill();
+            stdout_task.abort();
+            stderr_task.abort();
             Err(("TOOL_TIMEOUT".into(), "bash timed out".into()))
         }
     }
@@ -438,4 +463,43 @@ pub fn builtin_tool_defs() -> Value {
             }
         }
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn bash_large_output_does_not_deadlock() {
+        // >64KB (OS pipe buffer) must not deadlock the child; reader tasks
+        // drain concurrently with wait(). Single line to stay under the
+        // 4000-line truncation and prove full drainage.
+        let dir = tempfile::tempdir().unwrap();
+        let result = execute_tool(
+            Some(dir.path()),
+            "Bash",
+            &serde_json::json!({ "command": "head -c 200000 /dev/zero | tr '\\0' 'a'" }),
+            15_000,
+        )
+        .await;
+        assert!(result.ok, "bash tool failed: {:?}", result.content);
+        let stdout = result.content["stdout"].as_str().unwrap_or_default();
+        assert_eq!(stdout.len(), 200_000, "stdout fully drained");
+    }
+
+    #[tokio::test]
+    async fn read_refuses_oversized_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let big = dir.path().join("big.txt");
+        std::fs::write(&big, "a".repeat(600 * 1024)).unwrap();
+        let result = execute_tool(
+            Some(dir.path()),
+            "Read",
+            &serde_json::json!({ "path": "big.txt" }),
+            5_000,
+        )
+        .await;
+        assert!(!result.ok);
+        assert_eq!(result.error_code.as_deref(), Some("TOOL_FAILED"));
+    }
 }

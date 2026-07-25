@@ -516,12 +516,20 @@ async fn handle_request(
                 if let Some(decision) = auto {
                     (Some(decision), ws, None, None)
                 } else {
+                    let reason = match p.tool_name.as_str() {
+                        "Write" | "Edit" => "Modifies files in your workspace",
+                        "Bash" => "Runs a shell command in your workspace",
+                        name if name.starts_with("plugin_") => {
+                            "Plugin-provided tool requires approval"
+                        }
+                        _ => "High-risk tool requires approval",
+                    };
                     let (req, rx) = st.permissions.create_request(
                         &p.session_id,
                         &p.tool_call_id,
                         &p.tool_name,
                         p.args.clone(),
-                        "High-risk tool requires approval",
+                        reason,
                     );
                     (None, ws, Some(rx), Some(req))
                 }
