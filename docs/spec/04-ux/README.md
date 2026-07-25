@@ -11,3 +11,4 @@
 | [07-ui-design-system.md](07-ui-design-system.md) | UI design system (tokens, typography, motion, density) |
 | [08-component-spec.md](08-component-spec.md) | Key component specs (shell, chat, tools, permissions) |
 | [09-interaction-patterns.md](09-interaction-patterns.md) | Interaction patterns (keyboard, streaming, abort, collapse) |
+| [10-workbuddy-benchmark-ux.md](10-workbuddy-benchmark-ux.md) | WorkBuddy benchmark walkthrough + adopt/adapt/reject proposals |

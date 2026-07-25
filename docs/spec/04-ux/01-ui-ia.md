@@ -20,16 +20,19 @@ destination, chat as the home surface, tools and permissions inline.
 |  New task        |  chat home / transcript                   |
 |  Projects        |  or Projects / Plugins page               |
 |  Plugins         |  [Context panel overlays on toggle]       |
-|  Recents (pins)  |                                           |
+|  Current project |                                           |
+|  Temporary       |                                           |
 |  Footer: Custom  |  Floating composer (chat destination)     |
 +------------------+-------------------------------------------+
 ```
 
 - **Sidebar**: primary navigation — New task, destination entries
-  (Projects / Plugins), Recents thread list (with pin + open-in-panel row
-  actions, D068), and the profile footer (Custom → Settings / Logs / Theme,
-  D041). Pull requests and Scheduled are intentionally omitted from the home
-  sidebar. Collapsible to an icon rail (Cmd/Ctrl+B).
+  (Projects / Plugins), one current-project session group, a path-less
+  Temporary sessions group, and the profile footer (Custom → Settings / Logs /
+  Theme, D041/D088). Pull requests and Scheduled are intentionally omitted
+  from the home sidebar. Other projects remain in the Projects index rather
+  than accumulating in the home sidebar. Collapsible to an icon rail
+  (Cmd/Ctrl+B).
 - **Main pane**: exactly one destination at a time; destinations replace the
   pane (they are pages, not modals).
 - **Titlebar**: hiddenInset traffic lights; back/forward controls traverse
@@ -50,7 +53,10 @@ destination, chat as the home surface, tools and permissions inline.
 
 ### 3.2 Projects
 Codex index table (search, name/sources/updated columns, expand, actions;
-D066). Opening/switching a project rebinds the workspace for tools and chips.
+D066). The durable D086 `projects` table is the index source of truth, so
+imported sessions with project paths immediately materialize corresponding
+project rows without switching the current workspace. Opening/switching a
+project rebinds the workspace for tools and chips.
 
 ### 3.3 Pull requests
 Segmented Open/Draft/All filters with counts; rows carry icon plate, number,
@@ -66,10 +72,15 @@ Installed plugin list (enable/disable/uninstall), dev-load entry, permission
 declarations.
 
 ### 3.6 Settings (full-page takeover)
-Settings replaces the whole shell (D062/D063): back-to-app + search + grouped
-rail (Personal / Integrations / Coding), elevated content cards. Providers
-and Plugins management live here; General holds permissions, appearance,
-language, and configuration rows (D064/D065).
+Settings replaces the whole shell (D063): back-to-app + search + a compact
+four-destination rail in the exact order General / Configuration /
+Import sessions / About (D090), with elevated content cards.
+Appearance lives inside General; provider management lives inside
+Configuration. Import sessions scans supported local agent stores and presents
+candidates in collapsible groups. Project path is an alternate grouping
+alongside the default source grouping, and every scan or grouping change starts
+with all groups collapsed. Plugin management remains solely on the app shell's
+independent Plugins destination described in §3.5.
 
 ## 4. Overlays
 
@@ -78,8 +89,7 @@ language, and configuration rows (D064/D065).
 | Command palette | Cmd/Ctrl+K (also Cmd/Ctrl+Shift+P per D014) | builtin + plugin commands |
 | Permission dialog | tool permission request | risk copy, args preview, allow-once / allow-session / deny, 120s countdown → deny |
 | Context panel | titlebar toggle | project/status/context info |
-| Plus menu | composer `+` | attach files/photos, capture appshot (stub), open project |
-| Model/effort menu | composer model chip | effort radio + model heading + settings entry (D040) |
+| Model menu | composer model chip | configured provider/model choices + settings entry (D091) |
 | Profile menu | sidebar footer | Settings / Logs / Theme cycle (D041) |
 | Toasts | events (plugin toast, backend restored, copy) | top-center; 4s default, 8s for errors |
 
@@ -87,9 +97,10 @@ language, and configuration rows (D064/D065).
 
 - `page` state: `chat | projects | pulls | scheduled | plugins | settings`.
 - Destination history is linear; titlebar back/forward traverse it.
-- Selecting a recent thread switches to `chat` with that session.
-- New task reuses an existing empty draft instead of stacking drafts (D-series
-  "empty draft reuse"; US-UI-11).
+- Selecting a current-project thread switches to `chat` within that project.
+  Selecting a temporary thread clears the active workspace before loading it.
+- New task reuses an existing empty draft in the same project or temporary
+  scope instead of stacking drafts (D088; US-UI-11).
 
 ## 6. Keyboard map (IA level)
 

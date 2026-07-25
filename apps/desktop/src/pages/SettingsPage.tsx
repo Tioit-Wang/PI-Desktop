@@ -2,30 +2,21 @@ import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
+import type { ImportCandidate } from "../lib/api";
+import {
+  DEFAULT_IMPORT_GROUP_BY,
+  formatImportDate,
+  groupImportCandidates,
+  type ImportGroupBy,
+} from "../lib/import-groups";
 import { Badge, Button, Field, Input, Select, cx } from "../components/ui";
 import {
-  IconArrowUpRight,
-  IconAt,
-  IconBrowser,
   IconChevronLeft,
-  IconComputer,
   IconConfig,
-  IconGitBranch,
-  IconHook,
   IconInfo,
-  IconKeyboard,
-  IconLink,
-  IconMic,
-  IconPerson,
-  IconPet,
-  IconPlug,
   IconSearch,
-  IconServer,
   IconSettings,
   IconSnapshot,
-  IconSparkles,
-  IconSun,
-  IconVSCode,
 } from "../components/icons";
 
 type SettingsTab = ReturnType<typeof useAppStore.getState>["settingsTab"];
@@ -34,13 +25,6 @@ type NavItem = {
   id: SettingsTab;
   labelKey: string;
   icon: ReactNode;
-  external?: boolean;
-};
-
-type NavGroup = {
-  key: string;
-  headingKey: string;
-  items: NavItem[];
 };
 
 function SettingsRow({
@@ -78,78 +62,234 @@ function SettingsCard({
   );
 }
 
-function Toggle({
-  checked,
-  onChange,
-  disabled,
-  label,
-}: {
-  checked: boolean;
-  onChange: (next: boolean) => void;
-  disabled?: boolean;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      disabled={disabled}
-      className={cx("settings-toggle", checked && "on")}
-      onClick={() => onChange(!checked)}
-    >
-      <span className="settings-toggle-thumb" />
-    </button>
+function ImportSection() {
+  const { t, i18n } = useTranslation();
+  const refreshSessions = useAppStore((s) => s.refreshSessions);
+  const showToast = useAppStore((s) => s.showToast);
+  const [candidates, setCandidates] = useState<ImportCandidate[] | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [groupBy, setGroupBy] = useState<ImportGroupBy>(DEFAULT_IMPORT_GROUP_BY);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [scanning, setScanning] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const keyOf = (c: ImportCandidate) => `${c.source}:${c.externalId}`;
+
+  const scan = async () => {
+    setScanning(true);
+    try {
+      const res = await api.scanImportSessions();
+      setCandidates(res.sessions);
+      setSelected(new Set());
+      setExpandedGroups(new Set());
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  const runImport = async () => {
+    if (!candidates) return;
+    const items = candidates.filter((c) => selected.has(keyOf(c)));
+    if (items.length === 0) return;
+    setImporting(true);
+    try {
+      const res = await api.runImportSessions(items);
+      await refreshSessions();
+      showToast(
+        t("settings.importResult", {
+          imported: res.imported,
+          skipped: res.skipped,
+          failed: res.failed,
+        }),
+        { variant: res.failed > 0 ? "error" : "success" },
+      );
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const importLabels = useMemo(
+    () => ({
+      noProject: t("settings.importNoProject"),
+      sources: {
+        "claude-code": t("settings.importSourceClaudeCode"),
+        opencode: t("settings.importSourceOpenCode"),
+        codex: t("settings.importSourceCodex"),
+        pi: t("settings.importSourcePi"),
+      },
+    }),
+    [t],
   );
-}
 
-
-const LEARN_MORE_SANDBOX =
-  "https://github.com/vastsa/PI-Desktop/blob/main/docs/spec/05-security/01-security.md";
-
-function LearnMoreLink({ label }: { label: string }) {
-  return (
-    <a
-      className="settings-inline-link"
-      href={LEARN_MORE_SANDBOX}
-      target="_blank"
-      rel="noreferrer"
-      onClick={(e) => e.stopPropagation()}
-    >
-      {label}
-    </a>
+  const groups = useMemo(
+    () => groupImportCandidates(candidates ?? [], groupBy, importLabels),
+    [candidates, groupBy, importLabels],
   );
-}
 
-function PermissionDescription({
-  before,
-  link,
-  after,
-}: {
-  before: string;
-  link?: string;
-  after?: string;
-}) {
-  return (
-    <>
-      {before}
-      {link ? (
-        <>
-          {" "}
-          <LearnMoreLink label={link} />
-          {after ? <>{after}</> : null}
-        </>
-      ) : null}
-    </>
-  );
-}
+  const allKeys = useMemo(() => (candidates ?? []).map(keyOf), [candidates]);
+  const allSelected = allKeys.length > 0 && allKeys.every((k) => selected.has(k));
 
-function PlaceholderBody({ title, body }: { title: string; body: string }) {
+  const toggleKeys = (keys: string[], on: boolean) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      for (const k of keys) {
+        if (on) next.add(k);
+        else next.delete(k);
+      }
+      return next;
+    });
+  };
+
   return (
-    <div className="settings-empty-state">
-      <div className="settings-empty-title">{title}</div>
-      <div className="settings-empty-desc">{body}</div>
+    <div className="settings-stack">
+      <SettingsCard title={t("settings.importTitle")}>
+        <SettingsRow
+          title={t("settings.importScan")}
+          description={t("settings.importScanDesc")}
+        >
+          <Button variant="secondary" disabled={scanning} onClick={() => void scan()}>
+            {scanning ? t("settings.importScanning") : t("settings.importScan")}
+          </Button>
+        </SettingsRow>
+      </SettingsCard>
+
+      {candidates !== null && (
+        <SettingsCard>
+          {candidates.length === 0 ? (
+            <div className="settings-empty">{t("settings.importNone")}</div>
+          ) : (
+            <>
+              <div className="import-toolbar">
+                <label className="import-select-all">
+                  <input
+                    type="checkbox"
+                    aria-label={t("settings.importSelectAll")}
+                    checked={allSelected}
+                    onChange={(e) => toggleKeys(allKeys, e.target.checked)}
+                  />
+                  <span>
+                    {t("settings.importFound", { count: candidates.length })}
+                    {selected.size > 0
+                      ? ` · ${t("settings.importSelectedCount", { count: selected.size })}`
+                      : ""}
+                  </span>
+                </label>
+                <div className="import-toolbar-actions">
+                  <label className="import-group-by">
+                    <span>{t("settings.importGroupBy")}</span>
+                    <Select
+                      value={groupBy}
+                      className="settings-pill-select import-group-select"
+                      onChange={(event) => {
+                        setGroupBy(event.target.value as ImportGroupBy);
+                        setExpandedGroups(new Set());
+                      }}
+                    >
+                      <option value="source">{t("settings.importGroupBySource")}</option>
+                      <option value="path">{t("settings.importGroupByPath")}</option>
+                    </Select>
+                  </label>
+                  <Button
+                    variant="primary"
+                    disabled={importing || selected.size === 0}
+                    onClick={() => void runImport()}
+                  >
+                    {importing
+                      ? t("settings.importing")
+                      : t("settings.importSelected", { count: selected.size })}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="import-groups">
+                {groups.map((group, groupIndex) => {
+                  const groupKeys = group.items.map(keyOf);
+                  const groupSelected = groupKeys.filter((k) => selected.has(k)).length;
+                  const isCollapsed = !expandedGroups.has(group.id);
+                  const groupBodyId = `import-group-body-${groupIndex}`;
+                  return (
+                    <div key={group.id} className="import-group">
+                      <div className="import-group-header">
+                        <input
+                          type="checkbox"
+                          aria-label={t("settings.importSelectGroup", { name: group.name })}
+                          checked={groupSelected === groupKeys.length}
+                          ref={(el) => {
+                            if (el)
+                              el.indeterminate =
+                                groupSelected > 0 && groupSelected < groupKeys.length;
+                          }}
+                          onChange={(e) => toggleKeys(groupKeys, e.target.checked)}
+                        />
+                        <button
+                          type="button"
+                          className="import-group-toggle"
+                          aria-controls={groupBodyId}
+                          aria-expanded={!isCollapsed}
+                          onClick={() =>
+                            setExpandedGroups((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(group.id)) next.delete(group.id);
+                              else next.add(group.id);
+                              return next;
+                            })
+                          }
+                        >
+                          <span
+                            className={cx("import-group-chevron", isCollapsed && "collapsed")}
+                            aria-hidden
+                          >
+                            <IconChevronLeft size={13} />
+                          </span>
+                          <span className="import-group-name">{group.name}</span>
+                          {group.projectPath ? (
+                            <span className="import-group-path">{group.projectPath}</span>
+                          ) : null}
+                          <span className="import-group-count">
+                            {t("settings.importSessionCount", { count: group.items.length })}
+                          </span>
+                        </button>
+                      </div>
+                      {!isCollapsed && (
+                        <div id={groupBodyId} className="import-group-body">
+                          {group.items.map((c) => {
+                            const k = keyOf(c);
+                            return (
+                              <label key={k} className="import-row">
+                                <input
+                                  type="checkbox"
+                                  checked={selected.has(k)}
+                                  onChange={(e) => toggleKeys([k], e.target.checked)}
+                                />
+                                <span className="import-row-main">
+                                  <span className="import-row-title">{c.title}</span>
+                                  <span className="import-row-meta">
+                                    {t("settings.importMessages", { count: c.messageCount })}
+                                    {" · "}
+                                    {formatImportDate(
+                                      c.updatedAt,
+                                      i18n.resolvedLanguage || i18n.language,
+                                    )}
+                                  </span>
+                                </span>
+                                <Badge tone="neutral">{importLabels.sources[c.source]}</Badge>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </SettingsCard>
+      )}
     </div>
   );
 }
@@ -160,11 +300,9 @@ export function SettingsPage() {
   const setSettingsTab = useAppStore((s) => s.setSettingsTab);
   const setPage = useAppStore((s) => s.setPage);
   const providers = useAppStore((s) => s.providers);
-  const plugins = useAppStore((s) => s.plugins);
   const settings = useAppStore((s) => s.settings);
   const version = useAppStore((s) => s.version);
   const refreshProviders = useAppStore((s) => s.refreshProviders);
-  const refreshPlugins = useAppStore((s) => s.refreshPlugins);
   const showToast = useAppStore((s) => s.showToast);
 
   const [query, setQuery] = useState("");
@@ -173,78 +311,25 @@ export function SettingsPage() {
   const [modelId, setModelId] = useState("mimo-v2.5");
   const [apiKey, setApiKey] = useState("");
   const [saving, setSaving] = useState(false);
-  // Local visual prefs for Codex general permission rows (no host schema yet).
-  const [defaultPermissions, setDefaultPermissions] = useState(true);
-  const [autoReview, setAutoReview] = useState(true);
-  const [fullAccess, setFullAccess] = useState(true);
-  const [showMenuBar, setShowMenuBar] = useState(true);
-  const [bottomPanel, setBottomPanel] = useState(false);
 
-  const navGroups: NavGroup[] = useMemo(
+  const navItems: NavItem[] = useMemo(
     () => [
-      {
-        key: "personal",
-        headingKey: "settings.groupPersonal",
-        items: [
-          { id: "general", labelKey: "settings.general", icon: <IconSettings size={14} /> },
-          { id: "appearance", labelKey: "settings.appearance", icon: <IconSun size={14} /> },
-          { id: "voice", labelKey: "settings.voice", icon: <IconMic size={14} /> },
-          { id: "agent", labelKey: "settings.configuration", icon: <IconConfig size={14} /> },
-          {
-            id: "personalization",
-            labelKey: "settings.personalization",
-            icon: <IconPerson size={14} />,
-          },
-          { id: "pets", labelKey: "settings.pets", icon: <IconPet size={14} /> },
-          { id: "keyboard", labelKey: "settings.keyboard", icon: <IconKeyboard size={14} /> },
-          {
-            id: "account",
-            labelKey: "settings.account",
-            icon: <IconAt size={14} />,
-            external: true,
-          },
-          { id: "providers", labelKey: "settings.providers", icon: <IconServer size={14} /> },
-          { id: "about", labelKey: "settings.about", icon: <IconInfo size={14} /> },
-        ],
-      },
-      {
-        key: "integrations",
-        headingKey: "settings.groupIntegrations",
-        items: [
-          { id: "appshots", labelKey: "settings.appshots", icon: <IconSnapshot size={14} /> },
-          { id: "plugins", labelKey: "settings.plugins", icon: <IconPlug size={14} /> },
-          { id: "browser", labelKey: "settings.browser", icon: <IconBrowser size={14} /> },
-          { id: "computer", labelKey: "settings.computer", icon: <IconComputer size={14} /> },
-          // Local-first extra after Codex-ordered items.
-          { id: "mcp", labelKey: "settings.mcp", icon: <IconSparkles size={14} /> },
-        ],
-      },
-      {
-        key: "coding",
-        headingKey: "settings.groupCoding",
-        items: [
-          { id: "hooks", labelKey: "settings.hooks", icon: <IconHook size={14} /> },
-          { id: "connections", labelKey: "settings.connections", icon: <IconLink size={14} /> },
-          { id: "git", labelKey: "settings.git", icon: <IconGitBranch size={14} /> },
-        ],
-      },
+      { id: "general", labelKey: "settings.general", icon: <IconSettings size={14} /> },
+      { id: "agent", labelKey: "settings.configuration", icon: <IconConfig size={14} /> },
+      { id: "import", labelKey: "settings.import", icon: <IconSnapshot size={14} /> },
+      { id: "about", labelKey: "settings.about", icon: <IconInfo size={14} /> },
     ],
     [],
   );
 
-  const groups = useMemo(() => {
+  const filteredNavItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return navGroups;
-    return navGroups
-      .map((g) => ({
-        ...g,
-        items: g.items.filter((item) => t(item.labelKey).toLowerCase().includes(q)),
-      }))
-      .filter((g) => g.items.length > 0);
-  }, [navGroups, query, t]);
+    if (!q) return navItems;
+    return navItems.filter((item) => t(item.labelKey).toLowerCase().includes(q));
+  }, [navItems, query, t]);
 
   const activeLabel =
-    navGroups.flatMap((g) => g.items).find((i) => i.id === tab)?.labelKey ?? "settings.title";
+    navItems.find((item) => item.id === tab)?.labelKey ?? "settings.title";
 
   return (
     <div className="settings-shell settings-shell-full">
@@ -272,28 +357,18 @@ export function SettingsPage() {
         </div>
 
         <div className="settings-nav-scroll no-drag">
-          {groups.length === 0 ? (
+          {filteredNavItems.length === 0 ? (
             <div className="settings-nav-empty">{t("settings.noResults")}</div>
           ) : (
-            groups.map((group) => (
-              <div key={group.key} className="settings-nav-group">
-                <div className="settings-nav-heading">{t(group.headingKey)}</div>
-                {group.items.map((item) => (
-                  <button
-                    key={item.id}
-                    className={cx("settings-nav-item", tab === item.id && "active")}
-                    onClick={() => setSettingsTab(item.id)}
-                  >
-                    <span className="settings-nav-icon">{item.icon}</span>
-                    <span className="settings-nav-label">{t(item.labelKey)}</span>
-                    {item.external ? (
-                      <span className="settings-nav-external">
-                        <IconArrowUpRight size={12} />
-                      </span>
-                    ) : null}
-                  </button>
-                ))}
-              </div>
+            filteredNavItems.map((item) => (
+              <button
+                key={item.id}
+                className={cx("settings-nav-item", tab === item.id && "active")}
+                onClick={() => setSettingsTab(item.id)}
+              >
+                <span className="settings-nav-icon">{item.icon}</span>
+                <span className="settings-nav-label">{t(item.labelKey)}</span>
+              </button>
             ))
           )}
         </div>
@@ -305,205 +380,110 @@ export function SettingsPage() {
 
           {tab === "general" && settings && (
             <>
-              <SettingsCard title={t("settings.permissions")}>
-                <SettingsRow
-                  title={t("settings.defaultPermissions")}
-                  description={t("settings.defaultPermissionsDesc")}
-                >
-                  <Toggle
-                    checked={defaultPermissions}
-                    onChange={setDefaultPermissions}
-                    label={t("settings.defaultPermissions")}
-                  />
-                </SettingsRow>
-                <SettingsRow
-                  title={t("settings.autoReview")}
-                  description={
-                    <PermissionDescription
-                      before={t("settings.autoReviewDesc")}
-                      link={t("settings.learnMore")}
-                      after={t("settings.autoReviewLearnMoreAfter")}
-                    />
-                  }
-                >
-                  <Toggle
-                    checked={autoReview}
-                    onChange={setAutoReview}
-                    label={t("settings.autoReview")}
-                  />
-                </SettingsRow>
-                <SettingsRow
-                  title={t("settings.fullAccess")}
-                  description={
-                    <PermissionDescription
-                      before={t("settings.fullAccessDesc")}
-                      link={t("settings.learnMore")}
-                      after={t("settings.fullAccessLearnMoreAfter")}
-                    />
-                  }
-                >
-                  <Toggle
-                    checked={fullAccess}
-                    onChange={setFullAccess}
-                    label={t("settings.fullAccess")}
-                  />
-                </SettingsRow>
-              </SettingsCard>
-
-              <SettingsCard title={t("settings.general")}>
-                <SettingsRow
-                  title={t("settings.defaultOpenTarget")}
-                  description={t("settings.defaultOpenTargetDesc")}
-                >
-                  <div className="settings-pill-select-wrap">
-                    <span className="settings-pill-leading" aria-hidden>
-                      <IconVSCode size={14} />
-                    </span>
-                    <Select defaultValue="vscode" className="settings-pill-select has-leading-icon">
-                      <option value="vscode">VS Code</option>
-                      <option value="finder">Finder</option>
-                      <option value="terminal">Terminal</option>
-                    </Select>
-                  </div>
-                </SettingsRow>
-                <SettingsRow title={t("settings.language")} description={t("settings.languageDesc")}>
-                  <Select defaultValue="auto" className="settings-pill-select">
-                    <option value="auto">{t("settings.languageAuto")}</option>
-                    <option value="en">English</option>
-                    <option value="zh-CN">简体中文</option>
+              <SettingsCard title={t("settings.appearance")}>
+                <SettingsRow title={t("settings.theme")} description={t("settings.themeDesc")}>
+                  <Select
+                    value={settings.theme}
+                    onChange={async (e) => {
+                      await api.setSettings({
+                        ...settings,
+                        theme: e.target.value as "system" | "light" | "dark",
+                      });
+                      await refreshProviders();
+                    }}
+                  >
+                    <option value="system">{t("settings.themeSystem")}</option>
+                    <option value="light">{t("settings.themeLight")}</option>
+                    <option value="dark">{t("settings.themeDark")}</option>
                   </Select>
                 </SettingsRow>
-                <SettingsRow
-                  title={t("settings.showMenuBar")}
-                  description={t("settings.showMenuBarDesc")}
-                >
-                  <Toggle
-                    checked={showMenuBar}
-                    onChange={setShowMenuBar}
-                    label={t("settings.showMenuBar")}
-                  />
-                </SettingsRow>
-                <SettingsRow
-                  title={t("settings.bottomPanel")}
-                  description={t("settings.bottomPanelDesc")}
-                >
-                  <Toggle
-                    checked={bottomPanel}
-                    onChange={setBottomPanel}
-                    label={t("settings.bottomPanel")}
-                  />
-                </SettingsRow>
+                <div className="settings-theme-grid" role="group" aria-label={t("settings.theme")}>
+                  {(["light", "dark", "system"] as const).map((theme) => (
+                    <button
+                      key={theme}
+                      type="button"
+                      className={cx(
+                        "settings-theme-card",
+                        settings.theme === theme && "active",
+                        theme,
+                      )}
+                      onClick={async () => {
+                        await api.setSettings({ ...settings, theme });
+                        await refreshProviders();
+                      }}
+                    >
+                      <span className="settings-theme-swatch" />
+                      <span className="settings-theme-label">
+                        {t(
+                          theme === "light"
+                            ? "settings.themeLight"
+                            : theme === "dark"
+                              ? "settings.themeDark"
+                              : "settings.themeSystem",
+                        )}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </SettingsCard>
             </>
           )}
 
-          {tab === "appearance" && settings && (
-            <SettingsCard>
-              <SettingsRow title={t("settings.theme")} description={t("settings.themeDesc")}>
-                <Select
-                  value={settings.theme}
-                  onChange={async (e) => {
-                    await api.setSettings({
-                      ...settings,
-                      theme: e.target.value as "system" | "light" | "dark",
-                    });
-                    await refreshProviders();
-                  }}
-                >
-                  <option value="system">{t("settings.themeSystem")}</option>
-                  <option value="light">{t("settings.themeLight")}</option>
-                  <option value="dark">{t("settings.themeDark")}</option>
-                </Select>
-              </SettingsRow>
-              <div className="settings-theme-grid" role="group" aria-label={t("settings.theme")}>
-                {(["light", "dark", "system"] as const).map((theme) => (
-                  <button
-                    key={theme}
-                    type="button"
-                    className={cx(
-                      "settings-theme-card",
-                      settings.theme === theme && "active",
-                      theme,
-                    )}
-                    onClick={async () => {
-                      await api.setSettings({ ...settings, theme });
+          {tab === "agent" && settings && (
+            <div className="settings-stack">
+              <SettingsCard title={t("settings.configuration")}>
+                <SettingsRow title={t("settings.mode")} description={t("settings.modeDesc")}>
+                  <Select
+                    className="settings-pill-select"
+                    value={settings.defaultMode}
+                    onChange={async (e) => {
+                      await api.setSettings({
+                        ...settings,
+                        defaultMode: e.target.value as "chat" | "agent",
+                      });
                       await refreshProviders();
                     }}
                   >
-                    <span className="settings-theme-swatch" />
-                    <span className="settings-theme-label">
-                      {t(
-                        theme === "light"
-                          ? "settings.themeLight"
-                          : theme === "dark"
-                            ? "settings.themeDark"
-                            : "settings.themeSystem",
-                      )}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </SettingsCard>
-          )}
-
-          {tab === "agent" && settings && (
-            <SettingsCard>
-              <SettingsRow title={t("settings.mode")} description={t("settings.modeDesc")}>
-                <Select
-                  className="settings-pill-select"
-                  value={settings.defaultMode}
-                  onChange={async (e) => {
-                    await api.setSettings({
-                      ...settings,
-                      defaultMode: e.target.value as "chat" | "agent",
-                    });
-                    await refreshProviders();
-                  }}
+                    <option value="agent">{t("settings.modeAgent")}</option>
+                    <option value="chat">{t("settings.modeChat")}</option>
+                  </Select>
+                </SettingsRow>
+                <SettingsRow title={t("settings.modelId")} description={t("settings.modelIdDesc")}>
+                  <Input
+                    key={settings.defaultModelId || ""}
+                    defaultValue={settings.defaultModelId || ""}
+                    onBlur={async (e) => {
+                      await api.setSettings({
+                        ...settings,
+                        defaultModelId: e.target.value,
+                      });
+                      await refreshProviders();
+                    }}
+                    className="font-mono text-sm-plus"
+                    placeholder="model-id"
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  title={t("settings.enterToSend")}
+                  description={t("settings.enterToSendDesc")}
                 >
-                  <option value="agent">{t("settings.modeAgent")}</option>
-                  <option value="chat">{t("settings.modeChat")}</option>
-                </Select>
-              </SettingsRow>
-              <SettingsRow title={t("settings.modelId")} description={t("settings.modelIdDesc")}>
-                <Input
-                  value={settings.defaultModelId || ""}
-                  onChange={async (e) => {
-                    await api.setSettings({
-                      ...settings,
-                      defaultModelId: e.target.value,
-                    });
-                  }}
-                  onBlur={async () => {
-                    await refreshProviders();
-                  }}
-                  className="font-mono text-sm-plus"
-                  placeholder="model-id"
-                />
-              </SettingsRow>
-              <SettingsRow
-                title={t("settings.enterToSend")}
-                description={t("settings.enterToSendDesc")}
-              >
-                <Select
-                  className="settings-pill-select"
-                  value={settings.enterToSend ? "yes" : "no"}
-                  onChange={async (e) => {
-                    await api.setSettings({
-                      ...settings,
-                      enterToSend: e.target.value === "yes",
-                    });
-                    await refreshProviders();
-                  }}
-                >
-                  <option value="yes">{t("settings.yes")}</option>
-                  <option value="no">{t("settings.noCmdEnter")}</option>
-                </Select>
-              </SettingsRow>
-            </SettingsCard>
-          )}
+                  <Select
+                    className="settings-pill-select"
+                    value={settings.enterToSend ? "yes" : "no"}
+                    onChange={async (e) => {
+                      await api.setSettings({
+                        ...settings,
+                        enterToSend: e.target.value === "yes",
+                      });
+                      await refreshProviders();
+                    }}
+                  >
+                    <option value="yes">{t("settings.yes")}</option>
+                    <option value="no">{t("settings.noCmdEnter")}</option>
+                  </Select>
+                </SettingsRow>
+              </SettingsCard>
 
-          {tab === "providers" && (
-            <div className="settings-stack">
               <SettingsCard title={t("settings.addProvider")}>
                 <div className="settings-form-grid">
                   <Field label={t("settings.name")}>
@@ -629,73 +609,7 @@ export function SettingsPage() {
             </div>
           )}
 
-          {tab === "plugins" && (
-            <div className="settings-stack">
-              <div className="settings-panel-toolbar">
-                <h3 className="settings-card-heading" style={{ margin: 0 }}>
-                  {t("settings.installedPlugins")}
-                </h3>
-                <Button
-                  variant="secondary"
-                  onClick={async () => {
-                    try {
-                      await api.loadDevPlugin();
-                      await refreshPlugins();
-                      showToast(t("settings.devPluginLoaded"), { variant: "success" });
-                    } catch (e) {
-                      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
-                    }
-                  }}
-                >
-                  {t("settings.loadDevPlugin")}
-                </Button>
-              </div>
-              <SettingsCard>
-                <div className="settings-list">
-                  {plugins.length === 0 ? (
-                    <div className="settings-empty">{t("settings.noPlugins")}</div>
-                  ) : (
-                    plugins.map((plugin) => (
-                      <div key={plugin.id} className="settings-list-row">
-                        <div className="min-w-0">
-                          <div className="truncate text-md-plus font-medium">{plugin.name}</div>
-                          <div className="truncate text-sm text-text-muted">
-                            {plugin.id} · {plugin.version || "dev"}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge tone={plugin.enabled ? "success" : "neutral"}>
-                            {plugin.enabled ? t("settings.enabled") : t("settings.disabled")}
-                          </Badge>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={async () => {
-                              if (plugin.enabled) await api.disablePlugin(plugin.id);
-                              else await api.enablePlugin(plugin.id);
-                              await refreshPlugins();
-                            }}
-                          >
-                            {plugin.enabled ? t("settings.disable") : t("settings.enable")}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={async () => {
-                              await api.uninstallPlugin(plugin.id);
-                              await refreshPlugins();
-                            }}
-                          >
-                            {t("settings.uninstall")}
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </SettingsCard>
-            </div>
-          )}
+          {tab === "import" && <ImportSection />}
 
           {tab === "about" && (
             <SettingsCard>
@@ -717,29 +631,6 @@ export function SettingsPage() {
             </SettingsCard>
           )}
 
-          {(
-            [
-              "voice",
-              "personalization",
-              "pets",
-              "keyboard",
-              "account",
-              "appshots",
-              "mcp",
-              "browser",
-              "computer",
-              "hooks",
-              "connections",
-              "git",
-            ] as SettingsTab[]
-          ).includes(tab) && (
-            <SettingsCard>
-              <PlaceholderBody
-                title={t(activeLabel)}
-                body={t("settings.placeholderBody")}
-              />
-            </SettingsCard>
-          )}
         </div>
       </div>
     </div>

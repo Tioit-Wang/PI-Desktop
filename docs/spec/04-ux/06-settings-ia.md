@@ -8,40 +8,36 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 - Top of rail: traffic-light clearance, **Back to app** (`返回应用`), pill **Search settings…**
 - The 46px top band across both the rail and content pane is a native window
   drag region; interactive controls remain explicitly non-draggable
-- Grouped navigation with icons:
-  1. **Personal** — General, Appearance, Voice, Configuration, Personalization, Pets, Keyboard shortcuts, Account (+ local-first Providers, About)
-  2. **Integrations** — Appshots, Plugins, Browser, Computer use (+ local-first MCP servers after Codex order)
-  3. **Coding** — Hooks, Connections, Git
+- A compact navigation directory with icons, in this exact order:
+  1. **General**
+  2. **Configuration**
+  3. **Import sessions**
+  4. **About**
+- No additional settings destinations or placeholder navigation rows are shown
 - Main content pane on primary surface with large section title + elevated rounded cards of rows
 
 ## 2. Section contents
 
 ### General
-- **Permissions** card:
-  - Default permissions (toggle)
-  - Auto-review (toggle) + inline blue **Learn more** link to sandboxing docs
-  - Full access permissions (toggle) + risk copy + **Learn more**
-- **General** card (Codex row set):
-  - Default file open target (pill select with VS Code glyph)
-  - Language (pill select, Auto detect)
-  - Show in menu bar (toggle)
-  - Bottom panel (toggle)
-
-### Appearance
-- theme system/light/dark (select + theme cards)
+- **Appearance** card:
+  - theme system/light/dark (select + theme cards)
+- Permission defaults, file-open target, language override, menu-bar behavior,
+  and bottom-panel behavior are not rendered until their host-backed settings
+  schemas and runtime effects exist.
 
 ### Configuration
-- default mode + default model id
-- Enter to send (local preference; not on Codex General gold)
+- **Defaults** card:
+  - default mode + default model id
+  - Enter to send (local preference; not on Codex General gold)
+- **Providers** card:
+  - add provider form + configured list
+  - API keys are never shown raw
 
-### Providers (local-first)
-- add provider form + configured list (API key never shown raw)
-
-### Plugins
-- installed list, enable/disable/uninstall, load dev plugin
-
-### Other Codex sections
-- scaffolded empty/placeholder cards until host features land (MCP, Browser, Computer use, Hooks, Connections, Git, Voice, Personalization, Pets, Appshots, Keyboard, Account)
+### Import sessions
+- Scan supported local agent stores and review candidates through
+  `SessionImportPanel`
+- Source and project-path grouping behavior follows
+  [08-component-spec §18](08-component-spec.md#18-sessionimportpanel)
 
 ### About
 - app/host/protocol versions + open logs
@@ -49,19 +45,27 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 ## 3. Navigation rules
 
 - Profile footer / command palette open Settings full page (default General)
-- Composer model menu can deep-link Providers
+- Composer model menu and provider setup actions deep-link to the Providers
+  card inside Configuration
+- Plugin management remains available from the app shell's independent
+  **Plugins** destination, including load, enable, disable, and uninstall; it is
+  not duplicated in Settings
 - Back to app returns to chat shell
 
 ## 4. Acceptance
 
 1. Opening Settings hides the coding app sidebar (full-page takeover)
-2. Rail shows Codex groups + icons + search + back
-3. General shows Permissions (with Learn more) + General cards matching Codex row set
-4. Open-target control shows VS Code glyph in the pill
-5. Provider secrets never display raw key values
-6. Row descriptions use semantic secondary text and maintain at least 4.5:1
+2. Rail shows search + back and exactly General, Configuration,
+   Import sessions, and About in that order
+3. Appearance is part of General and has no standalone rail destination
+4. Providers is part of Configuration and has no standalone rail destination
+5. Plugins has no Settings destination; the app-shell Plugins page supports
+   load, enable, disable, and uninstall
+6. General shows only the host-backed Appearance card
+7. Provider secrets never display raw key values
+8. Row descriptions use semantic secondary text and maintain at least 4.5:1
    contrast against their card surface in both light and dark themes
-7. Dragging the empty top band from either side of Settings moves the native
+9. Dragging the empty top band from either side of Settings moves the native
    window without blocking Back, search, or navigation controls
 
 ## 5. General chrome metrics (Codex gold)
@@ -77,8 +81,4 @@ Measured against `cx-settings-try` / `cx-settings-cmdcomma` (~1200×690):
 | Content max | ~720px, left-aligned in pane |
 | Card radius | ~14px elevated stroke |
 | Toggle | **32×20** thumb 16, accent blue on (not green) |
-| Account external | arrow-up-right only (no box) |
 | Open-target pill | leading VS Code glyph |
-
-Local-first **Providers** + **About** remain after Account in Personal; they are intentional PI extensions and shift lower groups vs pure Codex gold (accepted residual).
-

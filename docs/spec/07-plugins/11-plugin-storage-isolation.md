@@ -8,8 +8,7 @@ Isolate plugin data from the host's core data to avoid cross-contamination and u
 
 ```text
 ~/.pi-desktop/
- ├── settings.sqlite
- ├── sessions.sqlite
+ ├── pi.sqlite # host DB (03-runtime/04); plugins never open it
  ├── plugins/
  │ ├── installed/<plugin-id>/
  │ ├── disabled/ # optional
@@ -63,14 +62,14 @@ Prohibited:
 
 Plugin settings can be stored in:
 
-- The plugin_settings table of the host settings db
+- The host DB's `kv` table under the plugin's namespace (03-runtime/04 §4.1)
 - Or settings.json under the plugin data directory
 
 Storing centrally in the host is recommended for easier backup and uninstall cleanup.
 
 ```ts
-// plugin_settings
-// plugin_id | key | value_json | updated_at
+// kv: ns = `plugin:<plugin-id>`, key, value_json, updated_at
+// uninstall cleanup = DELETE FROM kv WHERE ns = 'plugin:<plugin-id>'
 ```
 
 ## 6. Log isolation
@@ -84,7 +83,7 @@ Host core logs are not written into plugin files.
 ## 7. Session and secret isolation
 
 Plugins cannot directly access:
-- sessions.sqlite
+- pi.sqlite (sessions, settings, any host table)
 - secrets
 - provider key
 - other plugins' private registry data

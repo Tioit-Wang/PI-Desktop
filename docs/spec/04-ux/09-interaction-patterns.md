@@ -99,25 +99,31 @@
 | Content type | Default state | Collapse threshold | Expand limit |
 |---|---|---|---|
 | Assistant markdown message | Expanded | 50 lines → collapsed to 20 lines visible | Full |
-| Tool call args | Collapsed | 10 lines → collapsed to 3 lines visible | Full |
-| Tool call result | Collapsed | 20 lines → collapsed to 5 lines visible | Full (per D033: 256KB/4000 lines max) |
-| Bash output | Collapsed | 20 lines → collapsed to 5 lines visible | Full |
+| Tool activity input | Row collapsed | Always behind disclosure | 220px scroll region |
+| Tool activity output | Row collapsed | Always behind disclosure | 220px scroll region (per D033 host cap) |
+| Bash output | Row collapsed | Always behind disclosure | 220px scroll region |
 | Error messages | Expanded | No collapse | — |
 
 ### 4.2 Collapse indicator
 
-- Collapsed section shows: "… (N more lines)" link at bottom
-- Click "… (N more lines)" → expands to full content
-- Expanded section shows: "Collapse" link at bottom
-- Click "Collapse" → returns to collapsed state
-- No smooth animation for expand/collapse in MVP (instant toggle; respect reduced-motion)
+- Tool activity starts as a lightweight collapsed row; failed calls open
+  automatically so the error remains local to its invocation.
+- Consecutive tool activity is wrapped in one collapsed processing group. Its
+  header updates elapsed time once per second while active, freezes after the
+  next transcript message, and exposes the number of contained steps.
+- Expanding the processing group reveals the ordered rows; each row retains its
+  own nested disclosure for output and input.
+- Activating the row reveals clamped output first and raw input second.
+- Each section scrolls internally and exposes its own copy action.
+- The disclosure chevron rotates on expansion. Reduced-motion disables
+  non-essential shimmer/rotation animation.
 
 ### 4.3 Tool result truncation
 
 - Per D033: tool results exceeding 256KB or 4000 lines are truncated with explicit markers
 - Truncation marker: `[truncated: output exceeded 256KB or 4000 lines]` (host-enforced, see [16-tool-result-limits](../03-runtime/16-tool-result-limits.md))
-- User can request "Show full result" which loads the complete result from session data
 - Truncated content is never silently omitted — always marked
+- Disclosure expansion does not load content beyond the host-enforced cap
 
 ## 5. Permission interrupt flow
 
@@ -218,7 +224,8 @@ Agent calls high-risk tool
 **Not implemented in MVP.** Reserved for future milestones:
 
 - Drag session items to reorder sidebar
-- Drag files into composer for attachment
+- File drag into the composer has no attachment behavior until the pi prompt
+  contract supports persisted file payloads
 - Drag panels to resize widths
 
 ### 8.2 Spec reservation
@@ -243,7 +250,8 @@ When drag/drop is implemented, these patterns should apply:
 
 ### 9.2 Sidebar scrolling
 
-- Session list scrolls independently within sidebar
+- Current-project and Temporary session groups share one scrollable sidebar
+  region independent from the footer and primary navigation.
 - No horizontal scroll in sidebar
 - Scroll indicator: subtle fade at top/bottom edges (gradient mask, not scrollbar thumb)
 

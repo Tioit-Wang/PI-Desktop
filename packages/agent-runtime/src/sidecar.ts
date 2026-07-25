@@ -51,6 +51,7 @@ async function handle(method: string, params: any): Promise<unknown> {
         baseUrl?: string;
         modelId: string;
         apiKey: string;
+        authKind?: string;
       };
       const pluginTools = (params.pluginTools ?? []) as Array<{
         name: string;
@@ -58,7 +59,10 @@ async function handle(method: string, params: any): Promise<unknown> {
         parameters?: unknown;
       }>;
       const pluginToolNames = pluginTools.map((t) => t.name);
-      if (!provider?.apiKey || !provider?.modelId) {
+      if (
+        !provider?.modelId ||
+        (!provider.apiKey && provider.authKind !== "none")
+      ) {
         throw Object.assign(new Error("model/provider not configured"), {
           rpcCode: -32000,
           errorCode: "MODEL_NOT_CONFIGURED",

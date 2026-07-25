@@ -28,3 +28,5 @@ Each ADR includes:
 | 0010 | Rust backend host core | Accepted |
 | 0011 | Freeze host RPC, storage ownership, and mode defaults | Accepted |
 | 0012 | Universal provider & model coverage | Accepted |
+| 0013 | Consolidate settings navigation into four destinations | Accepted |
+| 0014 | Adopt host-owned storage schema v2 | Accepted |

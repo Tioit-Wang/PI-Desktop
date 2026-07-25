@@ -401,9 +401,18 @@ single elevation read as one immersive composite surface. Internal 1px
 separators remain. On an empty home without a project the rail is omitted; it
 appears on project home and in the thread-docked composer.
 
-## 8.2 Composer plus menu (Codex parity)
+## 8.2 Composer runtime controls
 
-The composer `+` control opens a compact elevated menu: Attach files and folders, Add photos, Capture appshot (stub until host capture), and Open project. File picks insert `@path` tokens into the draft.
+The composer renders only controls connected to the active pi session:
+
+- Chat / Agent updates the durable session mode and changes the next pi toolset.
+- The model trigger shows the active model ID. Its menu selects a configured
+  provider/default-model pair for the active session and links to Configuration.
+- Both controls are disabled while the active session is running.
+- File, photo, appshot, and reasoning-effort controls remain hidden until their
+  payload and capability contracts are implemented end to end.
+- Local and branch context are non-interactive status labels; the project name
+  remains an action because it opens the project picker.
 
 
 ## 9. Z-index layers
@@ -583,7 +592,7 @@ Full component contract and usage rules: [08-component-spec.md §17](08-componen
 | **Compact list rows 28px height** | Sidebar session items, settings list rows |
 | **Button rows 32px height** | Standard buttons |
 | **Never exceed 24px vertical gap** | Even for "breathing room" — this is a workstation |
-| **Max content width 720px** | Chat messages, tool cards — prevent over-wide eye-span |
+| **Max content width 720px** | Chat messages, tool disclosure rows — prevent over-wide eye-span |
 
 ## 14. Do / Don't
 
@@ -640,7 +649,7 @@ Full component contract and usage rules: [08-component-spec.md §17](08-componen
 
 - **Projects**: Codex index table (search / columns / expand / actions) per
   D066 — the earlier card grid (D042) is superseded
-- **Settings**: full-page Codex shell per D062/D063 (275px grouped rail
-  `#f4f4f4` light, elevated content cards, Back to app) — the earlier
-  in-shell 200px rail is superseded
+- **Settings**: full-page Codex shell per D063/D090 (275px compact
+  four-destination rail, `#f4f4f4` light, elevated content cards, Back to app)
+  — the earlier in-shell 200px rail and broad grouped directory are superseded
 - Light destination cards use white elevated plates (not flat gray fills)

@@ -2,84 +2,38 @@ import {
   memo,
   useCallback,
   useEffect,
+  useId,
   useRef,
   useState,
-  type ReactNode,
+  useSyncExternalStore,
 } from "react";
-import ReactMarkdown from "react-markdown";
 import { useTranslation } from "react-i18next";
 import type { UiMessage } from "@pi-desktop/shared";
+import { ConversationMinimap } from "./ConversationMinimap";
+import { Markdown, useCopy } from "./Markdown";
+import {
+  formatToolDuration,
+  getToolAction,
+  getToolDisplayName,
+  getToolSections,
+  getToolSummary,
+  type ToolAction,
+} from "../lib/tool-display";
 import {
   IconArrowDown,
   IconCheck,
+  IconCircleAlert,
   IconChevronRight,
   IconCopy,
+  IconFileText,
+  IconFolder,
+  IconGlobe,
+  IconPencil,
+  IconSearch,
+  IconSparkles,
+  IconTerminal,
+  IconWrench,
 } from "./icons";
-
-function toolPreview(message: UiMessage) {
-  if (typeof message.toolResult === "string" && message.toolResult.trim()) {
-    return message.toolResult;
-  }
-  if (message.toolResult) {
-    try {
-      return JSON.stringify(message.toolResult, null, 2);
-    } catch {
-      return String(message.toolResult);
-    }
-  }
-  if (message.content?.trim()) return message.content;
-  if (message.toolArgs) {
-    try {
-      return JSON.stringify(message.toolArgs, null, 2);
-    } catch {
-      return String(message.toolArgs);
-    }
-  }
-  return "";
-}
-
-/* One-line hint next to the tool name: prefer a human-readable arg. */
-function toolSummary(message: UiMessage) {
-  const args = message.toolArgs;
-  if (args && typeof args === "object") {
-    const rec = args as Record<string, unknown>;
-    for (const key of [
-      "command",
-      "cmd",
-      "path",
-      "file_path",
-      "filePath",
-      "url",
-      "query",
-      "pattern",
-      "prompt",
-    ]) {
-      const v = rec[key];
-      if (typeof v === "string" && v.trim()) return v.trim();
-    }
-    try {
-      const s = JSON.stringify(rec);
-      if (s && s !== "{}") return s;
-    } catch {
-      /* ignore */
-    }
-  }
-  return "";
-}
-
-function useCopy() {
-  const [copied, setCopied] = useState(false);
-  const timer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-  const copy = useCallback((text: string) => {
-    void navigator.clipboard.writeText(text).then(() => {
-      setCopied(true);
-      window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => setCopied(false), 1500);
-    });
-  }, []);
-  return { copied, copy };
-}
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const { copied, copy } = useCopy();
@@ -97,56 +51,241 @@ function CopyButton({ text, label }: { text: string; label: string }) {
   );
 }
 
-/* Markdown <pre> with a hover copy affordance, Codex-style. */
-function PreBlock({ children }: { children?: ReactNode }) {
-  const preRef = useRef<HTMLPreElement>(null);
+const TOOL_ACTION_KEYS: Record<ToolAction, string> = {
+  read: "chat.toolRead",
+  list: "chat.toolListed",
+  search: "chat.toolSearched",
+  write: "chat.toolWrote",
+  edit: "chat.toolEdited",
+  run: "chat.toolRan",
+  fetch: "chat.toolFetched",
+  use: "chat.toolUsed",
+};
+
+const TOOL_RUNNING_KEYS: Record<ToolAction, string> = {
+  read: "chat.toolReading",
+  list: "chat.toolListing",
+  search: "chat.toolSearching",
+  write: "chat.toolWriting",
+  edit: "chat.toolEditing",
+  run: "chat.toolRunning",
+  fetch: "chat.toolFetching",
+  use: "chat.toolUsing",
+};
+
+function ToolActionIcon({ action }: { action: ToolAction }) {
+  const props = { size: 15, "aria-hidden": true };
+  switch (action) {
+    case "read":
+      return <IconFileText {...props} />;
+    case "list":
+      return <IconFolder {...props} />;
+    case "search":
+      return <IconSearch {...props} />;
+    case "write":
+    case "edit":
+      return <IconPencil {...props} />;
+    case "run":
+      return <IconTerminal {...props} />;
+    case "fetch":
+      return <IconGlobe {...props} />;
+    default:
+      return <IconWrench {...props} />;
+  }
+}
+
+function ToolSection({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
   const { copied, copy } = useCopy();
   const { t } = useTranslation();
   return (
-    <div className="code-block">
-      <pre ref={preRef}>{children}</pre>
-      <button
-        className={`code-copy-btn ${copied ? "copied" : ""}`}
-        aria-label={t("chat.copy")}
-        title={copied ? t("chat.copied") : t("chat.copy")}
-        onClick={() => copy(preRef.current?.innerText ?? "")}
-      >
-        {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}
-      </button>
-    </div>
+    <section className="tool-row-section">
+      <div className="tool-row-section-head">
+        <span>{label}</span>
+        <button
+          className={`tool-row-copy ${copied ? "copied" : ""}`}
+          aria-label={`${t("chat.copy")} ${label}`}
+          title={copied ? t("chat.copied") : t("chat.copy")}
+          onClick={() => copy(value)}
+        >
+          {copied ? <IconCheck size={12} /> : <IconCopy size={12} />}
+        </button>
+      </div>
+      <pre className="tool-row-content">{value}</pre>
+    </section>
   );
 }
 
-const markdownComponents = { pre: PreBlock };
-
 function ToolRow({ message }: { message: UiMessage }) {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const body = toolPreview(message);
-  const summary = toolSummary(message);
+  const detailsId = useId();
   const status = message.toolStatus;
+  const [open, setOpen] = useState(status === "error");
+  const action = getToolAction(message.toolName);
+  const actionLabel = t(
+    status === "running" ? TOOL_RUNNING_KEYS[action] : TOOL_ACTION_KEYS[action],
+  );
+  const rawName = getToolDisplayName(message.toolName) || t("chat.tool");
+  const summary = getToolSummary(message.toolName, message.toolArgs);
+  const { input, output } = getToolSections(message);
+  const hasDetails = Boolean(input || output);
+  const statusLabel =
+    status === "running"
+      ? t("chat.running")
+      : status === "error"
+        ? t("chat.toolFailed")
+        : status === "denied"
+          ? t("chat.toolDenied")
+          : t("chat.toolCompleted");
+
+  useEffect(() => {
+    if (status === "error") setOpen(true);
+  }, [status]);
 
   return (
-    <div className={`tool-row ${open ? "open" : ""}`}>
+    <div
+      className={`tool-row ${open ? "open" : ""} status-${status || "success"}`}
+      role="region"
+      aria-label={`${t("chat.toolCall")}: ${rawName}, ${statusLabel}`}
+    >
       <button
         className="tool-row-header"
         aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
+        aria-controls={hasDetails ? detailsId : undefined}
+        disabled={!hasDetails}
+        title={summary || rawName}
+        onClick={() => hasDetails && setOpen((value) => !value)}
       >
-        <span className="tool-row-caret" aria-hidden>
-          <IconChevronRight size={12} />
+        <span className="tool-row-icon">
+          <ToolActionIcon action={action} />
         </span>
-        <span className="tool-row-name">{message.toolName || t("chat.tool")}</span>
+        <span className={`tool-row-name ${status === "running" ? "running" : ""}`}>
+          {actionLabel}
+        </span>
         {summary ? <span className="tool-row-summary">{summary}</span> : null}
         {status === "running" ? (
           <span className="tool-spinner" aria-label={t("chat.running")} />
         ) : status === "error" ? (
-          <span className="tool-row-status error">{t("chat.toolFailed")}</span>
+          <span className="tool-row-status error" aria-label={t("chat.toolFailed")}>
+            <IconCircleAlert size={13} />
+            {t("chat.toolFailed")}
+          </span>
         ) : status === "denied" ? (
           <span className="tool-row-status">{t("chat.toolDenied")}</span>
         ) : null}
+        <span className="sr-only" role="status" aria-live="polite">
+          {statusLabel}
+        </span>
+        {hasDetails ? (
+          <span className="tool-row-caret" aria-hidden>
+            <IconChevronRight size={12} />
+          </span>
+        ) : null}
       </button>
-      {open && body ? <div className="tool-row-body">{body}</div> : null}
+      {open && hasDetails ? (
+        <div className="tool-row-body" id={detailsId}>
+          {output ? <ToolSection label={t("chat.toolOutput")} value={output} /> : null}
+          {input ? <ToolSection label={t("chat.toolInput")} value={input} /> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ToolActivityGroup({
+  messages,
+  isActive,
+  endedAt,
+}: {
+  messages: UiMessage[];
+  isActive: boolean;
+  endedAt?: string;
+}) {
+  const { t } = useTranslation();
+  const detailsId = useId();
+  const [open, setOpen] = useState(false);
+  const [now, setNow] = useState(Date.now);
+  const [finishedAt, setFinishedAt] = useState<number | null>(null);
+  const wasActiveRef = useRef(isActive);
+  const startedAt = Date.parse(messages[0]?.createdAt || "") || now;
+  const fallbackEnd =
+    Math.max(
+      startedAt,
+      ...messages.map(
+        (message) =>
+          Date.parse(message.toolCompletedAt || "") ||
+          (Date.parse(message.createdAt) || startedAt) +
+            (message.toolDurationMs || 0),
+      ),
+    );
+  const completedAt =
+    Date.parse(endedAt || "") ||
+    finishedAt ||
+    (wasActiveRef.current ? now : fallbackEnd);
+  const elapsedSeconds = Math.max(
+    0,
+    Math.floor(((isActive ? now : completedAt) - startedAt) / 1000),
+  );
+  const elapsed = formatToolDuration(elapsedSeconds);
+  const failed = messages.some((message) => message.toolStatus === "error");
+  const label = failed
+    ? t("chat.processingFailedAfter", { time: elapsed })
+    : isActive
+      ? t("chat.processingFor", { time: elapsed })
+      : t("chat.processedFor", { time: elapsed });
+
+  useEffect(() => {
+    if (wasActiveRef.current && !isActive) setFinishedAt(Date.now());
+    wasActiveRef.current = isActive;
+    if (!isActive) return;
+    setNow(Date.now());
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [isActive]);
+
+  return (
+    <div
+      className={`tool-activity-group ${open ? "open" : ""} ${
+        isActive ? "active" : ""
+      } ${failed ? "failed" : ""}`}
+    >
+      <button
+        className="tool-activity-header"
+        aria-expanded={open}
+        aria-controls={detailsId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="tool-activity-icon" aria-hidden>
+          {failed ? <IconCircleAlert size={14} /> : <IconSparkles size={14} />}
+        </span>
+        <span className={`tool-activity-label ${isActive ? "running" : ""}`}>
+          {label}
+        </span>
+        <span className="tool-activity-count">
+          {t("chat.processingSteps", { count: messages.length })}
+        </span>
+        <span className="tool-activity-caret" aria-hidden>
+          <IconChevronRight size={12} />
+        </span>
+      </button>
+      <div
+        className="tool-activity-collapse"
+        aria-hidden={!open}
+        inert={!open}
+      >
+        <div className="tool-activity-collapse-inner">
+          <div className="tool-activity-body" id={detailsId}>
+            {messages.map((message) => (
+              <ToolRow key={message.id} message={message} />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -163,8 +302,7 @@ function WorkingIndicator() {
     );
     return () => window.clearInterval(id);
   }, []);
-  const time =
-    elapsed >= 60 ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s` : `${elapsed}s`;
+  const time = formatToolDuration(elapsed);
   return (
     <div className="working-indicator">
       <span className="shimmer-text">{t("chat.running")}</span>
@@ -175,44 +313,64 @@ function WorkingIndicator() {
 
 /* Typewriter reveal for streaming assistant messages: incoming chunks
  * accumulate in message.content (the buffer); we surface it a few characters
- * per frame, speeding up with backlog so the display never trails far behind.
- * Messages that arrive already complete (history loads) render in full. */
+ * per animation frame, speeding up with backlog so the display never trails
+ * far behind. Messages that arrive already complete (history loads) render in
+ * full, and reduced-motion users get the buffer verbatim. */
+const reduceMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+function usePrefersReducedMotion() {
+  return useSyncExternalStore(
+    (onChange) => {
+      reduceMotionQuery.addEventListener("change", onChange);
+      return () => reduceMotionQuery.removeEventListener("change", onChange);
+    },
+    () => reduceMotionQuery.matches,
+  );
+}
+
 function useTypewriter(message: UiMessage) {
   const target = message.content || "";
   const animate = message.role === "assistant";
+  const reduceMotion = usePrefersReducedMotion();
   const everStreamedRef = useRef(message.status === "streaming");
   if (message.status === "streaming") everStreamedRef.current = true;
-  const [visibleLen, setVisibleLen] = useState(() =>
-    animate && everStreamedRef.current ? 0 : target.length,
-  );
+  const reveal = animate && everStreamedRef.current && !reduceMotion;
+  const [visibleLen, setVisibleLen] = useState(() => (reveal ? 0 : target.length));
+  const visibleLenRef = useRef(visibleLen);
   const targetRef = useRef(target);
   targetRef.current = target;
   const statusRef = useRef(message.status);
   statusRef.current = message.status;
 
   useEffect(() => {
-    if (!animate || !everStreamedRef.current) {
+    if (!reveal) {
+      visibleLenRef.current = target.length;
       setVisibleLen(target.length);
       return;
     }
-    const id = window.setInterval(() => {
-      setVisibleLen((len) => {
-        const full = targetRef.current;
-        if (len >= full.length) {
-          // Caught up and the stream ended — stop ticking until new content.
-          if (statusRef.current !== "streaming") window.clearInterval(id);
-          return Math.min(len, full.length);
-        }
+    let raf = 0;
+    const tick = () => {
+      const full = targetRef.current;
+      const len = visibleLenRef.current;
+      if (len < full.length) {
         const backlog = full.length - len;
         const step = Math.max(1, Math.round(backlog / 24));
-        return Math.min(full.length, len + step);
-      });
-    }, 16);
-    return () => window.clearInterval(id);
-  }, [animate, target]);
+        const next = Math.min(full.length, len + step);
+        visibleLenRef.current = next;
+        setVisibleLen(next);
+      } else if (statusRef.current !== "streaming") {
+        // Caught up and the stream ended — stop until new content arrives
+        // (the effect restarts when `target` changes).
+        return;
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [reveal, target]);
 
-  if (!animate || !everStreamedRef.current) return target;
-  return target.slice(0, visibleLen);
+  if (!reveal) return target;
+  return target.slice(0, Math.min(visibleLen, target.length));
 }
 
 const MessageRow = memo(function MessageRow({
@@ -229,6 +387,7 @@ const MessageRow = memo(function MessageRow({
   return (
     <div
       className={`message-row ${isUser ? "user" : message.role}`}
+      data-minimap-id={message.id}
       role="article"
       aria-label={isUser ? t("chat.userMessage") : t("chat.assistantMessage")}
     >
@@ -238,9 +397,7 @@ const MessageRow = memo(function MessageRow({
             <div className="whitespace-pre-wrap">{message.content}</div>
           ) : (
             <div className="prose-chat">
-              <ReactMarkdown components={markdownComponents}>
-                {displayed || (isRunning ? "…" : "")}
-              </ReactMarkdown>
+              <Markdown source={displayed || (isRunning ? "…" : "")} />
             </div>
           )}
         </div>
@@ -303,9 +460,46 @@ export function ChatTranscript({
     if (message.role === "assistant" && !(message.content || "").trim()) return false;
     return true;
   });
+  const minimapMessages = visible.filter(
+    (message) => message.role === "user" || message.role === "assistant",
+  );
+  const entries: Array<
+    | { kind: "message"; message: UiMessage }
+    | { kind: "tools"; messages: UiMessage[]; endedAt?: string }
+  > = [];
+  for (let index = 0; index < visible.length; index += 1) {
+    const message = visible[index];
+    if (message.role !== "tool") {
+      entries.push({ kind: "message", message });
+      continue;
+    }
+    const tools = [message];
+    while (visible[index + 1]?.role === "tool") {
+      index += 1;
+      tools.push(visible[index]);
+    }
+    entries.push({
+      kind: "tools",
+      messages: tools,
+      endedAt:
+        visible[index + 1]?.role === "assistant"
+          ? visible[index + 1].createdAt
+          : undefined,
+    });
+  }
+  const activeToolGroup =
+    isRunning && entries[entries.length - 1]?.kind === "tools";
+  const lastVisibleMessage = visible[visible.length - 1];
+  const assistantIsAnswering =
+    lastVisibleMessage?.role === "assistant" &&
+    lastVisibleMessage.status === "streaming" &&
+    Boolean(lastVisibleMessage.content.trim());
+  const showWorking =
+    isRunning && !activeToolGroup && !assistantIsAnswering;
 
   return (
     <div className="thread-wrap">
+      <ConversationMinimap scrollRef={scrollRef} messages={minimapMessages} />
       <div
         className="thread-scroll"
         ref={scrollRef}
@@ -314,14 +508,23 @@ export function ChatTranscript({
         aria-live="polite"
       >
         <div className="thread-content" ref={contentRef}>
-          {visible.map((message) =>
-            message.role === "tool" ? (
-              <ToolRow key={message.id} message={message} />
+          {entries.map((entry, index) =>
+            entry.kind === "tools" ? (
+              <ToolActivityGroup
+                key={`tools-${entry.messages[0].id}`}
+                messages={entry.messages}
+                endedAt={entry.endedAt}
+                isActive={isRunning && index === entries.length - 1}
+              />
             ) : (
-              <MessageRow key={message.id} message={message} isRunning={isRunning} />
+              <MessageRow
+                key={entry.message.id}
+                message={entry.message}
+                isRunning={isRunning}
+              />
             ),
           )}
-          {isRunning ? <WorkingIndicator /> : null}
+          {showWorking ? <WorkingIndicator /> : null}
         </div>
       </div>
       {showJump ? (

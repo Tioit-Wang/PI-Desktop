@@ -79,8 +79,9 @@ Cross-boundary contracts:
 
 ```text
 ~/.pi-desktop/
- ├── settings.sqlite
- ├── sessions.sqlite
+ ├── pi.sqlite            # single DB, host-core owned (03-runtime/04, D086)
+ ├── secrets/
+ ├── attachments/
  ├── logs/
  ├── cache/
  ├── workspaces/

@@ -83,7 +83,7 @@ export function CommandPalette({
           setPage("settings");
           break;
         case "builtin.settings.providers":
-          setSettingsTab("providers");
+          setSettingsTab("agent");
           setPage("settings");
           break;
         case "builtin.settings.import":

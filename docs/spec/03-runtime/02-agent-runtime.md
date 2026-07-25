@@ -55,20 +55,23 @@ interface AgentRuntime {
 
 ## 5. Prompt flow
 
-1. validate session
-2. validate model/secret availability
-3. reject if session busy
-4. persist user message
-5. start pi turn
-6. stream normalized events to UI
-7. on tool calls, delegate to Rust host bridge
-8. finalize and persist
+1. load the durable session and reject a missing session
+2. resolve that session's mode/provider/model (app defaults are legacy fallback)
+3. validate model/secret availability
+4. reject if session busy
+5. persist user message
+6. start pi turn with the resolved session configuration
+7. stream normalized events to UI
+8. on tool calls, delegate to Rust host bridge
+9. finalize and persist
 
 ## 5b. Mode defaults
 
 - Default product mode: **Agent**
 - Chat mode is available as a safer read-only profile
 - Mode is session-scoped and persisted with session metadata
+- Composer configuration is mutable only while the session is idle
+- Changing mode/provider/model recreates the pi runtime before the next turn
 
 ## 6. Providers & models
 

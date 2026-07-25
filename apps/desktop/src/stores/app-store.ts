@@ -15,6 +15,8 @@ import type {
 import { PROTOCOL_VERSION } from "@pi-desktop/shared";
 import { api } from "../lib/api";
 import { rememberProject } from "../lib/recent-projects";
+import { sessionMatchesProject } from "../lib/sidebar-session-groups";
+import { formatToolValue } from "../lib/tool-display";
 
 // Sessions created before locale switches keep their old default title, so
 // match against every locale's defaults (case-insensitive), not just the
@@ -76,25 +78,7 @@ type AppState = {
   permission?: ToolPermissionRequest | null;
   toasts: ToastItem[];
   page: "chat" | "projects" | "pulls" | "scheduled" | "plugins" | "settings";
-  settingsTab:
-    | "general"
-    | "appearance"
-    | "voice"
-    | "providers"
-    | "agent"
-    | "personalization"
-    | "keyboard"
-    | "account"
-    | "plugins"
-    | "mcp"
-    | "browser"
-    | "computer"
-    | "hooks"
-    | "connections"
-    | "git"
-    | "pets"
-    | "appshots"
-    | "about";
+  settingsTab: "general" | "agent" | "import" | "about";
   navStack: Array<{ page: AppState["page"]; sessionId?: string }>;
   navIndex: number;
   error?: string | null;
@@ -102,7 +86,12 @@ type AppState = {
   bootstrap: () => Promise<void>;
   refreshSessions: () => Promise<void>;
   selectSession: (id: string, opts?: { record?: boolean }) => Promise<void>;
-  newSession: () => Promise<void>;
+  newSession: (options?: { projectPath?: string | null }) => Promise<void>;
+  configureActiveSession: (config: {
+    mode: "chat" | "agent";
+    providerId?: string;
+    modelId?: string;
+  }) => Promise<void>;
   sendPrompt: (content: string) => Promise<void>;
   abort: () => Promise<void>;
   openProject: () => Promise<void>;
@@ -240,14 +229,27 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
-  newSession: async () => {
+  newSession: async (options) => {
+    const requestedProjectPath =
+      options && "projectPath" in options
+        ? options.projectPath ?? null
+        : get().workspace?.path ?? null;
+
     // Codex reuses an empty draft thread instead of stacking "New task" rows.
     for (const session of get().sessions) {
-      if (!isDefaultSessionTitle(session.title)) continue;
+      if (
+        !isDefaultSessionTitle(session.title) ||
+        !sessionMatchesProject(session, requestedProjectPath)
+      ) {
+        continue;
+      }
       try {
         const detail = await api.getSession(session.id);
         const messages = detail.session?.messages ?? [];
         if (messages.length === 0) {
+          if (requestedProjectPath === null && get().workspace) {
+            await get().clearProject();
+          }
           await get().selectSession(session.id);
           return;
         }
@@ -255,13 +257,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         // fall through to create
       }
     }
+    if (requestedProjectPath === null && get().workspace) {
+      await get().clearProject();
+    }
     const settings = get().settings;
     const created = await api.createSession({
       title: untitledTaskTitle(),
       mode: settings?.defaultMode ?? "chat",
       providerId: settings?.defaultProviderId,
       modelId: settings?.defaultModelId,
-      projectPath: get().workspace?.path,
+      projectPath: requestedProjectPath ?? undefined,
     } as any);
     await get().refreshSessions();
     const detail = await api.getSession(created.session.id);
@@ -277,6 +282,17 @@ export const useAppStore = create<AppState>((set, get) => ({
         navIndex: nextStack.length - 1,
       };
     });
+  },
+
+  configureActiveSession: async (config) => {
+    const sessionId = get().activeSessionId;
+    if (!sessionId || get().runningSessions[sessionId]) return;
+    const result = await api.configureSession(sessionId, config);
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === sessionId ? result.session : session,
+      ),
+    }));
   },
 
   sendPrompt: async (content) => {
@@ -383,7 +399,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (envelope.sessionId !== get().activeSessionId) {
       // Cross-session events must not bleed into the visible transcript.
       // Only global concerns pass: permission prompts (dialog is global)
-      // and finished turns refreshing the recents list.
+      // and finished turns refreshing the scoped sidebar session groups.
       if (event.type === "tool_permission_request") {
         set({ permission: event.request });
       } else if (event.type === "agent_end" || event.type === "turn_end") {
@@ -454,12 +470,35 @@ export const useAppStore = create<AppState>((set, get) => ({
           ],
         }));
         break;
+      case "tool_update":
+        if (event.partialResult === undefined) break;
+        set((s) => ({
+          messages: s.messages.map((message) =>
+            message.toolCallId === event.toolCallId &&
+            message.toolStatus === "running"
+              ? {
+                  ...message,
+                  content:
+                    typeof event.partialResult === "string"
+                      ? event.partialResult
+                      : formatToolValue(event.partialResult),
+                  toolResult: event.partialResult,
+                }
+              : message,
+          ),
+        }));
+        break;
       case "tool_end":
         set((s) => ({
           messages: s.messages.map((m) =>
             m.toolCallId === event.toolCallId
               ? {
                   ...m,
+                  toolCompletedAt: new Date(envelope.ts).toISOString(),
+                  toolDurationMs: Math.max(
+                    0,
+                    envelope.ts - (Date.parse(m.createdAt) || envelope.ts),
+                  ),
                   toolStatus: event.isError ? "error" : "success",
                   toolResult: event.result,
                   content:
@@ -477,11 +516,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         set({ permission: event.request });
         break;
       case "error":
-        set({
+        set((s) => ({
           isRunning: false,
           error: `${event.error.code}: ${event.error.message}`,
           errorCode: event.error.code,
-        });
+          messages: s.messages.map((message) =>
+            message.role === "tool" && message.toolStatus === "running"
+              ? {
+                  ...message,
+                  toolStatus: "error",
+                  status: "error",
+                  isError: true,
+                }
+              : message,
+          ),
+        }));
         break;
       default:
         break;

@@ -15,6 +15,8 @@ export type UiMessage = {
   toolStatus?: "running" | "success" | "error" | "denied";
   toolArgs?: unknown;
   toolResult?: unknown;
+  toolCompletedAt?: string;
+  toolDurationMs?: number;
   isError?: boolean;
 };
 
@@ -44,7 +46,6 @@ export type AgentStatus = {
 export type AgentPromptRequest = {
   sessionId: string;
   content: string;
-  images?: Array<{ mimeType: string; dataBase64: string }>;
 };
 
 export type AgentPromptResponse = {
@@ -104,6 +105,15 @@ export type ProjectWorkspace = {
   name: string;
   /** Best-effort git branch from .git/HEAD when available. */
   branch?: string;
+};
+
+export type ProjectRecord = {
+  id: number;
+  path: string;
+  name: string;
+  pinned: boolean;
+  createdAt: number;
+  lastOpenedAt: number;
 };
 
 export type PullRequestSummary = {

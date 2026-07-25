@@ -19,7 +19,7 @@ Local plugins usable → developer-friendly → marketplace distribution → sig
 ### R2 — Agent Extension
 - Full agentTools pipeline
 - skills contribution
-- Plugin settings page
+- Per-plugin settings within the app shell's Plugins destination
 - Plugin log panel
 - Unified namespace and audit
 

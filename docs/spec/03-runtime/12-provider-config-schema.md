@@ -4,12 +4,12 @@
 
 Owned by Rust host DB/settings store.
 
-Tables (logical):
+Tables (canonical DDL in [04-data-storage](04-data-storage.md) §4.3–4.4, §4.11):
 
 - `providers`
-- `provider_models` (user-defined)
-- `model_catalog_cache`
+- `models` (single catalog table; `source: bundled | discovered | user` replaces the old `provider_models` / `model_catalog_cache` split)
 - `secrets_meta` (no raw secret values)
+- recent-model MRU lives in `kv(ns='cache')`, not a table
 
 ## 2. Provider record JSON schema (logical)
 
@@ -120,74 +120,23 @@ type ModelCatalogCacheRecord = {
 
 ## 7. Migration
 
-- schemaVersion on settings DB
-- provider records additive-evolved
+- schema version via `PRAGMA user_version` (04-data-storage §7)
+- provider records additive-evolved; per-provider extension fields land in `config_json`
 - unknown future protocol values should not crash older app versions (ignore/disable with warning)
 
-## 8. SQL draft (logical, Rust-owned SQLite)
+## 8. SQL (Rust-owned SQLite)
+
+The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary of the provider-domain tables:
 
 ```sql
-CREATE TABLE providers (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  vendor_key TEXT NOT NULL,
-  type TEXT NOT NULL,
-  protocol TEXT NOT NULL,
-  enabled INTEGER NOT NULL DEFAULT 1,
-  base_url TEXT,
-  auth_kind TEXT NOT NULL,
-  secret_ref TEXT,
-  headers_json TEXT NOT NULL DEFAULT '{}',
-  api_style TEXT,
-  compatibility_json TEXT NOT NULL DEFAULT '{}',
-  default_model_id TEXT,
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-
-CREATE TABLE provider_models (
-  provider_id TEXT NOT NULL,
-  model_id TEXT NOT NULL,
-  display_name TEXT NOT NULL,
-  context_window INTEGER,
-  max_output_tokens INTEGER,
-  capabilities_json TEXT NOT NULL DEFAULT '[]',
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  PRIMARY KEY (provider_id, model_id),
-  FOREIGN KEY (provider_id) REFERENCES providers(id) ON DELETE CASCADE
-);
-
-CREATE TABLE model_catalog_cache (
-  id TEXT PRIMARY KEY,
-  provider_id TEXT,
-  vendor_key TEXT NOT NULL,
-  model_id TEXT NOT NULL,
-  display_name TEXT NOT NULL,
-  capabilities_json TEXT NOT NULL DEFAULT '[]',
-  context_window INTEGER,
-  source TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  raw_json TEXT
-);
-
-CREATE UNIQUE INDEX idx_model_catalog_unique
-  ON model_catalog_cache(COALESCE(provider_id, ''), vendor_key, model_id);
-
-CREATE TABLE recent_models (
-  provider_id TEXT NOT NULL,
-  model_id TEXT NOT NULL,
-  used_at TEXT NOT NULL,
-  PRIMARY KEY (provider_id, model_id)
-);
-
-CREATE TABLE secrets_meta (
-  secret_ref TEXT PRIMARY KEY,
-  provider_id TEXT,
-  kind TEXT NOT NULL,
-  backend TEXT NOT NULL, -- safeStorage | file_fallback
-  updated_at TEXT NOT NULL
-);
+-- providers: id/name/vendor_key/type/protocol/api_style/auth_kind/base_url/
+--            enabled/secret_ref/default_model_id + config_json (headers,
+--            compatibility, future knobs), INTEGER ms timestamps
+-- models:    PK(provider_id, model_id), display_name, source
+--            (bundled|discovered|user), capabilities_json, context_window,
+--            max_output_tokens, deprecated — refresh upserts never overwrite
+--            source='user' rows
+-- secrets_meta: secret_ref PK, owner_kind/owner_id, kind, backend
 ```
 
 > Raw secret material is **not** stored in these tables.

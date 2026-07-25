@@ -18,26 +18,20 @@ Rules:
 1. No hard-coded user-facing English sentences scattered without IDs long-term
 2. Every visible string has a stable key
 3. Locale switch must not require code edits
+4. Every shipped locale has the same flattened key set as English
+5. Interpolation variable names and sets match across every locale
+6. Dates and times use the active application locale rather than the host default
 
 ## 3. Catalog structure
 
 ```text
-apps/desktop/locales/
- en/
- common.json
- chat.json
- settings.json
- plugins.json
- errors.json
+packages/i18n/src/locales/
+├── en/index.ts
+└── zh-CN/index.ts
 ```
 
-Optional later:
-
-```text
- zh-CN/
- ja/
- ...
-```
+The English catalog is the source type for translated catalogs. Catalog parity
+and interpolation parity are enforced by automated tests.
 
 ## 4. Key conventions
 
@@ -71,3 +65,6 @@ Plugins may include localized display fields later, but English fields are requi
 2. Locale files exist for English source catalog
 3. Switching architecture supports additional locales
 4. No Chinese hard dependency in core UI path
+5. Catalog tests reject missing keys or mismatched interpolation variables
+6. Import, Projects, and Temporary sessions expose localized visible and
+   accessible labels in English and Simplified Chinese

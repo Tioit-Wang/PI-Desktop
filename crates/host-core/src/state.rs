@@ -31,8 +31,7 @@ pub struct AppState {
 
 impl AppState {
     pub fn open(data_dir: &std::path::Path) -> Result<Self> {
-        let db_path = data_dir.join("settings.sqlite");
-        let db = Database::open(&db_path)?;
+        let db = Database::open_in_dir(data_dir)?;
         let secrets = SecretStore::open(data_dir)?;
         let plugins = PluginManager::new(data_dir);
         Ok(Self {

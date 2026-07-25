@@ -9,8 +9,6 @@ export function PluginsPage() {
   const plugins = useAppStore((s) => s.plugins);
   const refreshPlugins = useAppStore((s) => s.refreshPlugins);
   const showToast = useAppStore((s) => s.showToast);
-  const setSettingsTab = useAppStore((s) => s.setSettingsTab);
-  const setPage = useAppStore((s) => s.setPage);
 
   return (
     <div className="thread-scroll">
@@ -20,31 +18,20 @@ export function PluginsPage() {
             <h1 className="page-title">{t("plugins.title")}</h1>
             <div className="page-subtitle">{t("plugins.subtitle")}</div>
           </div>
-          <div className="flex gap-2">
-            <Button
-              variant="secondary"
-              onClick={async () => {
-                try {
-                  await api.loadDevPlugin();
-                  await refreshPlugins();
-                  showToast(t("plugins.loadDev"), { variant: "success" });
-                } catch (e) {
-                  showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
-                }
-              }}
-            >
-              {t("plugins.loadDev")}
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setSettingsTab("plugins");
-                setPage("settings");
-              }}
-            >
-              {t("nav.settings")}
-            </Button>
-          </div>
+          <Button
+            variant="secondary"
+            onClick={async () => {
+              try {
+                await api.loadDevPlugin();
+                await refreshPlugins();
+                showToast(t("plugins.loadDev"), { variant: "success" });
+              } catch (e) {
+                showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+              }
+            }}
+          >
+            {t("plugins.loadDev")}
+          </Button>
         </div>
 
         {plugins.length === 0 ? (
@@ -82,7 +69,7 @@ export function PluginsPage() {
                   <div className="dest-row-title">
                     <span className="min-w-0 truncate">{plugin.name}</span>
                     <Badge tone={plugin.enabled ? "success" : "neutral"}>
-                      {plugin.enabled ? t("plugins.enable") : t("plugins.disable")}
+                      {plugin.enabled ? t("scheduled.enabled") : t("scheduled.disabled")}
                     </Badge>
                   </div>
                   <div className="dest-row-meta">
@@ -100,6 +87,16 @@ export function PluginsPage() {
                     }}
                   >
                     {plugin.enabled ? t("plugins.disable") : t("plugins.enable")}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={async () => {
+                      await api.uninstallPlugin(plugin.id);
+                      await refreshPlugins();
+                    }}
+                  >
+                    {t("plugins.uninstall")}
                   </Button>
                 </div>
               </div>

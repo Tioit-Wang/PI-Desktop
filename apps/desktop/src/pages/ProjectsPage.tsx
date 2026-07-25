@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { ProjectRecord } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import { Button } from "../components/ui";
@@ -9,21 +10,23 @@ import {
   IconFolder,
   IconPlus,
   IconSearch,
-  IconStar,
 } from "../components/icons";
 import {
   loadRecentProjects,
   projectColor,
   rememberProject,
-  removeRecentProject,
-  setProjectPinned,
   type RecentProject,
 } from "../lib/recent-projects";
+import { collectSessionProjects } from "../lib/session-projects";
+import {
+  normalizeProjectPath,
+  sessionMatchesProject,
+} from "../lib/sidebar-session-groups";
 
-function formatUpdated(ts?: number, neverLabel = "—") {
+function formatUpdated(ts?: number, locale?: string, neverLabel = "—") {
   if (!ts) return neverLabel;
   try {
-    return new Intl.DateTimeFormat(undefined, {
+    return new Intl.DateTimeFormat(locale || undefined, {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -40,34 +43,91 @@ function sourceLabel(path: string) {
 }
 
 export function ProjectsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const workspace = useAppStore((s) => s.workspace);
   const openProject = useAppStore((s) => s.openProject);
   const clearProject = useAppStore((s) => s.clearProject);
   const newSession = useAppStore((s) => s.newSession);
+  const selectSession = useAppStore((s) => s.selectSession);
   const setPage = useAppStore((s) => s.setPage);
   const showToast = useAppStore((s) => s.showToast);
   const sessions = useAppStore((s) => s.sessions);
   const [recents, setRecents] = useState<RecentProject[]>(() => loadRecentProjects());
+  const [durableProjects, setDurableProjects] = useState<ProjectRecord[]>([]);
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [menuFor, setMenuFor] = useState<string | null>(null);
 
+  useEffect(() => {
+    let canceled = false;
+    void api
+      .listProjects()
+      .then(({ projects }) => {
+        if (!canceled) setDurableProjects(projects);
+      })
+      .catch(() => {
+        // Session-derived entries below keep the index useful if host listing fails.
+      });
+    return () => {
+      canceled = true;
+    };
+  }, [sessions]);
+
   const items = useMemo(() => {
-    const list = [...recents];
-    if (workspace?.path && !list.some((p) => p.path === workspace.path)) {
-      list.unshift({
-        path: workspace.path,
-        name: workspace.name || workspace.path,
-        branch: workspace.branch || undefined,
-        openedAt: Date.now(),
-        color: projectColor(workspace.path),
+    const byPath = new Map<string, RecentProject>();
+    for (const project of durableProjects) {
+      const key = normalizeProjectPath(project.path);
+      if (!key) continue;
+      byPath.set(key, {
+        path: project.path,
+        name: project.name,
+        openedAt: project.lastOpenedAt,
+        pinned: project.pinned,
+        color: projectColor(project.path),
       });
     }
-    return list.sort(
+    for (const project of recents) {
+      const key = normalizeProjectPath(project.path);
+      if (!key) continue;
+      const existing = byPath.get(key);
+      byPath.set(key, {
+        ...existing,
+        ...project,
+        openedAt: Math.max(existing?.openedAt ?? 0, project.openedAt),
+        pinned: project.pinned ?? existing?.pinned,
+      });
+    }
+    for (const project of collectSessionProjects(sessions)) {
+      const key = normalizeProjectPath(project.path);
+      if (!key) continue;
+      const existing = byPath.get(key);
+      byPath.set(key, {
+        path: existing?.path ?? project.path,
+        name: existing?.name ?? project.name,
+        branch: existing?.branch,
+        openedAt: Math.max(existing?.openedAt ?? 0, project.updatedAt),
+        pinned: existing?.pinned,
+        color: existing?.color ?? projectColor(project.path),
+      });
+    }
+    if (workspace?.path) {
+      const key = normalizeProjectPath(workspace.path);
+      const existing = key ? byPath.get(key) : undefined;
+      if (key) {
+        byPath.set(key, {
+          path: workspace.path,
+          name: workspace.name || existing?.name || workspace.path,
+          branch: workspace.branch || existing?.branch,
+          openedAt: Math.max(existing?.openedAt ?? 0, Date.now()),
+          pinned: existing?.pinned,
+          color: existing?.color ?? projectColor(workspace.path),
+        });
+      }
+    }
+    return [...byPath.values()].sort(
       (a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.openedAt - a.openedAt,
     );
-  }, [recents, workspace]);
+  }, [durableProjects, recents, sessions, workspace]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -114,6 +174,21 @@ export function ProjectsPage() {
     }
   };
 
+  const openProjectSession = async (path: string, sessionId: string) => {
+    await activate(path);
+    if (
+      normalizeProjectPath(useAppStore.getState().workspace?.path) !==
+      normalizeProjectPath(path)
+    ) {
+      return;
+    }
+    try {
+      await selectSession(sessionId);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+    }
+  };
+
   return (
     <div className="thread-scroll">
       <div className="projects-index">
@@ -135,7 +210,7 @@ export function ProjectsPage() {
               onClick={() => void openProject().then(() => setRecents(loadRecentProjects()))}
             >
               <IconPlus size={14} />
-              {t("project.new")}
+              {t("project.add")}
             </Button>
           </div>
         </div>
@@ -146,10 +221,10 @@ export function ProjectsPage() {
               {t("project.columnName")}
             </div>
             <div className="projects-col sources" role="columnheader">
-              {t("project.columnSources")}
+              {t("project.columnWorkspace")}
             </div>
             <div className="projects-col updated" role="columnheader">
-              {t("project.columnUpdated")}
+              {t("project.columnLastActive")}
             </div>
             <div className="projects-col actions" role="columnheader" />
           </div>
@@ -157,17 +232,25 @@ export function ProjectsPage() {
           {filtered.length === 0 ? (
             <div className="projects-empty">
               <div className="projects-empty-title">
-                {items.length === 0 ? t("project.noProjects") : t("project.emptyTitle")}
+                {items.length === 0
+                  ? t("project.noProjects")
+                  : t("project.noSearchResults")}
               </div>
-              <div className="projects-empty-body">{t("project.emptyIndexBody")}</div>
-              <Button
-                className="mt-4"
-                variant="primary"
-                onClick={() => void openProject().then(() => setRecents(loadRecentProjects()))}
-              >
-                <IconPlus size={14} />
-                {t("project.new")}
-              </Button>
+              <div className="projects-empty-body">
+                {items.length === 0
+                  ? t("project.emptyIndexBody")
+                  : t("project.noSearchResultsBody")}
+              </div>
+              {items.length === 0 ? (
+                <Button
+                  className="mt-4"
+                  variant="primary"
+                  onClick={() => void openProject().then(() => setRecents(loadRecentProjects()))}
+                >
+                  <IconPlus size={14} />
+                  {t("project.add")}
+                </Button>
+              ) : null}
             </div>
           ) : (
             filtered.map((project) => {
@@ -175,7 +258,7 @@ export function ProjectsPage() {
               const color = project.color || projectColor(project.path);
               const isOpen = !!expanded[project.path];
               const related = sessions
-                .filter((s) => (s.title || "").toLowerCase().includes(project.name.toLowerCase()))
+                .filter((session) => sessionMatchesProject(session, project.path))
                 .slice(0, 4);
               return (
                 <div key={project.path} className={`projects-row-block ${active ? "active" : ""}`}>
@@ -184,7 +267,10 @@ export function ProjectsPage() {
                       <button
                         type="button"
                         className="projects-expand"
-                        aria-label={t("project.title")}
+                        aria-label={t(
+                          isOpen ? "project.collapseDetails" : "project.expandDetails",
+                          { name: project.name },
+                        )}
                         aria-expanded={isOpen}
                         onClick={() =>
                           setExpanded((prev) => ({ ...prev, [project.path]: !prev[project.path] }))
@@ -222,27 +308,20 @@ export function ProjectsPage() {
                       ) : null}
                     </div>
                     <div className="projects-col updated" role="cell">
-                      {formatUpdated(project.openedAt, t("project.updatedNever"))}
+                      {formatUpdated(
+                        project.openedAt,
+                        i18n.resolvedLanguage || i18n.language,
+                        t("project.updatedNever"),
+                      )}
                     </div>
                     <div className="projects-col actions" role="cell">
                       <div className="projects-row-actions">
-                        <button
-                          type="button"
-                          className="projects-icon-btn"
-                          title={project.pinned ? t("project.unpin") : t("project.pin")}
-                          onClick={() =>
-                            setRecents(setProjectPinned(project.path, !project.pinned))
-                          }
-                        >
-                          <IconStar
-                            size={14}
-                            fill={project.pinned ? "currentColor" : "none"}
-                          />
-                        </button>
                         <div className="projects-menu-wrap">
                           <button
                             type="button"
                             className="projects-icon-btn"
+                            aria-label={t("project.openActions", { name: project.name })}
+                            title={t("project.openActions", { name: project.name })}
                             aria-haspopup="menu"
                             aria-expanded={menuFor === project.path}
                             onClick={() =>
@@ -261,17 +340,7 @@ export function ProjectsPage() {
                                   void startTask(project.path);
                                 }}
                               >
-                                {t("project.startTask")}
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                onClick={() => {
-                                  setMenuFor(null);
-                                  setRecents(setProjectPinned(project.path, !project.pinned));
-                                }}
-                              >
-                                {project.pinned ? t("project.unpin") : t("project.pin")}
+                                {t("project.newTask")}
                               </button>
                               {active ? (
                                 <button
@@ -285,19 +354,7 @@ export function ProjectsPage() {
                                 >
                                   {t("project.close")}
                                 </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  role="menuitem"
-                                  className="danger"
-                                  onClick={() => {
-                                    setMenuFor(null);
-                                    setRecents(removeRecentProject(project.path));
-                                  }}
-                                >
-                                  {t("project.remove")}
-                                </button>
-                              )}
+                              ) : null}
                             </div>
                           ) : null}
                         </div>
@@ -306,15 +363,15 @@ export function ProjectsPage() {
                   </div>
                   {isOpen ? (
                     <div className="projects-row-detail">
-                      <div className="projects-detail-label">{t("project.startTask")}</div>
+                      <div className="projects-detail-label">{t("project.newTask")}</div>
                       <div className="projects-detail-actions">
                         <Button size="sm" variant="secondary" onClick={() => void startTask(project.path)}>
-                          {t("nav.newTask")}
+                          {t("project.newTask")}
                         </Button>
                       </div>
-                      <div className="projects-detail-label">{t("nav.recents")}</div>
+                      <div className="projects-detail-label">{t("project.sessions")}</div>
                       {related.length === 0 ? (
-                        <div className="projects-detail-empty">{t("nav.noRecentTasks")}</div>
+                        <div className="projects-detail-empty">{t("project.noSessions")}</div>
                       ) : (
                         <div className="projects-detail-tasks">
                           {related.map((s) => (
@@ -322,10 +379,7 @@ export function ProjectsPage() {
                               key={s.id}
                               type="button"
                               className="projects-detail-task"
-                              onClick={() => {
-                                void useAppStore.getState().selectSession(s.id);
-                                setPage("chat");
-                              }}
+                              onClick={() => void openProjectSession(project.path, s.id)}
                             >
                               {s.title || s.id}
                             </button>

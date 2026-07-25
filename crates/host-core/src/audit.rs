@@ -1,24 +1,17 @@
 use anyhow::Result;
-use chrono::Utc;
 use rusqlite::params;
 use serde_json::Value;
-use uuid::Uuid;
 
-use crate::db::Database;
+use crate::db::{now_ms, Database};
 
 pub fn append(db: &Database, kind: &str, session_id: Option<&str>, payload: Value) -> Result<()> {
     // Redact obvious secrets in payload serialization path (best-effort)
     let redacted = redact_value(payload);
-    db.conn().execute(
-        "INSERT INTO audit_log (id, ts, kind, session_id, payload_json) VALUES (?1, ?2, ?3, ?4, ?5)",
-        params![
-            Uuid::new_v4().to_string(),
-            Utc::now().to_rfc3339(),
-            kind,
-            session_id,
-            redacted.to_string()
-        ],
-    )?;
+    db.conn()
+        .prepare_cached(
+            "INSERT INTO audit_log (ts, kind, session_id, payload_json) VALUES (?1, ?2, ?3, ?4)",
+        )?
+        .execute(params![now_ms(), kind, session_id, redacted.to_string()])?;
     Ok(())
 }
 

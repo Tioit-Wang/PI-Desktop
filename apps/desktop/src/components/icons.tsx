@@ -20,7 +20,9 @@ import {
   Copy,
   Dot,
   ExternalLink,
+  FileText,
   Folder,
+  Globe2,
   GitBranch,
   GitPullRequestArrow,
   Hammer,
@@ -35,6 +37,7 @@ import {
   PanelRight,
   PawPrint,
   PenLine,
+  PencilLine,
   Pin,
   Plug,
   Plus,
@@ -51,9 +54,11 @@ import {
   Square,
   Star,
   Sun,
+  Terminal,
   TriangleAlert,
   UserRound,
   Webhook,
+  Wrench,
   X,
   type LucideIcon,
   type LucideProps,
@@ -72,6 +77,11 @@ export const IconPlus = icon(Plus);
 export const IconSearch = icon(Search);
 export const IconCompose = icon(PenLine);
 export const IconFolder = icon(Folder);
+export const IconFileText = icon(FileText);
+export const IconGlobe = icon(Globe2);
+export const IconTerminal = icon(Terminal);
+export const IconPencil = icon(PencilLine);
+export const IconWrench = icon(Wrench);
 export const IconGitBranch = icon(GitBranch);
 export const IconPullRequest = icon(GitPullRequestArrow);
 export const IconClock = icon(Clock);

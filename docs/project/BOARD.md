@@ -53,7 +53,7 @@ Open issue:
 - M5 hardening: renderer sandbox + prod CSP (D081), NDJSON log channels
   with redaction/rotation (D082), crash supervision + degradation UI
   (D080), window state persistence (D083), app icon (D079)
-- Spec corpus 0.4.0: English-first everywhere (translated runtime/plugins/
+- Spec corpus 0.4.1: English-first everywhere (translated runtime/plugins/
   ADR docs), error-code registry unified to shared/errors.ts, e2e statuses
   synced to real automation, decisions-log restructured (A–G) with
   supersession chains, acceptance criteria evidence-tagged

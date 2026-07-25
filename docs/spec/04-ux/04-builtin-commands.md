@@ -25,8 +25,7 @@ builtin.<domain>.<action>
 | `builtin.project.open` | Open Project | open, project, folder | Project | low | open folder picker and bind workspace |
 | `builtin.project.clear` | Clear Project | clear, project | Project | low | unbind workspace |
 | `builtin.settings.open` | Open Settings | settings, preferences | App | low | navigate settings root |
-| `builtin.settings.providers` | Open Provider Settings | provider, model, key | Settings | low | navigate providers page |
-| `builtin.settings.permissions` | Open Permission Settings | permissions, grants | Settings | low | navigate Settings → General → Default permissions card (D065) |
+| `builtin.settings.providers` | Open Provider Settings | provider, model, key | Settings | low | navigate Settings → Configuration → Providers card |
 | `builtin.plugins.open` | Open Plugins | plugins, extensions | Plugins | low | navigate plugins page |
 | `builtin.plugins.loadDev` | Load Development Plugin | load, dev, plugin | Plugins | medium | choose local plugin directory |
 | `builtin.commandPalette.show` | Show Command Palette | palette, commands | App | low | open palette |

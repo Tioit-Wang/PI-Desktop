@@ -1,6 +1,6 @@
 # Open Questions
 
-> Updated for baseline `0.4.0` (M5 hardening).
+> Updated for baseline `0.4.1` (M5 hardening + compact settings IA).
 > Frozen decisions live in [decisions-log.md](decisions-log.md); resolved
 > items move there instead of lingering here.
 

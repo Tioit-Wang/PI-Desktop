@@ -6,11 +6,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::sync::{mpsc, Mutex};
-use tracing;
 
+use crate::artifacts;
 use crate::audit;
 use crate::permissions::{PermissionDecision, PermissionManager};
 use crate::providers::{self, ProviderCreateInput, ProviderUpdateInput};
+use crate::scheduled;
 use crate::sessions::{self, UiMessage};
 use crate::state::{AppState, HOST_VERSION, PROTOCOL_VERSION};
 use crate::tools::{self, ToolsExecuteParams};
@@ -178,8 +179,7 @@ async fn execute_plugin_tool(
     )
     .await;
 
-    let outcome =
-        tokio::time::timeout(std::time::Duration::from_millis(timeout_ms), orx).await;
+    let outcome = tokio::time::timeout(std::time::Duration::from_millis(timeout_ms), orx).await;
     let duration_ms = started.elapsed().as_millis() as u64;
     match outcome {
         Ok(Ok(resp)) => {
@@ -250,16 +250,16 @@ async fn handle_request(
             }
             let mut st = state.lock().await;
             st.handshook = true;
-            if let Ok(path) =
-                st.db
-                    .conn()
-                    .query_row("SELECT path FROM workspace WHERE id = 1", [], |row| {
-                        row.get::<_, Option<String>>(0)
-                    })
-            {
-                if let Some(path) = path {
-                    if !path.is_empty() {
-                        st.workspace.set(PathBuf::from(path));
+            // Restore the current workspace from kv → projects.
+            if let Ok(Some(pid)) = st.db.kv_get("app", "currentProjectId") {
+                let pid = pid
+                    .as_i64()
+                    .or_else(|| pid.as_str().and_then(|s| s.parse::<i64>().ok()));
+                if let Some(pid) = pid {
+                    if let Ok(Some(path)) = st.db.project_path(pid) {
+                        if !path.is_empty() {
+                            st.workspace.set(PathBuf::from(path));
+                        }
                     }
                 }
             }
@@ -267,7 +267,8 @@ async fn handle_request(
                 "protocolVersion": PROTOCOL_VERSION,
                 "version": HOST_VERSION,
                 "capabilities": [
-                    "tools", "sessions", "providers", "secrets", "plugins", "permissions"
+                    "tools", "sessions", "providers", "secrets", "plugins", "permissions",
+                    "scheduled", "artifacts", "search", "turns"
                 ]
             }))
         }
@@ -290,6 +291,14 @@ async fn handle_request(
             let st = state.lock().await;
             Ok(json!({ "workspace": st.workspace.get() }))
         }
+        "projects.list" => {
+            let st = state.lock().await;
+            let projects = st
+                .db
+                .list_projects()
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "projects": projects }))
+        }
         "workspace.set" => {
             let path = params
                 .get("path")
@@ -297,12 +306,12 @@ async fn handle_request(
                 .ok_or_else(|| rpc_err(1002, "path required", "INVALID_PARAMS"))?;
             let mut st = state.lock().await;
             let ws = st.workspace.set(PathBuf::from(path));
+            let pid = st
+                .db
+                .ensure_project(&ws.path, true)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             st.db
-                .conn()
-                .execute(
-                    "UPDATE workspace SET path = ?1, name = ?2 WHERE id = 1",
-                    rusqlite::params![ws.path, ws.name],
-                )
+                .kv_set("app", "currentProjectId", &json!(pid))
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "workspace": ws }))
         }
@@ -310,11 +319,7 @@ async fn handle_request(
             let mut st = state.lock().await;
             st.workspace.clear();
             st.db
-                .conn()
-                .execute(
-                    "UPDATE workspace SET path = NULL, name = NULL WHERE id = 1",
-                    [],
-                )
+                .kv_delete("app", "currentProjectId")
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "ok": true }))
         }
@@ -528,6 +533,27 @@ async fn handle_request(
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "session": session }))
         }
+        "session.configure" => {
+            let id = params
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "id required", "INVALID_PARAMS"))?;
+            let mode = params
+                .get("mode")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "mode required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let session = sessions::configure_session(
+                &st.db,
+                id,
+                mode,
+                params.get("providerId").and_then(|v| v.as_str()),
+                params.get("modelId").and_then(|v| v.as_str()),
+            )
+            .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?
+            .ok_or_else(|| rpc_err(1007, "session not found", "NOT_FOUND"))?;
+            Ok(json!({ "session": session }))
+        }
         "session.delete" => {
             let id = params
                 .get("id")
@@ -564,8 +590,12 @@ async fn handle_request(
                     .ok_or_else(|| rpc_err(1002, "message required", "INVALID_PARAMS"))?,
             )
             .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
+            let turn_id = params
+                .get("turnId")
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
             let st = state.lock().await;
-            sessions::append_message(&st.db, session_id, &message)
+            sessions::append_message(&st.db, session_id, &message, turn_id.as_deref())
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "ok": true }))
         }
@@ -585,6 +615,205 @@ async fn handle_request(
             sessions::replace_messages(&st.db, session_id, &messages)
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "ok": true }))
+        }
+
+        "session.import" => {
+            let summary: sessions::SessionSummary = serde_json::from_value(
+                params
+                    .get("session")
+                    .cloned()
+                    .ok_or_else(|| rpc_err(1002, "session required", "INVALID_PARAMS"))?,
+            )
+            .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
+            let messages: Vec<UiMessage> = serde_json::from_value(
+                params
+                    .get("messages")
+                    .cloned()
+                    .ok_or_else(|| rpc_err(1002, "messages required", "INVALID_PARAMS"))?,
+            )
+            .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let imported = sessions::import_session(&st.db, &summary, &messages)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "ok": true, "imported": imported, "skipped": !imported }))
+        }
+
+        "session.beginTurn" => {
+            let session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "sessionId required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let turn_id = sessions::begin_turn(
+                &st.db,
+                session_id,
+                params.get("providerId").and_then(|v| v.as_str()),
+                params.get("modelId").and_then(|v| v.as_str()),
+            )
+            .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "turnId": turn_id }))
+        }
+        "session.endTurn" => {
+            let turn_id = params
+                .get("turnId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "turnId required", "INVALID_PARAMS"))?;
+            let status = params
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("completed");
+            let st = state.lock().await;
+            let ok = sessions::end_turn(
+                &st.db,
+                turn_id,
+                status,
+                params.get("errorCode").and_then(|v| v.as_str()),
+                params.get("usage"),
+            )
+            .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "ok": ok }))
+        }
+
+        "search.query" => {
+            let query = params
+                .get("query")
+                .or_else(|| params.get("q"))
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let limit = params.get("limit").and_then(|v| v.as_i64()).unwrap_or(20);
+            let st = state.lock().await;
+            let hits = sessions::search_messages(&st.db, query, limit)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "hits": hits }))
+        }
+
+        "artifacts.list" => {
+            let session_id = params.get("sessionId").and_then(|v| v.as_str());
+            let limit = params.get("limit").and_then(|v| v.as_i64()).unwrap_or(200);
+            let st = state.lock().await;
+            let artifacts = artifacts::list(&st.db, session_id, limit)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "artifacts": artifacts }))
+        }
+
+        "scheduled.list" => {
+            let st = state.lock().await;
+            let tasks = scheduled::list_tasks(&st.db)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "tasks": tasks }))
+        }
+        "scheduled.create" => {
+            let st = state.lock().await;
+            let task = scheduled::create_task(&st.db, &params)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "task": task }))
+        }
+        "scheduled.update" => {
+            let st = state.lock().await;
+            let task = scheduled::update_task(&st.db, &params)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?
+                .ok_or_else(|| rpc_err(1007, "task not found", "NOT_FOUND"))?;
+            Ok(json!({ "task": task }))
+        }
+        "scheduled.delete" => {
+            let id = params
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "id required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let ok = scheduled::delete_task(&st.db, id)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "ok": ok }))
+        }
+        "scheduled.import" => {
+            let tasks = params
+                .get("tasks")
+                .and_then(|v| v.as_array())
+                .cloned()
+                .unwrap_or_default();
+            let st = state.lock().await;
+            let imported = scheduled::import_tasks(&st.db, &tasks)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "imported": imported }))
+        }
+        "scheduled.run" => {
+            let id = params
+                .get("id")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "id required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let task = scheduled::get_task(&st.db, id)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?
+                .ok_or_else(|| rpc_err(1007, "task not found", "NOT_FOUND"))?;
+            let settings = st
+                .db
+                .get_setting("app")
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?
+                .unwrap_or_else(|| json!({}));
+            let session = sessions::create_session(
+                &st.db,
+                Some(task.title.clone()),
+                Some(
+                    settings
+                        .get("defaultMode")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("chat")
+                        .to_string(),
+                ),
+                settings
+                    .get("defaultProviderId")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                settings
+                    .get("defaultModelId")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                st.workspace.get().map(|w| w.path),
+            )
+            .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            let run_id = match scheduled::begin_run(&st.db, id, Some(&session.id)) {
+                Ok(run_id) => run_id,
+                Err(error) => {
+                    let _ = sessions::delete_session(&st.db, &session.id);
+                    return Err(rpc_err(1000, error.to_string(), "INTERNAL"));
+                }
+            };
+            let task = scheduled::get_task(&st.db, id)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?
+                .unwrap_or(task);
+            Ok(json!({
+                "sessionId": session.id,
+                "prompt": task.prompt,
+                "task": task,
+                "runId": run_id
+            }))
+        }
+        "scheduled.finishRun" => {
+            let run_id = params
+                .get("runId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "runId required", "INVALID_PARAMS"))?;
+            let status = params
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or("completed");
+            let st = state.lock().await;
+            let ok = scheduled::finish_run(
+                &st.db,
+                run_id,
+                status,
+                params.get("errorCode").and_then(|v| v.as_str()),
+            )
+            .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "ok": ok }))
+        }
+        "scheduled.listRuns" => {
+            let task_id = params.get("taskId").and_then(|v| v.as_str());
+            let limit = params.get("limit").and_then(|v| v.as_i64()).unwrap_or(50);
+            let st = state.lock().await;
+            let runs = scheduled::list_runs(&st.db, task_id, limit)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "runs": runs }))
         }
 
         "tools.list" => Ok(json!({ "tools": tools::builtin_tool_defs() })),
@@ -710,6 +939,21 @@ async fn handle_request(
             result.tool_call_id = p.tool_call_id.clone();
 
             let st = state.lock().await;
+            if result.ok && matches!(p.tool_name.as_str(), "Write" | "Edit") {
+                if let Some(rel) = result.content.get("path").and_then(|v| v.as_str()) {
+                    let abs = match ws_path.as_deref() {
+                        Some(root) => root.join(rel).to_string_lossy().to_string(),
+                        None => rel.to_string(),
+                    };
+                    let op = if p.tool_name == "Write" {
+                        "write"
+                    } else {
+                        "edit"
+                    };
+                    let _ =
+                        artifacts::record(&st.db, &p.session_id, &abs, op, p.turn_id.as_deref());
+                }
+            }
             let _ = audit::append(
                 &st.db,
                 "tool_execute",
@@ -900,7 +1144,7 @@ async fn handle_request(
                 json!({"id":"secret","title":"Save your API key","done": has_secret, "action":"settings.providers"}),
                 json!({"id":"project","title":"Open a project folder","done": has_project, "action":"project.open"}),
                 json!({"id":"prompt","title":"Send your first prompt","done": has_session, "action":"chat.focus"}),
-                json!({"id":"plugin","title":"Load a development plugin (optional)","done": !st.plugins.list().is_empty(), "action":"settings.plugins"}),
+                json!({"id":"plugin","title":"Load a development plugin (optional)","done": !st.plugins.list().is_empty(), "action":"plugins.open"}),
             ];
             let critical_incomplete = !has_provider || !has_secret || !has_session;
             Ok(json!({

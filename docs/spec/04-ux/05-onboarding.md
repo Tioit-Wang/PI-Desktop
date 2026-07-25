@@ -31,7 +31,9 @@ Persist dismissal state, but incomplete critical steps can reappear as banners.
 ## 4. Placement
 
 - shown in main chat empty state
-- each item deep-links to the relevant settings/action
+- provider and key items deep-link to Settings → Configuration
+- the optional plugin item opens the app shell's Plugins destination
+- project and prompt items invoke their relevant app actions
 - checklist collapses after core steps complete
 
 ## 5. Copy tone

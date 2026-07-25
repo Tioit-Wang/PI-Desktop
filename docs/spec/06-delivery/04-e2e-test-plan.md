@@ -35,7 +35,7 @@
 |---|---|---|---|
 | **Unit** | Single module, no IPC | Many | Vitest / Rust #[test] |
 | **Integration** | IPC contract, host↔renderer, host↔sidecar | Moderate | Vitest + IPC mocks or live Electron |
-| **E2E** | Full user journey through the desktop app | ~34 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
+| **E2E** | Full user journey through the desktop app | ~38 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
 
 **Strategy**: document all E2E scenarios now; write unit/integration tests alongside code; automate E2E after M5.
 
@@ -124,7 +124,9 @@ Each scenario is documented in this format:
 
 - **Preconditions**: Fresh profile (no `~/.pi-desktop`).
 - **Steps**: 1) Launch app on fresh profile. 2) Observe onboarding checklist.
-- **Expected**: Inline checklist is displayed; items are actionable.
+- **Expected**: Inline checklist is displayed; provider/key items open Settings
+  → Configuration, and the optional plugin item opens the app-shell Plugins
+  destination.
 - **Specs linked**: `04-ux/05-onboarding.md`
 - **Acceptance**: A (first-run checklist)
 - **Milestone**: M2
@@ -135,7 +137,7 @@ Each scenario is documented in this format:
 #### E2E-005: Add a provider and save API key
 
 - **Preconditions**: App running; no provider configured.
-- **Steps**: 1) Open settings. 2) Add a provider. 3) Enter API key. 4) Save.
+- **Steps**: 1) Open Settings → Configuration. 2) Add a provider in the Providers card. 3) Enter API key. 4) Save.
 - **Expected**: Provider appears in list; key stored securely (not in plaintext config).
 - **Specs linked**: `03-runtime/12-provider-config-schema.md`, `03-runtime/14-secrets-storage.md`
 - **Acceptance**: B (add provider, save key)
@@ -145,7 +147,7 @@ Each scenario is documented in this format:
 #### E2E-006: Key survives restart
 
 - **Preconditions**: Provider + key configured.
-- **Steps**: 1) Quit app. 2) Relaunch. 3) Open settings → provider list.
+- **Steps**: 1) Quit app. 2) Relaunch. 3) Open Settings → Configuration → Providers.
 - **Expected**: Provider still listed; key usable (no re-entry needed).
 - **Specs linked**: `03-runtime/14-secrets-storage.md`
 - **Acceptance**: B (key survives restart)
@@ -194,12 +196,12 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Draft
 
-#### E2E-011: Switch between history sessions
+#### E2E-011: Switch between project and temporary sessions
 
-- **Preconditions**: Two or more sessions exist.
-- **Steps**: 1) Switch to a different session in history. 2) Observe chat content.
-- **Expected**: Previous session content loads; current session preserved.
-- **Specs linked**: `03-runtime/10-session-state-machine.md`
+- **Preconditions**: One current-project session and one path-less temporary session exist.
+- **Steps**: 1) Open the current-project session from its sidebar group. 2) Open the temporary session. 3) Observe chat content and workspace chrome.
+- **Expected**: The sidebar contains no Recents aggregate; only the current project's sessions and Temporary sessions are shown; other-project sessions stay hidden; each transcript loads correctly; selecting the temporary session clears project context; both sessions remain persisted.
+- **Specs linked**: `03-runtime/10-session-state-machine.md`, `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`
 - **Acceptance**: C (switch sessions)
 - **Milestone**: M2
 - **Status**: Draft
@@ -310,12 +312,114 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Draft
 
+#### E2E-036: Localized import grouping starts collapsed
+
+- **Preconditions**: Supported local agent stores contain importable sessions across at least two project paths and two sources, including one session without a project path; the app can be launched once with an English system locale and once with a Simplified Chinese system locale.
+- **Steps**: 1) Launch in English and open Settings → Import sessions. 2) Scan for sessions. 3) Inspect the initial source groups. 4) Expand one group and select a session. 5) Change Group by to Project path. 6) Switch back to Source. 7) Repeat the flow after launching with a Simplified Chinese system locale.
+- **Expected**: Source/来源 is the initial grouping; all groups are collapsed after the scan and after either grouping change; project-path mode shows exact project paths and a final No project/未关联项目 group; expanding one group leaves the others collapsed; the selected session remains selected across grouping changes; counts, dates, selection labels, accessible names, and the import result use the active locale without raw keys or unresolved `{{...}}` placeholders.
+- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/02-i18n-english-first.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: F (session import review)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-037: Import creates durable project entries
+
+- **Preconditions**: Import candidates include two sessions at path A, one at path B, and one without a project path; neither project is the active workspace.
+- **Steps**: 1) Import all candidates. 2) Open Projects. 3) Inspect and expand paths A and B. 4) Return home and inspect Temporary sessions. 5) Repeat the import.
+- **Expected**: Projects contains exactly one durable row for A and one for B; the matching imported sessions appear under their exact project rows; the path-less session appears only under Temporary sessions; the active workspace does not change; repeating import duplicates neither sessions nor project rows; no missing filesystem path is created on disk.
+- **Specs linked**: `03-runtime/04-data-storage.md`, `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: F (session/project persistence)
+- **Milestone**: M2
+- **Status**: Draft
+
+#### E2E-038: Settings exposes four destinations with merged sections
+
+- **Preconditions**: App running with at least one configured provider and one supported local session store.
+- **Steps**: 1) Open Settings. 2) Inspect the complete settings rail. 3) Open General and change the theme in its Appearance card. 4) Open Configuration and inspect its Providers card. 5) Open Import sessions and About in order. 6) Return to the app shell and open Plugins.
+- **Expected**: The rail contains exactly General, Configuration, Import sessions, and About in that order; Appearance has no standalone destination and is usable inside General; Providers has no standalone destination and is usable inside Configuration; Import sessions and About each open their intended content; Plugins is absent from Settings and remains reachable as an independent app-shell destination.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/01-ui-ia.md`, `03-runtime/11-provider-model-system.md`
+- **Acceptance**: B (model configuration), F (session import)
+- **Milestone**: M4
+- **Status**: Draft
+
+#### E2E-039: Settings titlebar drag moves the window
+
+- **Preconditions**: App running windowed on macOS with Settings open.
+- **Steps**: 1) Record the window position. 2) Drag the empty 46px band above the settings rail. 3) Drag the same band above the content pane. 4) Use Back, search, and navigation controls.
+- **Expected**: Either top-band drag moves the native window; Back, search, and navigation remain interactive and never initiate a window drag.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/01-ui-ia.md`
+- **Acceptance**: Quality (key operations feel polished)
+- **Milestone**: M5
+- **Status**: Draft
+
+#### E2E-040: Codex-style tool activity survives transcript reload
+- **Preconditions**: Provider configured; project open; a session can run a
+  successful tool and a failing or aborted tool.
+- **Steps**: 1) Run representative read, search, and command tools. 2) Inspect
+  the collapsed processing header while it is active. 3) Wait for completion
+  and expand the processing group. 4) Expand a completed row and copy its
+  output. 5) Reload the session and expand the restored group.
+- **Expected**: Consecutive calls are collapsed by default under one localized
+  processing header that updates and then freezes its elapsed time and shows a
+  step count. Expanded calls use transparent semantic activity rows with an
+  action icon, natural-language verb, monospace primary argument, and quiet
+  disclosure. Nested expansion shows output before raw input in clamped scroll
+  regions. Live partial output updates in place. Reloaded rows preserve the tool
+  name, arguments, result, and status.
+- **Specs linked**: `04-ux/01-ui-ia.md`,
+  `04-ux/07-ui-design-system.md`, `04-ux/08-component-spec.md`,
+  `04-ux/09-interaction-patterns.md`
+- **Acceptance**: C (chat stream), E (tools), F (persistence)
+- **Milestone**: M3
+- **Status**: Draft
+
+#### E2E-041: Conversation minimap navigates long transcripts
+
+- **Preconditions**: A session contains enough user and assistant messages to
+  scroll beyond one viewport, including tool activity between messages.
+- **Steps**: 1) Open the session. 2) Scroll through the transcript and observe
+  the active minimap marker. 3) Hover a marker and inspect its preview. 4) Use
+  keyboard focus to reach another marker. 5) Activate a marker. 6) Open a
+  session with fewer than two visible user or assistant messages.
+- **Expected**: The rail contains one marker per visible user or assistant
+  message and no marker for tool-only rows; the marker near the upper-third
+  reading anchor exposes `aria-current`; hover and focus show the same
+  localized sender and bounded plaintext preview; nearby markers magnify
+  horizontally without shifting the stack; activation smoothly scrolls to the
+  corresponding message; the rail is absent when fewer than two eligible
+  messages exist.
+- **Specs linked**: `04-ux/08-component-spec.md`
+- **Acceptance**: C (chat stream), Quality (keyboard and long-thread navigation)
+- **Milestone**: M3
+- **Status**: Draft
+
+#### E2E-042: Storage v1 migrates atomically to host-owned schema v2
+
+- **Preconditions**: A fixture data directory contains a valid v1
+  `pi.sqlite`, representative settings, project-bound and temporary sessions,
+  transcript messages, audit events, and a legacy scheduled-task JSON file.
+- **Steps**: 1) Start host-core against the fixture. 2) Query projects,
+  sessions, transcripts, settings, audit events, and scheduled tasks through
+  host RPC. 3) Stop and restart host-core. 4) Run the same queries again.
+- **Expected**: Host-core creates exactly one `pi.sqlite.v1.bak`, advances
+  `PRAGMA user_version` to 2, preserves recoverable data, imports scheduled
+  tasks without duplicate rows, exposes canonical project paths and transcript
+  blocks through RPC, and returns identical logical results after restart. No
+  Electron-owned persistence file remains authoritative.
+- **Specs linked**: `03-runtime/04-data-storage.md`,
+  `03-runtime/06-host-rpc-protocol.md`, ADR 0014
+- **Acceptance**: F (persistence), H (migration failures are diagnosable)
+- **Milestone**: M2
+- **Status**: Unit-covered (`db::tests::migrates_v1_file_and_leaves_backup`,
+  `scheduled::tests::import_is_idempotent_and_preserves_fields`); full fixture
+  scenario Draft
+
 ### Plugin Load / Command / Disable
 
 #### E2E-022: Load local plugin
 
 - **Preconditions**: App running; sample plugin available at local path.
-- **Steps**: 1) Open settings → plugins. 2) Add plugin from local directory. 3) Enable.
+- **Steps**: 1) Open Plugins from the app sidebar. 2) Add plugin from local directory. 3) Enable.
 - **Expected**: Plugin loads; manifest validated; contributions registered.
 - **Specs linked**: `07-plugins/01-plugin-system.md`, `07-plugins/05-plugin-lifecycle.md`
 - **Acceptance**: G (load local plugin)
@@ -345,7 +449,7 @@ Each scenario is documented in this format:
 #### E2E-025: Disable plugin removes contributions
 
 - **Preconditions**: Plugin enabled and contributions visible.
-- **Steps**: 1) Disable plugin in settings. 2) Check command palette and agent tools.
+- **Steps**: 1) Disable the plugin on the Plugins page. 2) Check command palette and agent tools.
 - **Expected**: Commands and tools disappear; no leftover contributions.
 - **Specs linked**: `07-plugins/05-plugin-lifecycle.md`
 - **Acceptance**: G (disable removes contributions)
@@ -456,16 +560,6 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`tools::shell::tests`); scenario Documented
 
-#### E2E-039: Settings titlebar drag moves the window
-
-- **Preconditions**: App running windowed on macOS with Settings open.
-- **Steps**: 1) Record the window position. 2) Drag the empty 46px band above the settings rail. 3) Drag the same band above the content pane. 4) Use Back, search, and navigation controls.
-- **Expected**: Either top-band drag moves the native window; Back, search, and navigation remain interactive and never initiate a window drag.
-- **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/01-ui-ia.md`
-- **Acceptance**: Quality (key operations feel polished)
-- **Milestone**: M5
-- **Status**: Draft
-
 ---
 
 ## 8. Traceability Matrix
@@ -473,22 +567,22 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
-| B — Model config | E2E-005, E2E-006, E2E-007 |
-| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011 |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040 |
 | D — Workspace | E2E-012, E2E-013 |
-| E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019 |
-| F — Persistence | E2E-020, E2E-021 |
+| E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
+| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
-| H — Diagnostics | E2E-027, E2E-031, E2E-034 |
+| H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030 |
 | Quality | E2E-032, E2E-033, E2E-039 |
 
 | Milestone | Scenarios |
 |---|---|
 | M1 | E2E-001, E2E-002, E2E-003, E2E-028, E2E-029 |
-| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031 |
-| M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019 |
-| M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030 |
+| M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
+| M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
+| M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
 | M5 | E2E-032, E2E-033, E2E-034, E2E-039 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
@@ -538,7 +632,9 @@ This test plan spec is accepted when:
 
 ### US-UI-01 Codex-aligned shell chrome
 - Open the desktop app on macOS dark theme.
-- Expect charcoal main surface (`#181818`), left sidebar with New task + Recent tasks, and a floating bottom composer with project/model chips.
+- Expect charcoal main surface (`#181818`), left sidebar with New task +
+  current-project and Temporary session groups, and a floating bottom composer
+  with project/model chips.
 - Expect no blue-slate marketing chrome; primary send control is a circular inverted button.
 
 ### US-UI-02 Empty thread hero
@@ -558,35 +654,29 @@ This test plan spec is accepted when:
 
 ### US-UI-05 Locale chrome
 - On a zh-CN system locale, sidebar labels render in Chinese (新建任务 / 项目 /
-  插件 / 最近任务), without 拉取请求 or 已安排 entries.
+  插件 / 临时会话), without 拉取请求 or 已安排 entries.
 - Empty-thread hero remains English Codex copy: "What should we build?".
-- Composer shows 本地, 请求批准 (chat mode), and 自定义 + effort on the right.
+- Composer shows 本地, Chat mode, and the active model ID on the right.
 
 ### US-UI-06 Session auto-title
 - Create a new task and send a first prompt such as "同步代码".
-- Expect the Recent tasks item title to become a truncated form of that prompt instead of remaining "New task".
-
-### US-UI-07 Pull requests list
-- Open a git workspace with `gh` authenticated.
-- Open Pull requests sidebar destination.
-- Expect either real open PRs from `gh pr list`, or an empty-state with the gh error/empty message (not only a toast).
+- Expect its project or temporary session row title to become a truncated form
+  of that prompt instead of remaining "New task".
 
 ### US-UI-08 Titlebar history
-- Navigate Projects → Plugins → a recent task.
+- Navigate Projects → Plugins → a current-project or temporary session.
 - Expect back/forward controls near the traffic-light area to traverse that history.
 
-### US-UI-09 Recents title backfill
+### US-UI-09 Grouped session title backfill
 - Open an older session that previously showed "New task"/"New chat" but has a first user message.
-- Expect Recent tasks to display a truncated first-user-message title after session list load.
-
-### US-UI-10 Scheduled local tasks
-- Open Scheduled, create a task with prompt + cadence.
-- Expect it to appear in the list; Run now opens a chat session and sends the prompt.
-
+- Expect its scoped sidebar row to display a truncated first-user-message title
+  after session list load.
 
 ### US-UI-11 Empty draft reuse
 - Click New task twice.
-- Expect only one empty "New task" draft in Recent tasks and the home hero remains visible.
+- Expect only one empty "New task" draft in the current project or Temporary
+  group and the home hero remains visible. Empty drafts in another scope are
+  not reused.
 
 ### US-UI-12 Combined workspace chips
 - On project home and in a thread, expect project / Local / branch controls to
@@ -597,9 +687,10 @@ This test plan spec is accepted when:
 ### US-UI-13 Light theme shell parity
 - Set theme to system/light on a light macOS appearance.
 - Expect sidebar `#f3f3f3`, main `#ffffff`, text `#1a1c1f`, white floating composer, and home hero with project underline.
-- Sidebar nav labels (New task / Projects / Plugins / Recent tasks), thread
-  titles, and composer chips must remain readable dark-on-light (≥4.5:1).
-  Never white/translucent text on the light sidebar.
+- Sidebar nav labels (New task / Projects / Plugins / Temporary sessions),
+  current-project identity, thread titles, and composer chips must remain
+  readable dark-on-light (≥4.5:1). Never white/translucent text on the light
+  sidebar.
 - Titlebar back/forward controls use dark ink on light chrome.
 
 ### US-UI-14 Semantic chrome tokens
@@ -620,13 +711,15 @@ This test plan spec is accepted when:
 ### US-UI-17 Codex home hero mark
 - On empty chat home, a 56px Codex cloud/glyph mark renders above the title at ~30% opacity (hover ~40%).
 - Title is 28px / weight 400; active project name uses dotted underline (1px, offset 4px).
-- Plus control in composer toolbar is labeled "Add files and more" / 添加文件等内容.
+- Composer does not render attachment or appshot controls before their payload
+  reaches pi end to end.
 
-### US-UI-18 Composer plus context menu
-- On chat home, click the composer `+` control.
-- Menu shows Attach files and folders / Add photos / Capture appshot / Open project (localized).
-- Attach/Photos open native multi-select dialogs and insert `@path` tokens into the draft.
-- Capture appshot shows a non-blocking "not available yet" toast until host capture lands.
+### US-UI-18 Composer has no inert actions
+- On chat home and a docked thread, inspect every composer control.
+- Expect no file, photo, appshot, or reasoning-effort control while those
+  payloads are unsupported by the pi runtime.
+- Project name opens the project picker; Local and branch render as status text,
+  not clickable buttons.
 
 
 
@@ -638,9 +731,14 @@ This test plan spec is accepted when:
 - Switch to dark theme on chat home.
 - Expect main `#181818`, sidebar `#000000`, and the floating composer plate at elevated-primary (`#212121f5` / gray-800 96%) with elevation-prominent stroke + soft lift so the box reads against the main surface.
 
-### US-UI-21 Composer model / effort menu
-- On chat home, click the composer right control labeled Custom + effort (e.g. Custom Max / 自定义 最高).
-- Expect a popover listing effort options Light/Medium/High/Max (轻度/中/高/最高), current model heading, and a Settings entry. Selecting an effort updates the chip label.
+### US-UI-21 Composer model menu configures pi
+- Create a session with provider A/model A, then open the composer model menu.
+- Expect enabled, runnable provider/default-model pairs and a Configuration
+  entry; no decorative effort levels.
+- Select provider B/model B, send a prompt, and expect the main-to-sidecar
+  `agent.prompt` payload and pi runtime to use B for that session.
+- Switch away and back; expect B to remain selected. While a turn runs, expect
+  mode/model controls to be disabled.
 
 ### US-UI-22 Profile footer menu
 - On the sidebar footer, click Custom (profile row).
@@ -648,22 +746,25 @@ This test plan spec is accepted when:
 
 ### US-UI-23 Projects page grid
 - Open Projects from the sidebar.
-- Expect Codex-like page title "Projects", primary "Add new project", and either an empty state or a card grid of recent/active projects with colored glyph, path, pin/remove actions, and active highlight.
+- Expect Codex-like page title "Projects", primary "Add new project", and
+  either an empty state or a project index with colored glyph, path, durable
+  pinned indicator where supplied by the host, and active highlight.
+- Expand a non-active project and open one of its sessions; expect the app to
+  activate that project before selecting the session, so workspace tools and
+  composer context use the same project.
 
 ### US-UI-24 Settings full-page shell
 - Open Settings (footer profile → Settings).
-- Expect **full-page** Codex settings (no app sidebar/nav). Left rail has Back to app, search, Personal/Integrations/Coding groups with icons; content pane shows section title + elevated cards.
-
-### US-UI-25 Pull requests destination chrome
-- Open Pull requests with a project selected.
-- Expect segmented filters Open/Draft/All with counts, and PR rows with icon plate, number, title, status badge, branch meta, external link, and Review action.
-
-### US-UI-26 Scheduled destination chrome
-- Open Scheduled.
-- Expect a create card, a Tasks section, and automation rows with cadence/enabled badges, prompt preview, last run, Run now / enable-toggle / Delete.
+- Expect **full-page** Codex settings (no app sidebar/nav). Left rail has Back
+  to app, search, and exactly General / Configuration / Import sessions /
+  About in that order; content pane shows section title + elevated cards.
+- Return to the app shell and expect Plugins to remain an independent sidebar
+  destination.
+- Drag the empty 46px top band over either the rail or content pane; the native
+  window moves while Back, search, and navigation remain clickable.
 
 ### US-UI-27 Dark destination pages
-- Force dark theme and open Projects, Pull requests, and Settings.
+- Force dark theme and open Projects, Plugins, and Settings.
 - Expect black sidebar, main `#181818`, and destination cards/rows readable on elevated dark plates (not flat same-gray).
 
 ### US-UI-28 Home empty composer association
@@ -689,10 +790,12 @@ This test plan spec is accepted when:
 ### US-UI-32 Dark floating box elevation
 - Given dark theme empty home, when the composer shell is painted, it uses elevated-primary `#212121` on `#181818` with elevation-prominent stroke+lift identical to light (no heavier custom dark shadow).
 
-### US-UI-33 Sidebar recents section label
-- Sidebar recents section label matches live Codex gold: EN `Recents` / zh-CN `最近` (not “Tasks” / “任务” alone if gold shows 最近).
-- Section label uses compact tertiary styling (`px-2 py-1` rhythm) between Plugins and thread list.
-- Nav row pitch ~32px; thread row pitch ~28–31px with gap-px list.
+### US-UI-33 Scoped sidebar session groups
+- The home sidebar has no Recents aggregate.
+- It shows one current-project header with nested sessions and one
+  `Temporary sessions` / `临时会话` header for path-less sessions.
+- Both headers expose a compact scope-specific `+`; nav row pitch remains
+  ~32px and session row pitch ~28–31px.
 
 ### US-UI-34 Home suggestion cards
 - On empty chat home (light + dark), four ambient suggestion cards render in an auto-fit row under the hero (portal), not only as a 2x2 stack that collides with the composer.
@@ -709,7 +812,8 @@ This test plan spec is accepted when:
 - Dark home composer plate reads as elevated-primary `#212121f5` with elevation-prominent against `#181818` (not flat same-surface).
 - Light workspace context rail shares the solid composer surface and has no
   independent elevation.
-- Model chip shows the active model id; effort options remain in the model/intelligence menu.
+- Model chip shows the active model ID; its menu contains only runnable
+  provider/model choices and Configuration.
 - Placeholder and approval chip remain legible on light and dark plates.
 
 ### US-UI-39 Home mark + hero title optical
@@ -739,16 +843,21 @@ This test plan spec is accepted when:
   96%) with the same restrained elevation and no internal gradient.
 
 
-### US-UI-44 Settings Codex groups + rows
+### US-UI-44 Settings compact directory + merged sections
 - Open Settings light theme at ~1200×690.
 - Full-page shell: rail ~260px on `#f3f3f3`, main `#fff`; Back to app; search pill; General active pill with icon.
-- General content: large title, **Permissions** card with 3 blue toggles + Learn more links on auto-review/full-access, **General** card with default open target (VS Code glyph) / language / menu bar / bottom panel rows.
-- Integrations order: Appshots, Plugins, Browser, Computer use, then local MCP.
+- Rail order is exactly General, Configuration, Import sessions, and About;
+  there are no Personal/Integrations/Coding group headings, plugin duplicate,
+  or placeholder destinations.
+- General content: large title and an **Appearance** card with working
+  system/light/dark controls. Permission defaults, file-open target, language
+  override, menu-bar behavior, and bottom-panel behavior are absent until
+  host-backed implementations exist.
+- Configuration contains default mode/model, Enter-to-send, and the
+  **Providers** card.
+- Plugin load/enable/disable/uninstall remains available from the app shell's
+  independent Plugins destination.
 - Dark: rail `#000`, main `#181818`, cards elevated `#212121`.
-
-### US-UI-45 Settings permission learn-more
-- On General → Permissions, Auto-review and Full access descriptions include a blue **Learn more** / **了解更多** link.
-- Link opens the Codex sandboxing auto-review docs in an external browser.
 
 ### US-UI-38 Home chips without project
 - On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).
@@ -770,12 +879,15 @@ This test plan spec is accepted when:
 - Expect workspace controls (project / Local / branch) attached to the plate as
   one seamless context rail; no ∞ draft mark; placeholder is Ask anything /
   随心输入.
-- Model chip shows Custom + effort (e.g. 自定义 最高); footer profile uses gear + Custom and help control.
+- Model chip shows the active model ID; footer profile uses gear + Custom and
+  help control.
 
 ### US-UI-47 Projects index parity
 - Open Projects destination.
 - Expect large title, search pill, New button, and table columns Name / Sources / Updated.
-- Rows expand for recent tasks + actions (pin, start task, remove/close); activating a recent path uses setProject without re-picking via dialog when possible.
+- Rows expand for recent tasks; activating a project or one of its sessions
+  uses `setProject` without re-picking via dialog and keeps session/workspace
+  context synchronized. No renderer-local pin/remove action is shown.
 
 
 ### US-UI-48 Home suggestion glyph parity
@@ -783,22 +895,25 @@ This test plan spec is accepted when:
 - Labels remain explore / create / review / fix localization keys.
 
 
-### US-UI-49 Recents pin/panel actions
-- Hover or select a recent task row.
-- Expect trailing pin and panel icon buttons (Codex recents chrome).
-- Pin persists locally across reloads; active row keeps actions visible.
+### US-UI-49 Scoped sidebar row chrome
+- Hover or select a project or temporary session row.
+- Expect one restrained title row with active/hover background and no Recents
+  pin or redundant open-in-panel actions.
+- Sessions from other projects stay out of the home sidebar and remain
+  available in the Projects index.
 
 
 ### US-UI-50 Destination title scale
-- Open Projects, Pull requests, Scheduled, Plugins.
+- Open Projects and Plugins.
 - Expect large section titles (~28px) consistent with Codex destination/index pages.
 - Dark home New task remains a ghost row (no solid selected chip) unless genuinely active.
 
 ### US-UI-52 Settings gold chrome metrics (D070)
 - Open Settings light General at ~1200×690.
 - Expect ~275px `#f4f4f4` rail, single active General pill, Back + search.
-- Expect compact ~32×20 accent-blue toggles; Account arrow-up-right; VS Code open-target glyph.
-- Expect Permissions + General elevated cards; local Providers/About may follow Account.
+- Expect the working theme selector without inert toggle or open-target rows.
+- Expect Permissions + General + Appearance elevated cards; Configuration,
+  Import sessions, and About remain the only other destinations.
 
 ### US-UI-53 Settings dark shell (D070)
 - Dark theme Settings General: black rail, elevated cards, blue on-toggles, Back returns to chat.
@@ -822,3 +937,16 @@ This test plan spec is accepted when:
 - Delete back to one line or submit the draft; the textarea contracts to its
   one-line default.
 
+### US-UI-56 Codex transcript tool activity
+- In light and dark themes, tool calls use transparent compact activity rows,
+  not elevated cards or colored success rails.
+- Consecutive calls appear inside one default-collapsed processing group. Its
+  active header shows `Processing · {elapsed}` and its completed header shows
+  `Processed for {elapsed}`, plus a localized step count.
+- The row shows a semantic 15–16px icon, progressive/past-tense action,
+  ellipsized monospace argument hint, quiet disclosure chevron, and localized
+  running/error/denied state.
+- Expanding a completed call reveals output before input. Both sections are
+  independently copyable and capped with internal scrolling.
+- Reloading the session preserves the action label and argument hint instead of
+  degrading the row to a generic `Tool`.

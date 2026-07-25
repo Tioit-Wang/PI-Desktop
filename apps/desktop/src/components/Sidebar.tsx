@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { isDefaultSessionTitle, useAppStore } from "../stores/app-store";
+import { groupSidebarSessions, normalizeProjectPath } from "../lib/sidebar-session-groups";
 import {
   IconAt,
   IconChevronLeft,
@@ -11,7 +12,7 @@ import {
   IconHelp,
   IconGear,
   IconPanel,
-  IconPin,
+  IconPlus,
   IconSearch,
   IconSettings,
   IconSliders,
@@ -29,6 +30,9 @@ export function Sidebar({
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const selectSession = useAppStore((s) => s.selectSession);
   const newSession = useAppStore((s) => s.newSession);
+  const openProject = useAppStore((s) => s.openProject);
+  const clearProject = useAppStore((s) => s.clearProject);
+  const workspace = useAppStore((s) => s.workspace);
   const setPage = useAppStore((s) => s.setPage);
   const settings = useAppStore((s) => s.settings);
   const page = useAppStore((s) => s.page);
@@ -42,41 +46,6 @@ export function Sidebar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
-  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
-    try {
-      const raw = localStorage.getItem("pi.desktop.pinnedSessions");
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
-    } catch {
-      return [];
-    }
-  });
-  const togglePin = (id: string, e: ReactMouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setPinnedIds((prev) => {
-      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev];
-      try {
-        localStorage.setItem("pi.desktop.pinnedSessions", JSON.stringify(next.slice(0, 40)));
-      } catch {
-        // ignore
-      }
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem("pi.desktop.pinnedSessions");
-      const parsed = raw ? JSON.parse(raw) : [];
-      if (Array.isArray(parsed)) {
-        setPinnedIds(parsed.filter((x) => typeof x === "string"));
-      }
-    } catch {
-      // ignore
-    }
-  }, [sessions]);
-
   useEffect(() => {
     if (!profileOpen) return;
     const onPointer = (e: MouseEvent) => {
@@ -99,27 +68,63 @@ export function Sidebar({
   };
 
   const filtered = useMemo(() => {
-    // Keep one empty draft max (active preferred), hide the rest like Codex Recents.
-    let keptEmpty = false;
+    // Keep at most one empty draft in each project/temporary scope.
+    const keptEmptyScopes = new Set<string>();
     const cleaned: typeof sessions = [];
     for (const s of sessions) {
       if (!isDefaultSessionTitle(s.title)) {
         cleaned.push(s);
         continue;
       }
+      const scope = normalizeProjectPath(s.projectPath) ?? "(temporary)";
       if (s.id === activeSessionId && page === "chat") {
-        if (!keptEmpty) cleaned.push(s);
-        keptEmpty = true;
+        if (!keptEmptyScopes.has(scope)) cleaned.push(s);
+        keptEmptyScopes.add(scope);
         continue;
       }
-      if (keptEmpty) continue;
+      if (keptEmptyScopes.has(scope)) continue;
       cleaned.push(s);
-      keptEmpty = true;
+      keptEmptyScopes.add(scope);
     }
     const q = query.trim().toLowerCase();
     if (!q) return cleaned;
     return cleaned.filter((s) => taskTitle(s.title).toLowerCase().includes(q));
   }, [sessions, query, t, activeSessionId, page]);
+
+  const { projectSessions, temporarySessions } = useMemo(
+    () => groupSidebarSessions(filtered, workspace?.path),
+    [filtered, workspace?.path],
+  );
+
+  const selectTemporarySession = async (sessionId: string) => {
+    if (workspace) await clearProject();
+    await selectSession(sessionId);
+  };
+
+  const renderSessionRows = (
+    items: typeof sessions,
+    options?: { temporary?: boolean },
+  ) =>
+    items.map((session) => {
+      const active = page === "chat" && activeSessionId === session.id;
+      return (
+        <div key={session.id} className={`thread-item ${active ? "active" : ""}`}>
+          <button
+            type="button"
+            className="thread-item-main"
+            onClick={() =>
+              void (options?.temporary
+                ? selectTemporarySession(session.id)
+                : selectSession(session.id))
+            }
+            title={taskTitle(session.title)}
+            aria-current={active ? "page" : undefined}
+          >
+            <span className="thread-item-title">{taskTitle(session.title)}</span>
+          </button>
+        </div>
+      );
+    });
 
   if (collapsed) {
     return (
@@ -224,7 +229,6 @@ export function Sidebar({
           </button>
         </nav>
 
-        <div className="section-label">{t("nav.recents")}</div>
         {searchOpen && (
           <div className="mb-2 px-1">
             <input
@@ -237,58 +241,87 @@ export function Sidebar({
           </div>
         )}
 
-        <div className="sidebar-recents min-h-0 flex-1 overflow-auto px-0.5">
-          {filtered.length === 0 ? (
-            <div className="px-2 py-3 text-sm-plus text-text-muted">
-              {t("nav.noRecentTasks")}
+        <div className="sidebar-session-groups min-h-0 flex-1 overflow-auto px-0.5">
+          <section
+            className="sidebar-session-group"
+            aria-labelledby="sidebar-project-group-label"
+          >
+            <div className="sidebar-session-group-header">
+              {workspace ? (
+                <button
+                  type="button"
+                  id="sidebar-project-group-label"
+                  className="sidebar-session-group-title"
+                  title={workspace.path}
+                  onClick={() => setPage("projects")}
+                >
+                  <IconFolder size={13} />
+                  <span>{workspace.name || workspace.path}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  id="sidebar-project-group-label"
+                  className="sidebar-session-group-title"
+                  onClick={() => void openProject()}
+                >
+                  <IconFolder size={13} />
+                  <span>{t("project.open")}</span>
+                </button>
+              )}
+              {workspace ? (
+                <button
+                  type="button"
+                  className="sidebar-session-group-add"
+                  title={t("project.newTask")}
+                  aria-label={t("project.newTask")}
+                  onClick={() => void newSession({ projectPath: workspace.path })}
+                >
+                  <IconPlus size={13} />
+                </button>
+              ) : null}
             </div>
-          ) : (
-            [...filtered]
-              .sort((a, b) => Number(pinnedIds.includes(b.id)) - Number(pinnedIds.includes(a.id)))
-              .map((session) => {
-                const active = page === "chat" && activeSessionId === session.id;
-                const pinned = pinnedIds.includes(session.id);
-                return (
-                  <div
-                    key={session.id}
-                    className={`thread-item ${active ? "active" : ""} ${pinned ? "pinned" : ""}`}
-                  >
-                    <button
-                      type="button"
-                      className="thread-item-main"
-                      onClick={() => void selectSession(session.id)}
-                      title={taskTitle(session.title)}
-                    >
-                      <span className="thread-item-title">{taskTitle(session.title)}</span>
-                    </button>
-                    <div className="thread-item-actions">
-                      <button
-                        type="button"
-                        className={`thread-action ${pinned ? "on" : ""}`}
-                        title={pinned ? t("project.unpin") : t("project.pin")}
-                        aria-label={pinned ? t("project.unpin") : t("project.pin")}
-                        onClick={(e) => togglePin(session.id, e)}
-                      >
-                        <IconPin size={13} />
-                      </button>
-                      <button
-                        type="button"
-                        className="thread-action"
-                        title={t("nav.openInPanel")}
-                        aria-label={t("nav.openInPanel")}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          void selectSession(session.id);
-                        }}
-                      >
-                        <IconPanel size={13} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })
-          )}
+            {workspace ? (
+              <div className="sidebar-session-group-body project">
+                {projectSessions.length > 0 ? (
+                  renderSessionRows(projectSessions)
+                ) : (
+                  <div className="sidebar-session-empty">{t("nav.noProjectSessions")}</div>
+                )}
+              </div>
+            ) : null}
+          </section>
+
+          <section
+            className="sidebar-session-group"
+            aria-labelledby="sidebar-temporary-group-label"
+          >
+            <div className="sidebar-session-group-header">
+              <div
+                id="sidebar-temporary-group-label"
+                className="sidebar-session-group-title static"
+              >
+                <IconPanel size={13} />
+                <span>{t("nav.temporarySessions")}</span>
+              </div>
+              <button
+                type="button"
+                className="sidebar-session-group-add"
+                title={t("nav.newTemporarySession")}
+                aria-label={t("nav.newTemporarySession")}
+                onClick={() => void newSession({ projectPath: null })}
+              >
+                <IconPlus size={13} />
+              </button>
+            </div>
+            <div className="sidebar-session-group-body temporary">
+              {temporarySessions.length > 0 ? (
+                renderSessionRows(temporarySessions, { temporary: true })
+              ) : (
+                <div className="sidebar-session-empty">{t("nav.noTemporarySessions")}</div>
+              )}
+            </div>
+          </section>
         </div>
 
         <div className="sidebar-footer no-drag" ref={profileRef}>

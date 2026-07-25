@@ -173,6 +173,59 @@ function AppShell() {
       clearProject: () => useAppStore.getState().clearProject(),
       showToast: (message: string, opts?: ToastOptions) =>
         useAppStore.getState().showToast(message, opts),
+      seedTranscript: (count = 12) => {
+        // Capture-only transcript fixture (conversation minimap scenes);
+        // count 0 restores the empty transcript for later scenes.
+        if (!(window as any).__PI_CAPTURE__) return;
+        if (count <= 0) {
+          useAppStore.setState({ messages: [] });
+          return;
+        }
+        const base = Date.parse("2026-07-20T09:00:00Z");
+        const samples: [role: "user" | "assistant", content: string][] = [
+          ["user", "帮我配置一下这个项目并启动"],
+          [
+            "assistant",
+            "好的。先安装依赖并生成本地配置：\n\n1. `pnpm install`\n2. 复制 `.env.example` 为 `.env`\n3. `pnpm dev` 启动开发服务\n\n启动后默认监听 5173 端口。",
+          ],
+          ["user", "启动报错了，说找不到 host 二进制"],
+          [
+            "assistant",
+            "这是因为 Rust 侧还没编译。运行 `cargo build -p pi-desktop-host-core`，产物会出现在 `target/debug/` 下，Electron 主进程会自动拾取。",
+          ],
+          ["user", "编译通过了，界面也起来了"],
+          [
+            "assistant",
+            "很好。接下来可以在设置里添加模型提供方并保存 API 密钥，然后打开一个项目文件夹就能开始对话了。",
+          ],
+          ["user", "顺便把侧边栏最近会话按项目分组"],
+          [
+            "assistant",
+            "已按项目路径分组：每组显示项目名与最近活动时间，未关联项目的会话归入“临时会话”。分组逻辑在 `sidebar-session-groups.ts`。",
+          ],
+          ["user", "分组标题的字号再小一点"],
+          [
+            "assistant",
+            "已把分组标题从 `--text-sm` 调整为 `--text-2xs`，同时收紧了上下间距，现在与 Codex 的密度一致。",
+          ],
+          ["user", "最后跑一遍检查"],
+          [
+            "assistant",
+            "`pnpm typecheck` 与样式令牌检查均通过，无回归。",
+          ],
+        ];
+        const messages = Array.from(
+          { length: Math.min(count, samples.length) },
+          (_, i) => ({
+            id: `capture-msg-${i}`,
+            role: samples[i][0],
+            content: samples[i][1],
+            createdAt: new Date(base + i * 60_000).toISOString(),
+            status: "complete" as const,
+          }),
+        );
+        useAppStore.setState({ messages });
+      },
       ensureVisualFixtures: async () => {
         // Destructive fixture seeding is capture-rig only; the rig sets
         // __PI_CAPTURE__ before invoking (see electron/main capture suite).
@@ -187,7 +240,7 @@ function AppShell() {
             });
           }
         }
-        // Seed / ensure Codex-like recent titles for capture residual (data band).
+        // Seed representative session titles for capture residuals (data band).
         try {
           await useAppStore.getState().refreshSessions();
           const englishNoise = new Set([
@@ -403,7 +456,7 @@ function AppShell() {
                       type="button"
                       className="flex-none rounded-md border border-border-strong px-2 py-1 text-sm-plus text-text-primary hover:bg-bg-hover"
                       onClick={() => {
-                        useAppStore.getState().setSettingsTab("providers");
+                        useAppStore.getState().setSettingsTab("agent");
                         useAppStore.getState().setPage("settings");
                       }}
                     >

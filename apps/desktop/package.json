@@ -10,9 +10,12 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test test/*.test.mjs",
+    "lint": "node ../../scripts/check-style-tokens.mjs",
     "clean": "rm -rf out dist",
-    "pack": "electron-vite build && electron-builder --mac --arm64 --dir",
-    "dist": "electron-vite build && electron-builder --mac --arm64"
+    "bundle:runtime": "pnpm -C ../../packages/agent-runtime bundle",
+    "pack": "pnpm run bundle:runtime && electron-vite build && electron-builder --mac --arm64 --dir",
+    "dist": "pnpm run bundle:runtime && electron-vite build && electron-builder --mac --arm64"
   },
   "dependencies": {
     "@pi-desktop/agent-runtime": "workspace:*",
@@ -20,10 +23,17 @@
     "@pi-desktop/plugin-sdk": "workspace:*",
     "@pi-desktop/shared": "workspace:*",
     "i18next": "^25.3.2",
+    "katex": "^0.16.47",
+    "lucide-react": "^1.26.0",
+    "marked": "^18.0.7",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-i18next": "^15.6.0",
     "react-markdown": "^10.1.0",
+    "rehype-katex": "^7.0.1",
+    "remark-gfm": "^4.0.1",
+    "remark-math": "^6.0.0",
+    "shiki": "^4.3.1",
     "zustand": "^5.0.6"
   },
   "devDependencies": {
@@ -54,7 +64,7 @@
         "to": "bin/pi-desktop-host-core"
       },
       {
-        "from": "../../packages/agent-runtime/dist",
+        "from": "../../packages/agent-runtime/dist-bundle",
         "to": "agent-runtime"
       }
     ],

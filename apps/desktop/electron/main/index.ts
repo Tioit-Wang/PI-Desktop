@@ -26,12 +26,26 @@ import { HostProcess } from "./host-process";
 import { AgentSidecar } from "./agent-sidecar";
 import { PluginRuntime } from "./plugin-runtime";
 import { Logger } from "./logger";
+import {
+  convertSession,
+  scanAllSources,
+  type ExternalSessionSummary,
+  type ExternalSource,
+} from "./importers";
 
 let mainWindow: BrowserWindow | null = null;
 let host: HostProcess | null = null;
 let sidecar: AgentSidecar | null = null;
 let quitting = false;
 const plugins = new PluginRuntime();
+let scannedImportSessions = new Map<string, ExternalSessionSummary>();
+
+const IMPORT_SOURCES = new Set<ExternalSource>([
+  "claude-code",
+  "opencode",
+  "codex",
+  "pi",
+]);
 
 const dataDir =
   process.env.PI_DESKTOP_DATA_DIR || join(homedir(), ".pi-desktop");
@@ -57,37 +71,64 @@ function wrap<T>(fn: () => Promise<T>): Promise<Result<T>> {
     );
 }
 
+function importSelectionKey(value: unknown): string | null {
+  if (!value || typeof value !== "object") return null;
+  const source = Reflect.get(value, "source");
+  const externalId = Reflect.get(value, "externalId");
+  if (
+    typeof source !== "string" ||
+    !IMPORT_SOURCES.has(source as ExternalSource) ||
+    typeof externalId !== "string" ||
+    !externalId
+  ) {
+    return null;
+  }
+  return `${source}:${externalId}`;
+}
 
-type ScheduledTaskRecord = {
-  id: string;
-  title: string;
-  prompt: string;
-  cadence: "manual" | "hourly" | "daily" | "weekly";
-  enabled: boolean;
-  createdAt: string;
-  updatedAt: string;
-  lastRunAt?: string;
-};
 
 function scheduledPath() {
   return join(dataDir, "scheduled-tasks.json");
 }
 
-async function readScheduled(): Promise<ScheduledTaskRecord[]> {
-  const { readFile } = await import("node:fs/promises");
+/// Scheduled tasks live in host-core SQLite (schema v2, D086). This one-shot
+/// import moves the legacy Electron JSON store into the host, then renames the
+/// file so it never imports twice. Idempotent on the host side too.
+async function importLegacyScheduled() {
+  if (!host) return;
+  const { readFile, rename } = await import("node:fs/promises");
+  const path = scheduledPath();
   try {
-    const raw = await readFile(scheduledPath(), "utf8");
+    const raw = await readFile(path, "utf8");
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      const res = await host.call<{ imported: number }>("scheduled.import", {
+        tasks: parsed,
+      });
+      logger.app("info", "legacy scheduled tasks imported", {
+        data: { imported: res.imported, total: parsed.length },
+      });
+    }
+    await rename(path, `${path}.imported.bak`);
+  } catch (e: any) {
+    if (e?.code !== "ENOENT") {
+      logger.app("warn", "legacy scheduled import failed", { data: String(e) });
+    }
   }
 }
 
-async function writeScheduled(tasks: ScheduledTaskRecord[]) {
-  const { writeFile } = await import("node:fs/promises");
-  mkdirSync(dataDir, { recursive: true });
-  await writeFile(scheduledPath(), JSON.stringify(tasks, null, 2), "utf8");
+/** sessionId → open host turn id, for turn bookkeeping across agent events. */
+const activeTurns = new Map<string, string>();
+/** sessionId → scheduled task_run id awaiting completion. */
+const scheduledRunsBySession = new Map<string, string>();
+/** Preserve tool metadata until the result is persisted at tool_end. */
+const activeToolCalls = new Map<
+  string,
+  { toolName: string; args: unknown; createdAt: string }
+>();
+
+function activeToolCallKey(sessionId: string, toolCallId: string) {
+  return `${sessionId}:${toolCallId}`;
 }
 
 async function withGitBranch<T extends { path?: string; name?: string } | null | undefined>(
@@ -445,6 +486,33 @@ async function createWindow() {
             await mainWindow!.webContents.executeJavaScript(`
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
             `);
+            // Conversation minimap: seed a capture-only transcript, magnify
+            // mid-rail (Dock effect + preview popover), then restore.
+            await mainWindow!.webContents.executeJavaScript(
+              `void window.__PI_DESKTOP__?.seedTranscript?.()`,
+            );
+            await new Promise((r) => setTimeout(r, 600));
+            await shot("pi-minimap");
+            const minimapProbe = await mainWindow!.webContents.executeJavaScript(`
+              (() => {
+                const rail = document.querySelector(".minimap-rail");
+                if (!rail) return null;
+                const r = rail.getBoundingClientRect();
+                rail.dispatchEvent(new MouseEvent("mousemove", {
+                  bubbles: true,
+                  clientX: r.left + 10,
+                  clientY: r.top + r.height / 2,
+                }));
+                return { markers: rail.querySelectorAll(".minimap-marker").length };
+              })()
+            `);
+            console.log("MINIMAP_PROBE", minimapProbe);
+            await new Promise((r) => setTimeout(r, 350));
+            await shot("pi-minimap-hover");
+            await mainWindow!.webContents.executeJavaScript(
+              `void window.__PI_DESKTOP__?.seedTranscript?.(0)`,
+            );
+            await new Promise((r) => setTimeout(r, 250));
             // Destination + theme captures (robust via __PI_DESKTOP__ hooks).
             await setTheme("dark");
             await setPage("chat");
@@ -627,6 +695,7 @@ async function startHost(): Promise<void> {
   host = h;
   await h.handshake();
   logger.app("info", "host-core handshake ok");
+  void importLegacyScheduled();
 }
 
 function wireSidecar(s: AgentSidecar) {
@@ -695,14 +764,64 @@ async function startSidecar(): Promise<void> {
   logger.app("info", "agent sidecar configured");
 }
 
+/// Close the open turn + scheduled run (if any) for a session. Both host
+/// updates are idempotent (guarded on status='running').
+function finishTurn(
+  sessionId: string,
+  status: "completed" | "aborted" | "error",
+  errorCode?: string,
+) {
+  const turnId = activeTurns.get(sessionId);
+  activeTurns.delete(sessionId);
+  if (host && turnId) {
+    void host
+      .call("session.endTurn", { turnId, status, errorCode })
+      .catch((e) =>
+        logger.app("warn", "endTurn failed", { sessionId, data: String(e) }),
+      );
+  }
+  const runId = scheduledRunsBySession.get(sessionId);
+  if (runId) {
+    scheduledRunsBySession.delete(sessionId);
+    if (host) {
+      void host
+        .call("scheduled.finishRun", { runId, status, errorCode })
+        .catch((e) =>
+          logger.app("warn", "finishRun failed", { sessionId, data: String(e) }),
+        );
+    }
+  }
+  const toolPrefix = `${sessionId}:`;
+  // A host tool can finish shortly after the turn is aborted. Keep metadata
+  // long enough for a late tool_end to persist a readable historical row.
+  setTimeout(() => {
+    for (const key of activeToolCalls.keys()) {
+      if (key.startsWith(toolPrefix)) activeToolCalls.delete(key);
+    }
+  }, 5 * 60 * 1000).unref();
+}
+
 function persistAgentEvent(envelope: AgentEventEnvelope) {
   if (!host) return;
   const event = envelope.event;
+  const turnId = activeTurns.get(envelope.sessionId);
+  if (event.type === "tool_start") {
+    activeToolCalls.set(activeToolCallKey(envelope.sessionId, event.toolCallId), {
+      toolName: event.toolName,
+      args: event.args,
+      createdAt: new Date(envelope.ts).toISOString(),
+    });
+  }
+  if (event.type === "agent_end") {
+    finishTurn(envelope.sessionId, "completed");
+    return;
+  }
   if (event.type === "message_end" && event.message.role === "assistant") {
     void host
       .call("session.appendMessage", {
         sessionId: envelope.sessionId,
         message: event.message,
+        turnId,
       })
       .catch((e) =>
         logger.app("warn", "assistant message persistence failed", {
@@ -712,6 +831,9 @@ function persistAgentEvent(envelope: AgentEventEnvelope) {
       );
   }
   if (event.type === "tool_end") {
+    const key = activeToolCallKey(envelope.sessionId, event.toolCallId);
+    const started = activeToolCalls.get(key);
+    activeToolCalls.delete(key);
     void host
       .call("session.appendMessage", {
         sessionId: envelope.sessionId,
@@ -722,13 +844,20 @@ function persistAgentEvent(envelope: AgentEventEnvelope) {
             typeof event.result === "string"
               ? event.result
               : JSON.stringify(event.result),
-          createdAt: new Date().toISOString(),
+          createdAt: started?.createdAt ?? new Date(envelope.ts).toISOString(),
           toolCallId: event.toolCallId,
+          toolName: started?.toolName,
+          toolArgs: started?.args,
           toolStatus: event.isError ? "error" : "success",
           toolResult: event.result,
+          toolCompletedAt: new Date(envelope.ts).toISOString(),
+          toolDurationMs: started
+            ? Math.max(0, envelope.ts - Date.parse(started.createdAt))
+            : undefined,
           isError: event.isError,
           status: "complete",
         },
+        turnId,
       })
       .catch((e) =>
         logger.app("warn", "tool message persistence failed", {
@@ -883,6 +1012,69 @@ function registerIpc() {
     if (!host) throw new Error("host unavailable");
     return host.call("session.rename", { id, title });
   });
+  handle(
+    IPC.invoke.sessionConfigure,
+    async (
+      id: string,
+      config: {
+        mode: "chat" | "agent";
+        providerId?: string;
+        modelId?: string;
+      },
+    ) => {
+      if (!host) throw new Error("host unavailable");
+      return host.call("session.configure", { id, ...config });
+    },
+  );
+
+  handle(IPC.invoke.sessionImportScan, async () => {
+    const sessions = await scanAllSources();
+    scannedImportSessions = new Map(
+      sessions.map((session) => [`${session.source}:${session.externalId}`, session]),
+    );
+    return {
+      sessions: sessions.map(({ filePath: _filePath, ...candidate }) => candidate),
+    };
+  });
+  handle(
+    IPC.invoke.sessionImportRun,
+    async (selections: unknown) => {
+      if (!host) throw new Error("host unavailable");
+      let imported = 0;
+      let skipped = 0;
+      let failed = 0;
+      const items = Array.isArray(selections) ? selections : [];
+      for (const selection of items) {
+        const key = importSelectionKey(selection);
+        const item = key ? scannedImportSessions.get(key) : undefined;
+        if (!item) {
+          failed += 1;
+          logger.app("warn", "session import selection rejected", {
+            data: { reason: "candidate was not returned by the latest scan" },
+          });
+          continue;
+        }
+        try {
+          const converted = await convertSession(item);
+          const res = await host.call<{ imported?: boolean }>("session.import", {
+            session: converted.session,
+            messages: converted.messages,
+          });
+          if (res.imported) imported += 1;
+          else skipped += 1;
+        } catch (e) {
+          failed += 1;
+          logger.app("warn", "session import failed", {
+            data: { source: item?.source, externalId: item?.externalId, error: String(e) },
+          });
+        }
+      }
+      logger.app("info", "session import finished", {
+        data: { imported, skipped, failed },
+      });
+      return { imported, skipped, failed };
+    },
+  );
 
   handle(IPC.invoke.settingsGet, async () => {
     if (!host) throw new Error("host unavailable");
@@ -1003,6 +1195,10 @@ function registerIpc() {
     }
     return { workspace: await withGitBranch(res.workspace) };
   });
+  handle(IPC.invoke.projectList, async () => {
+    if (!host) throw new Error("host unavailable");
+    return host.call("projects.list");
+  });
   handle(IPC.invoke.projectOpen, async () => {
     if (!host) throw new Error("host unavailable");
     const result = await dialog.showOpenDialog({
@@ -1106,79 +1302,35 @@ function registerIpc() {
   });
 
   handle(IPC.invoke.scheduledList, async () => {
-    const tasks = await readScheduled();
-    tasks.sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
-    return { tasks };
+    if (!host) throw new Error("host unavailable");
+    return host.call("scheduled.list");
   });
   handle(IPC.invoke.scheduledCreate, async (input: any = {}) => {
-    const tasks = await readScheduled();
-    const now = new Date().toISOString();
-    const title = String(input.title || input.prompt || "Scheduled task").slice(0, 80);
+    if (!host) throw new Error("host unavailable");
     const prompt = String(input.prompt || "").trim();
     if (!prompt) throw new Error("prompt required");
-    const task: ScheduledTaskRecord = {
-      id: crypto.randomUUID(),
-      title,
-      prompt,
-      cadence: (input.cadence as ScheduledTaskRecord["cadence"]) || "manual",
-      enabled: input.enabled !== false,
-      createdAt: now,
-      updatedAt: now,
-    };
-    tasks.unshift(task);
-    await writeScheduled(tasks);
-    return { task };
+    return host.call("scheduled.create", { ...input, prompt });
   });
   handle(IPC.invoke.scheduledUpdate, async (input: any = {}) => {
-    const id = String(input.id || "");
-    const tasks = await readScheduled();
-    const idx = tasks.findIndex((t) => t.id === id);
-    if (idx < 0) throw new Error("task not found");
-    const now = new Date().toISOString();
-    const prev = tasks[idx];
-    const next: ScheduledTaskRecord = {
-      ...prev,
-      title: input.title != null ? String(input.title).slice(0, 80) : prev.title,
-      prompt: input.prompt != null ? String(input.prompt) : prev.prompt,
-      cadence: input.cadence || prev.cadence,
-      enabled: input.enabled != null ? Boolean(input.enabled) : prev.enabled,
-      updatedAt: now,
-      lastRunAt: input.lastRunAt != null ? String(input.lastRunAt) : prev.lastRunAt,
-    };
-    tasks[idx] = next;
-    await writeScheduled(tasks);
-    return { task: next };
+    if (!host) throw new Error("host unavailable");
+    return host.call("scheduled.update", input);
   });
   handle(IPC.invoke.scheduledDelete, async (id: string) => {
-    const tasks = await readScheduled();
-    await writeScheduled(tasks.filter((t) => t.id !== id));
-    return { ok: true };
+    if (!host) throw new Error("host unavailable");
+    return host.call("scheduled.delete", { id });
   });
   handle(IPC.invoke.scheduledRun, async (id: string) => {
     if (!host) throw new Error("host unavailable");
-    const tasks = await readScheduled();
-    const task = tasks.find((t) => t.id === id);
-    if (!task) throw new Error("task not found");
-    const settings = (await host.call("settings.get")) as any;
-    const project = (await host.call("workspace.get")) as {
-      workspace?: { path?: string } | null;
-    };
-    const created = (await host.call("session.create", {
-      title: task.title,
-      mode: settings?.defaultMode || "chat",
-      providerId: settings?.defaultProviderId,
-      modelId: settings?.defaultModelId,
-      projectPath: project.workspace?.path,
-    })) as { session: { id: string } };
-    // mark last run
-    task.lastRunAt = new Date().toISOString();
-    task.updatedAt = task.lastRunAt;
-    await writeScheduled(tasks);
-    return {
-      sessionId: created.session.id,
-      prompt: task.prompt,
-      task,
-    };
+    const res = await host.call<{
+      sessionId: string;
+      prompt: string;
+      task: unknown;
+      runId: string;
+    }>("scheduled.run", { id });
+    // The renderer sends the prompt through the normal agent path; remember
+    // the run so agent_end can close it via scheduled.finishRun.
+    scheduledRunsBySession.set(res.sessionId, res.runId);
+    return res;
   });
 
   handle(IPC.invoke.agentPrompt, async (req: {
@@ -1187,10 +1339,20 @@ function registerIpc() {
   }) => {
     if (!host || !sidecar) throw new Error("backend unavailable");
     const settings = await host.call<any>("settings.get");
+    const sessionResult = await host.call<{ session?: any }>("session.get", {
+      id: req.sessionId,
+    });
+    const session = sessionResult.session;
+    if (!session) {
+      throw Object.assign(new Error("Session not found"), {
+        errorCode: ErrorCodes.NOT_FOUND,
+      });
+    }
     const providers = await host.call<{ providers: any[] }>("providers.list", {
       includeDisabled: false,
     });
     const provider =
+      providers.providers.find((p) => p.id === session.providerId) ||
       providers.providers.find((p) => p.id === settings.defaultProviderId) ||
       providers.providers.find((p) => p.hasSecret) ||
       providers.providers[0];
@@ -1207,12 +1369,25 @@ function registerIpc() {
         errorCode: ErrorCodes.PROVIDER_SECRET_MISSING,
       });
     }
-    const modelId = settings.defaultModelId || provider.defaultModelId;
+    const modelId =
+      (provider.id === session.providerId ? session.modelId : undefined) ||
+      settings.defaultModelId ||
+      provider.defaultModelId;
     if (!modelId) {
       throw Object.assign(new Error("No model selected for provider"), {
         errorCode: ErrorCodes.MODEL_NOT_CONFIGURED,
       });
     }
+
+    // Open a durable turn row, then persist the user message under it.
+    const turn = await host
+      .call<{ turnId: string }>("session.beginTurn", {
+        sessionId: req.sessionId,
+        providerId: provider.id,
+        modelId,
+      })
+      .catch(() => null);
+    if (turn) activeTurns.set(req.sessionId, turn.turnId);
 
     // Persist user message
     const userMessage = {
@@ -1225,6 +1400,7 @@ function registerIpc() {
     await host.call("session.appendMessage", {
       sessionId: req.sessionId,
       message: userMessage,
+      turnId: turn?.turnId,
     });
     sendToRenderer(IPC.event.agentMessage, {
       sessionId: req.sessionId,
@@ -1237,28 +1413,35 @@ function registerIpc() {
       event: { type: "message_end", message: userMessage },
     } satisfies AgentEventEnvelope);
 
-    const result = await sidecar.call<{ accepted: boolean; turnId: string }>(
-      "agent.prompt",
-      {
-        sessionId: req.sessionId,
-        content: req.content,
-        mode: settings.defaultMode || "agent",
-        provider: {
-          id: provider.id,
-          name: provider.name,
-          baseUrl: provider.baseUrl,
-          modelId,
-          apiKey: secret.value || "",
+    let result: { accepted: boolean; turnId: string };
+    try {
+      result = await sidecar.call<{ accepted: boolean; turnId: string }>(
+        "agent.prompt",
+        {
+          sessionId: req.sessionId,
+          content: req.content,
+          mode: session.mode || settings.defaultMode || "agent",
+          provider: {
+            id: provider.id,
+            name: provider.name,
+            baseUrl: provider.baseUrl,
+            modelId,
+            apiKey: secret.value || "",
+            authKind: provider.authKind,
+          },
+          // Registered plugin agent tools join the model's toolset; execution
+          // round-trips host -> main (plugins.execute) -> plugin JS.
+          pluginTools: plugins.getTools().map((t) => ({
+            name: t.fullName,
+            description: t.description,
+            parameters: t.schema ?? { type: "object", properties: {} },
+          })),
         },
-        // Registered plugin agent tools join the model's toolset; execution
-        // round-trips host -> main (plugins.execute) -> plugin JS.
-        pluginTools: plugins.getTools().map((t) => ({
-          name: t.fullName,
-          description: t.description,
-          parameters: t.schema ?? { type: "object", properties: {} },
-        })),
-      },
-    );
+      );
+    } catch (e) {
+      void finishTurn(req.sessionId, "error", (e as any)?.errorCode);
+      throw e;
+    }
     logger.app("info", "prompt accepted", {
       sessionId: req.sessionId,
       turnId: result.turnId,
@@ -1270,7 +1453,9 @@ function registerIpc() {
   handle(IPC.invoke.agentAbort, async (req: { sessionId: string }) => {
     if (!sidecar) throw new Error("sidecar unavailable");
     logger.app("info", "prompt aborted", { sessionId: req.sessionId });
-    return sidecar.call("agent.abort", req);
+    const result = await sidecar.call("agent.abort", req);
+    finishTurn(req.sessionId, "aborted");
+    return result;
   });
 
   handle(IPC.invoke.agentGetStatus, async (sessionId: string) => {
@@ -1345,6 +1530,7 @@ function registerIpc() {
       { id: "builtin.project.clear", title: "Clear project", category: "Project", keywords: ["clear", "close", "workspace"], source: "builtin" as const },
       { id: "builtin.settings.open", title: "Open settings", category: "App", keywords: ["settings", "preferences"], source: "builtin" as const },
       { id: "builtin.settings.providers", title: "Open provider settings", category: "Settings", keywords: ["provider", "model", "key"], source: "builtin" as const },
+      { id: "builtin.settings.import", title: "Import sessions from other tools", category: "Settings", keywords: ["import", "claude", "codex", "opencode", "pi", "migrate"], source: "builtin" as const },
       { id: "builtin.plugins.open", title: "Open plugins", category: "Plugins", keywords: ["plugins", "extensions"], source: "builtin" as const },
       { id: "builtin.plugins.loadDev", title: "Load development plugin", category: "Plugins", keywords: ["load", "dev", "plugin"], source: "builtin" as const },
       { id: "builtin.logs.open", title: "Open logs folder", category: "Diagnostics", keywords: ["logs", "diagnostics"], source: "builtin" as const },

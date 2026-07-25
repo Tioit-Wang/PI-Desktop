@@ -114,6 +114,10 @@ Rules:
 - `workspace.set`
 - `workspace.clear`
 
+### Projects
+- `projects.list` — returns durable project records ordered pinned-first, then
+  by last-opened time; includes records materialized by session imports
+
 ### Secrets
 - `secrets.set`
 - `secrets.delete`
@@ -130,8 +134,13 @@ Rules:
 - `session.get`
 - `session.delete`
 - `session.rename`
+- `session.configure` — atomically persists `mode`, `providerId`, and
+  `modelId` for the next pi turn; invalid modes return `INVALID_PARAMS`
 - `session.appendMessage`
 - `session.updateTurn`
+- `session.import` — atomically imports one converted session; a non-empty
+  project path is normalized and upserted into `projects` before the session
+  references it; returns `{ imported, skipped }`
 
 ### Tools
 - `tools.list`

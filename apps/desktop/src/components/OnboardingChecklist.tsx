@@ -25,14 +25,16 @@ export function OnboardingChecklist() {
 
   const runAction = (id: string) => {
     switch (id) {
+      case "settings.providers":
       case "addProvider":
       case "saveKey":
-        setSettingsTab("providers");
+        setSettingsTab("agent");
         setPage("settings");
         break;
       case "openProject":
         void openProject();
         break;
+      case "plugins.open":
       case "loadPlugin":
         setPage("plugins");
         break;

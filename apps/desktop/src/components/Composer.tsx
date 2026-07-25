@@ -1,21 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
-import { api } from "../lib/api";
 import {
   IconArrowUp,
-  IconCamera,
   IconComputer,
   IconFolder,
   IconGitBranch,
-  IconImage,
-  IconPlus,
   IconShield,
   IconStop,
   IconChevronDown,
 } from "./icons";
-
-type Effort = "low" | "mid" | "high" | "max";
 
 const COMPOSER_MIN_HEIGHT_PX = 28;
 const COMPOSER_MAX_VISIBLE_ROWS = 7;
@@ -39,32 +33,18 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   const isRunning = useAppStore((s) => s.isRunning);
   const workspace = useAppStore((s) => s.workspace);
   const settings = useAppStore((s) => s.settings);
+  const sessions = useAppStore((s) => s.sessions);
+  const activeSessionId = useAppStore((s) => s.activeSessionId);
   const providers = useAppStore((s) => s.providers);
+  const configureActiveSession = useAppStore((s) => s.configureActiveSession);
   const openProject = useAppStore((s) => s.openProject);
   const showToast = useAppStore((s) => s.showToast);
   const composerPrefill = useAppStore((s) => s.composerPrefill);
   const clearComposerPrefill = useAppStore((s) => s.clearComposerPrefill);
   const [value, setValue] = useState("");
-  const [plusOpen, setPlusOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
-  const [mode, setMode] = useState<"chat" | "agent">(settings?.defaultMode ?? "chat");
-  const [effort, setEffort] = useState<Effort>(() => {
-    const saved = localStorage.getItem("pi.desktop.effort");
-    return saved === "low" || saved === "mid" || saved === "high" || saved === "max"
-      ? saved
-      : "max";
-  });
   const ref = useRef<HTMLTextAreaElement>(null);
-  const plusRef = useRef<HTMLDivElement>(null);
   const modelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    setMode(settings?.defaultMode ?? "chat");
-  }, [settings?.defaultMode]);
-
-  useEffect(() => {
-    localStorage.setItem("pi.desktop.effort", effort);
-  }, [effort]);
 
   useEffect(() => {
     if (!composerPrefill) return;
@@ -104,15 +84,13 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   }, [value]);
 
   useEffect(() => {
-    if (!plusOpen && !modelOpen) return;
+    if (!modelOpen) return;
     const onPointer = (e: MouseEvent) => {
       const t = e.target as Node;
-      if (plusOpen && !plusRef.current?.contains(t)) setPlusOpen(false);
       if (modelOpen && !modelRef.current?.contains(t)) setModelOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setPlusOpen(false);
         setModelOpen(false);
       }
     };
@@ -122,34 +100,31 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
       window.removeEventListener("mousedown", onPointer);
       window.removeEventListener("keydown", onKey);
     };
-  }, [plusOpen, modelOpen]);
+  }, [modelOpen]);
 
-  const provider = providers.find((p) => p.id === settings?.defaultProviderId);
+  const activeSession = sessions.find((session) => session.id === activeSessionId);
+  const mode = activeSession?.mode ?? settings?.defaultMode ?? "agent";
+  const provider = providers.find(
+    (candidate) =>
+      candidate.id ===
+      (activeSession?.providerId ?? settings?.defaultProviderId),
+  );
+  const modelId =
+    activeSession?.modelId ??
+    settings?.defaultModelId ??
+    provider?.defaultModelId;
   const modelLabel =
-    settings?.defaultModelId || provider?.defaultModelId || t("chat.model");
+    modelId || t("chat.model");
+  const modelReady =
+    !!provider &&
+    !!modelId &&
+    (provider.hasSecret || provider.authKind === "none");
   const enterToSend = settings?.enterToSend ?? true;
   const branch = workspace?.branch || "main";
 
-  const effortLabel =
-    effort === "low"
-      ? t("chat.effortLow")
-      : effort === "mid"
-        ? t("chat.effortMid")
-        : effort === "high"
-          ? t("chat.effortHigh")
-          : t("chat.effortMax");
-
-  const appendPaths = (paths: string[]) => {
-    if (!paths.length) return;
-    const block = paths.map((p) => `@${p}`).join(" ");
-    setValue((prev) => (prev.trim() ? `${prev.trimEnd()} ${block}` : block));
-    showToast(t("chat.filesAttached", { count: paths.length }), { variant: "success" });
-    ref.current?.focus();
-  };
-
   const submit = async () => {
     const content = value.trim();
-    if (!content || isRunning) return;
+    if (!content || isRunning || !modelReady) return;
     setValue("");
     await sendPrompt(content);
   };
@@ -171,34 +146,25 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
               </span>
             </button>
             <span className="chip-sep" aria-hidden />
-            <button
+            <span
               className="chip"
-              onClick={() =>
-                showToast(
-                  workspace?.path
-                    ? t("chat.localWorkspace", { path: workspace.path })
-                    : t("project.open"),
-                )
+              title={
+                workspace?.path
+                  ? t("chat.localWorkspace", { path: workspace.path })
+                  : t("project.open")
               }
             >
               <IconComputer size={14} />
               <span>{t("chat.local")}</span>
-            </button>
+            </span>
             <span className="chip-sep" aria-hidden />
-            <button
+            <span
               className="chip"
               title={workspace?.branch ? `${t("chat.branch")} ${workspace.branch}` : t("chat.branch")}
-              onClick={() =>
-                showToast(
-                  workspace?.branch
-                    ? `${t("chat.branch")}: ${workspace.branch}`
-                    : t("chat.noBranch"),
-                )
-              }
             >
               <IconGitBranch size={14} />
               <span className="chip-label">{branch}</span>
-            </button>
+            </span>
           </div>
         )}
 
@@ -228,95 +194,30 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
 
           <div className="composer-toolbar">
             <div className="composer-left">
-              <div className="composer-plus" ref={plusRef}>
-                <button
-                  className={`icon-btn ${plusOpen ? "active" : ""}`}
-                  title={t("chat.addFiles")}
-                  aria-label={t("chat.addFiles")}
-                  aria-expanded={plusOpen}
-                  aria-haspopup="menu"
-                  onClick={() => setPlusOpen((v) => !v)}
-                >
-                  <IconPlus size={15} />
-                </button>
-                {plusOpen && (
-                  <div className="composer-plus-menu" role="menu">
-                    <button
-                      className="composer-plus-item"
-                      role="menuitem"
-                      onClick={async () => {
-                        setPlusOpen(false);
-                        try {
-                          const res = await api.pickFiles();
-                          if (!res.canceled) appendPaths(res.paths);
-                        } catch (e) {
-                          showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
-                        }
-                      }}
-                    >
-                      <IconFolder size={15} />
-                      <span>{t("chat.attachFiles")}</span>
-                    </button>
-                    <button
-                      className="composer-plus-item"
-                      role="menuitem"
-                      onClick={async () => {
-                        setPlusOpen(false);
-                        try {
-                          const res = await api.pickPhotos();
-                          if (!res.canceled) appendPaths(res.paths);
-                        } catch (e) {
-                          showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
-                        }
-                      }}
-                    >
-                      <IconImage size={15} />
-                      <span>{t("chat.addPhotos")}</span>
-                    </button>
-                    <button
-                      className="composer-plus-item"
-                      role="menuitem"
-                      onClick={() => {
-                        setPlusOpen(false);
-                        showToast(t("chat.appshotSoon"));
-                      }}
-                    >
-                      <IconCamera size={15} />
-                      <span>{t("chat.captureAppshot")}</span>
-                    </button>
-                    <div className="composer-plus-sep" />
-                    <button
-                      className="composer-plus-item"
-                      role="menuitem"
-                      onClick={() => {
-                        setPlusOpen(false);
-                        void openProject();
-                      }}
-                    >
-                      <IconComputer size={15} />
-                      <span>{t("project.open")}</span>
-                    </button>
-                  </div>
-                )}
-              </div>
               <button
                 className="icon-btn mode-chip"
                 title={t("settings.mode")}
+                disabled={isRunning || !activeSession}
                 onClick={async () => {
                   const next = mode === "agent" ? "chat" : "agent";
-                  setMode(next);
-                  if (settings) {
-                    try {
-                      await api.setSettings({ ...settings, defaultMode: next });
-                    } catch (e) {
-                      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
-                    }
+                  try {
+                    await configureActiveSession({
+                      mode: next,
+                      providerId: provider?.id,
+                      modelId,
+                    });
+                  } catch (e) {
+                    showToast(e instanceof Error ? e.message : String(e), {
+                      variant: "error",
+                    });
                   }
                 }}
               >
                 <IconShield size={14} />
                 <span className="text-sm">
-                  {mode === "chat" ? t("chat.requestApproval") : t("chat.agent")}
+                  {mode === "chat"
+                    ? t("settings.modeChat")
+                    : t("settings.modeAgent")}
                 </span>
               </button>
             </div>
@@ -328,19 +229,18 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                   title={`${provider?.name || t("chat.provider")} · ${modelLabel}`}
                   aria-haspopup="menu"
                   aria-expanded={modelOpen}
+                  disabled={isRunning}
                   onClick={() => setModelOpen((v) => !v)}
                   onContextMenu={(e) => {
                     e.preventDefault();
-                    useAppStore.getState().setSettingsTab("providers");
+                    useAppStore.getState().setSettingsTab("agent");
                     useAppStore.getState().setPage("settings");
                   }}
                 >
                   <span className="max-w-[190px] truncate text-sm leading-none">
-                    {variant === "home"
-                      ? `${t("chat.effortCustom")} ${effortLabel}`
-                      : modelLabel}
+                    {modelLabel}
                   </span>
-                  {variant === "home" ? null : <IconChevronDown size={12} />}
+                  <IconChevronDown size={12} />
                 </button>
                 {modelOpen && (
                   <div className="composer-model-menu" role="menu">
@@ -353,26 +253,48 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                       </div>
                     </div>
                     <div className="composer-plus-sep" />
-                    {(
-                      [
-                        ["low", t("chat.effortLow")],
-                        ["mid", t("chat.effortMid")],
-                        ["high", t("chat.effortHigh")],
-                        ["max", t("chat.effortMax")],
-                      ] as const
-                    ).map(([key, label]) => (
+                    {providers
+                      .filter(
+                        (candidate) =>
+                          candidate.enabled &&
+                          !!candidate.defaultModelId &&
+                          (candidate.hasSecret ||
+                            candidate.authKind === "none"),
+                      )
+                      .map((candidate) => (
                       <button
-                        key={key}
-                        className={`composer-plus-item ${effort === key ? "active" : ""}`}
+                        key={candidate.id}
+                        className={`composer-plus-item ${
+                          provider?.id === candidate.id &&
+                          modelId === candidate.defaultModelId
+                            ? "active"
+                            : ""
+                        }`}
                         role="menuitemradio"
-                        aria-checked={effort === key}
-                        onClick={() => {
-                          setEffort(key);
-                          setModelOpen(false);
+                        aria-checked={
+                          provider?.id === candidate.id &&
+                          modelId === candidate.defaultModelId
+                        }
+                        onClick={async () => {
+                          try {
+                            await configureActiveSession({
+                              mode,
+                              providerId: candidate.id,
+                              modelId: candidate.defaultModelId,
+                            });
+                            setModelOpen(false);
+                          } catch (e) {
+                            showToast(
+                              e instanceof Error ? e.message : String(e),
+                              { variant: "error" },
+                            );
+                          }
                         }}
                       >
-                        <span>{t("chat.effortCustom")}</span>
-                        <span className="ml-auto text-text-secondary">{label}</span>
+                        <span className="truncate">{candidate.name}</span>
+                        <span className="ml-auto max-w-[180px] truncate font-mono text-text-secondary">
+                          {candidate.defaultModelId}
+                        </span>
                       </button>
                     ))}
                     <div className="composer-plus-sep" />
@@ -381,7 +303,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                       role="menuitem"
                       onClick={() => {
                         setModelOpen(false);
-                        useAppStore.getState().setSettingsTab("providers");
+                        useAppStore.getState().setSettingsTab("agent");
                         useAppStore.getState().setPage("settings");
                       }}
                     >
@@ -398,8 +320,10 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
               ) : (
                 <button
                   className="send-btn"
-                  title={t("chat.send")}
-                  disabled={!value.trim()}
+                  title={
+                    modelReady ? t("chat.send") : t("settings.addProvider")
+                  }
+                  disabled={!value.trim() || !modelReady}
                   onClick={() => void submit()}
                 >
                   <IconArrowUp size={15} />

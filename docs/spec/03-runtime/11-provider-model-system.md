@@ -214,7 +214,7 @@ type ModelDescriptor = {
 
 ## 10. UI requirements
 
-### Providers page
+### Settings → Configuration → Providers
 - add built-in vendor quickly
 - add OpenAI-compatible endpoint
 - add custom provider

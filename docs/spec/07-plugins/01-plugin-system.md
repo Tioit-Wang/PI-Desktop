@@ -321,7 +321,8 @@ Failure policy:
 
 ## 12. Plugin management UI
 
-Add a **Plugins** section to Settings:
+Use the app shell's dedicated **Plugins** destination for plugin management.
+Do not duplicate plugin management in Settings.
 
 Features:
 - Local install (choose directory / zip)

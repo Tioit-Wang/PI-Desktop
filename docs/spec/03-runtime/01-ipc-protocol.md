@@ -64,10 +64,6 @@ type AppError = {
 type AgentPromptRequest = {
  sessionId: string;
  content: string;
- images?: Array<{
- mimeType: string;
- dataBase64: string;
- }>;
 };
 
 type AgentPromptResponse = {
@@ -75,6 +71,23 @@ type AgentPromptResponse = {
  turnId: string;
 };
 ```
+
+Prompt execution resolves `mode`, `providerId`, and `modelId` from the durable
+session record. The renderer changes those values through
+`pi-desktop/session/configure` while the session is idle:
+
+```ts
+type SessionConfigureRequest = {
+  id: string;
+  mode: "chat" | "agent";
+  providerId?: string;
+  modelId?: string;
+};
+```
+
+Image and file payloads are not part of the current prompt contract. Composer
+attachment affordances remain hidden until main, sidecar, pi model
+capabilities, and persistence all consume the payload.
 
 ### 5.2 abort
 
@@ -152,6 +165,11 @@ Minimal interface:
 - `session/get`
 - `session/delete`
 - `session/rename`
+- `session/importScan`
+- `session/importRun(candidates) -> { imported, skipped, failed }`
+
+Import candidates carry `projectPath: string | null`. A successful import
+refreshes both sessions and the durable Projects index.
 
 ## 8. Settings / Secrets API
 
@@ -176,6 +194,7 @@ Forbidden:
 
 - `project/open()`: system directory picker
 - `project/get()`: current workspace
+- `project/list()`: durable project records, including import-created entries
 - `project/set(path)`: set workspace
 - `project/clear()`
 
@@ -185,6 +204,15 @@ Returns:
 type ProjectWorkspace = {
  path: string;
  name: string;
+};
+
+type ProjectRecord = {
+ id: number;
+ path: string;
+ name: string;
+ pinned: boolean;
+ createdAt: number;
+ lastOpenedAt: number;
 };
 ```
 

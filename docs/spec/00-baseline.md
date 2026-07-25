@@ -1,8 +1,8 @@
 # PI-Desktop Baseline Freeze
 
-- Baseline Version: `0.4.0`
-- Date: `2026-07-25`
-- Status: `Frozen for implementation details (provider + runtime safety + M5 hardening)`
+- Baseline Version: `0.4.1`
+- Date: `2026-07-26`
+- Status: `Frozen for implementation details (provider + runtime safety + M5 hardening + settings IA)`
 - Language policy: **English-first**
 - Backend policy: **Rust host core + pi agent sidecar**
 
@@ -10,7 +10,8 @@
 > (D001–D033). `0.4.0` absorbs the Codex visual-parity decision series
 > (D034+, gold source = decisions-log §D) and the M5 hardening decisions
 > (D078–D083: signing lanes, brand icon, supervision, renderer sandbox,
-> log channels, window state).
+> log channels, window state). `0.4.1` freezes the compact four-destination
+> settings directory from D090 / ADR 0013.
 
 ## Frozen Decisions
 
@@ -53,6 +54,8 @@
 37. Secrets backend: **safeStorage primary + encrypted file fallback**
 38. Workspace ignore: **denylist + defaults + `.pi-desktopignore`**
 39. Tool result limits: **256KB / 4000 lines with truncation markers**
+40. Settings directory: **General / Configuration / Import sessions / About**;
+    plugin management remains the app shell's independent **Plugins** destination
 
 ## Source of Truth
 

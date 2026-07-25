@@ -1,9 +1,11 @@
+mod artifacts;
 mod audit;
 mod db;
 mod permissions;
 mod plugins;
 mod providers;
 mod rpc;
+mod scheduled;
 mod secrets;
 mod sessions;
 mod state;

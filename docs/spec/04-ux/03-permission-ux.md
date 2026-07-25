@@ -56,9 +56,10 @@ Must show:
 
 ## 8. Session grants surface
 
-Active session grants (toolName, grantedAt, clear action) surface in
-Settings → General under the Default permissions card (D062/D065); a
-per-session grants view in the context panel is a tracked follow-up.
+Active session grants (toolName, grantedAt, clear action) remain runtime-owned.
+A durable grants-management surface is deferred until a host-backed settings
+schema exists; Settings must not render a control that cannot persist or affect
+the permission runtime.
 
 ## 9. Acceptance
 

@@ -27,6 +27,7 @@ export type RuntimeProviderConfig = {
   baseUrl?: string;
   modelId: string;
   apiKey: string;
+  authKind?: string;
 };
 
 export type PluginToolDef = {
@@ -91,6 +92,9 @@ export class DesktopAgentRuntime {
     const model = this.buildModel();
     const tools = this.buildTools();
     const models = createModels();
+    const runtimeApiKey =
+      this.provider.apiKey ||
+      (this.provider.authKind === "none" ? "pi-desktop-no-auth" : "");
     const provider = createProvider({
       id: this.provider.id,
       name: this.provider.name,
@@ -99,7 +103,7 @@ export class DesktopAgentRuntime {
         apiKey: {
           name: `${this.provider.name} API key`,
           resolve: async () => ({
-            auth: { headers: { Authorization: `Bearer ${this.provider.apiKey}` } },
+            auth: { headers: { Authorization: `Bearer ${runtimeApiKey}` } },
           }),
         },
       },
@@ -110,7 +114,7 @@ export class DesktopAgentRuntime {
 
     this.agent = new Agent({
       streamFn: (m, context, options) => models.streamSimple(m, context, options),
-      getApiKey: async () => this.provider.apiKey,
+      getApiKey: async () => runtimeApiKey,
       initialState: {
         systemPrompt:
           opts.systemPrompt ??
@@ -142,6 +146,7 @@ export class DesktopAgentRuntime {
       this.provider.modelId === provider.modelId &&
       (this.provider.baseUrl ?? "") === (provider.baseUrl ?? "") &&
       this.provider.apiKey === provider.apiKey &&
+      this.provider.authKind === provider.authKind &&
       current === next
     );
   }

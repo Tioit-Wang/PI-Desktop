@@ -10,6 +10,7 @@ import type {
   HostStatusEvent,
   OnboardingState,
   PluginSummary,
+  ProjectRecord,
   ProjectWorkspace,
   PullRequestSummary,
   ScheduledTask,
@@ -22,6 +23,25 @@ import type {
   ToolPermissionResolution,
 } from "@pi-desktop/shared";
 import { IPC } from "@pi-desktop/shared";
+
+export type ImportSource = "claude-code" | "opencode" | "codex" | "pi";
+
+export interface ImportCandidate {
+  source: ImportSource;
+  externalId: string;
+  title: string;
+  projectPath: string | null;
+  model: string | null;
+  createdAt: string;
+  updatedAt: string;
+  messageCount: number;
+}
+
+export interface ImportRunResult {
+  imported: number;
+  skipped: number;
+  failed: number;
+}
 
 declare global {
   interface Window {
@@ -64,6 +84,19 @@ export const api = {
   deleteSession: (id: string) => invoke(IPC.invoke.sessionDelete, id),
   renameSession: (id: string, title: string) =>
     invoke(IPC.invoke.sessionRename, id, title),
+  configureSession: (
+    id: string,
+    config: Pick<SessionSummary, "mode" | "providerId" | "modelId">,
+  ) =>
+    invoke<{ session: SessionSummary }>(
+      IPC.invoke.sessionConfigure,
+      id,
+      config,
+    ),
+  scanImportSessions: () =>
+    invoke<{ sessions: ImportCandidate[] }>(IPC.invoke.sessionImportScan),
+  runImportSessions: (items: ImportCandidate[]) =>
+    invoke<ImportRunResult>(IPC.invoke.sessionImportRun, items),
   getSettings: () => invoke<AppSettings>(IPC.invoke.settingsGet),
   setSettings: (settings: AppSettings) =>
     invoke(IPC.invoke.settingsSet, settings),
@@ -80,6 +113,8 @@ export const api = {
   testProvider: (id: string) => invoke(IPC.invoke.providersTest, id),
   getProject: () =>
     invoke<{ workspace: ProjectWorkspace | null }>(IPC.invoke.projectGet),
+  listProjects: () =>
+    invoke<{ projects: ProjectRecord[] }>(IPC.invoke.projectList),
   openProject: () =>
     invoke<{ workspace: ProjectWorkspace | null; canceled?: boolean }>(
       IPC.invoke.projectOpen,

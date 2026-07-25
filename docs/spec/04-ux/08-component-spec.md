@@ -12,8 +12,9 @@
 > (D034+), the decision log wins — it tracks the live gold captures. Known
 > updated values: sidebar ~275px (not 240px), toolbar 46px (not 44px),
 > composer placeholder per D046/D066, home split-grow per D045/D047,
-> Projects index table per D066, settings full-page shell per D062/D063,
-> session pinning shipped per D068.
+> Projects index table per D066, settings full-page shell per D063 with the
+> compact four-destination directory from D090, and scoped sidebar rows per
+> D088 (which supersedes D068 session pin actions).
 
 ## 1. AppShell
 
@@ -108,7 +109,9 @@ Global controls bar: project identity, model selection, mode indicator, abort bu
 
 ### 3.1 Purpose
 
-Session navigation and management. Toggle between expanded (session list) and collapsed (icon rail).
+Scoped session navigation and management. The expanded sidebar shows exactly
+one current project plus path-less temporary sessions; the collapsed state is
+an icon rail.
 The home destination controls expose Projects and Plugins only; Pull requests
 and Scheduled are not rendered in the sidebar.
 
@@ -118,11 +121,11 @@ and Scheduled are not rendered in the sidebar.
 Expanded (~275px, D034/D070):
 +---------------------------+
 | [+ New Chat] button       |
-| [🔍 Search] (deferred)    |
-| ─────────────────         |
-| Session list (scrollable)  |
-|   • Session title (date)  |
-|   • Active highlight      |
+| Projects / Plugins        |
+| project-name          [+] |
+|   • Project session      |
+| Temporary sessions   [+] |
+|   • Path-less session   |
 | ─────────────────         |
 | [⚙ Settings] bottom link  |
 +---------------------------+
@@ -146,17 +149,24 @@ Collapsed (48px):
 | Collapsed | Icon rail — hover shows tooltip with session title |
 | Active session | Accent background highlight on current session item |
 | Hover session | bg-tertiary background |
+| No project | Compact Open project entry; no project-session rows |
+| Empty group | Muted one-line empty state; group create action remains available |
 
 ### 3.4 Interactions
 
 - Click session: switch active session, scroll to last message
-- Click "+ New Chat": create session, focus composer
+- Click "+ New Chat": create/reuse a draft in the current workspace scope
+- Click project `+`: create/reuse a session bound to the current project
+- Click Temporary sessions `+`: clear the workspace and create/reuse a
+  path-less persistent session
 - Right-click session: context menu (rename, delete) — MVP: via command palette only
 - Sidebar toggle: Topbar hamburger + keyboard shortcut
 
 ### 3.5 Accessibility
 
-- Session list: `role="list"` with `role="listitem"` per session
+- Project and Temporary headings have localized names; each `+` has a
+  scope-specific accessible name
+- Session groups use semantic `section` containers
 - Active session: `aria-current="true"`
 - Collapsed state: each icon has `aria-label` with session title
 - Keyboard: arrow keys navigate session list
@@ -165,7 +175,7 @@ Collapsed (48px):
 
 - No sidebar search (deferred per [01-ui-ia.md](01-ui-ia.md))
 - No drag-to-reorder sessions
-- No session grouping/folders
+- No multi-project tree in the home sidebar
 
 ---
 
@@ -263,15 +273,18 @@ Secondary panel for project metadata, workspace status, and session details. Col
 
 ### 6.1 Purpose
 
-List of user sessions inside the sidebar. Allows switching, creating, and deleting sessions.
+List user sessions by execution context inside the sidebar. It exposes the
+current project's sessions and persistent sessions that have no project.
 
 ### 6.2 Anatomy
 
-Each session item:
+Groups and session items:
 
 ```text
-[icon] Session title
-       Last activity timestamp · Mode badge
+[folder] current-project                         [+]
+           Session title
+[panel]  Temporary sessions                      [+]
+           Session title
 ```
 
 ### 6.3 States
@@ -287,19 +300,29 @@ Each session item:
 ### 6.4 Interactions
 
 - Click: activate session
+- Current-project matching uses the normalized full project path, never only
+  the folder basename.
+- Sessions from other projects are hidden here and remain accessible from the
+  Projects index.
+- Selecting a temporary session clears the active workspace so composer and
+  tool context do not imply project access.
 - Keyboard: arrow up/down, Enter to select
 - Delete: via command palette `builtin.session.delete`
 
 ### 6.5 Accessibility
 
-- `role="listbox"` with `role="option"` per item
-- `aria-selected` on active item
+- Each group is a labeled `section`.
+- Scope-specific create buttons expose localized `aria-label` values.
+- Active rows expose the selected visual state and retain their full title in
+  a tooltip.
 
 ### 6.6 MVP constraints
 
 - No session search/filter
-- No session grouping; pinning shipped (D068: pin/panel row actions)
-- Max 50 sessions shown; older sessions accessible via scroll
+- No nested/multi-project sidebar tree.
+- Temporary means **not bound to a project**, not ephemeral storage; these
+  sessions survive restart.
+- The two groups share one independently scrollable sidebar region.
 
 ---
 
@@ -307,28 +330,28 @@ Each session item:
 
 ### 7.1 Purpose
 
-Scrollable container rendering the ordered sequence of user messages, assistant responses, tool call cards, and permission cards for a session.
+Scrollable container rendering the ordered sequence of user messages, assistant
+responses, lightweight tool activity rows, and permission cards for a session.
 
 ### 7.2 Anatomy
 
 ```text
-+------------------------------------------+
-| [User MessageBubble]                     |
-| [Assistant MessageBubble (streaming)]    |
-|   [ToolCallCard] (inline in assistant)   |
-|   [ToolCallCard]                         |
-|   [PermissionCard] (interrupt)           |
-|   [Assistant MessageBubble (resume)]     |
-| [User MessageBubble]                     |
-| ...                                      |
-+------------------------------------------+
++----+-------------------------------------+
+|map | [User MessageBubble]                |
+|rail| [Assistant MessageBubble]           |
+|    |   [ToolCallRow]                     |
+|    |   [PermissionCard] (interrupt)      |
+|    | [Assistant MessageBubble (resume)]  |
+|    | [User MessageBubble]                |
+|    | ...                                 |
++----+-------------------------------------+
 ```
 
 ### 7.3 States
 
 | State | Behavior |
 |---|---|
-| Streaming | New tokens append; auto-scroll to bottom |
+| Streaming | New tokens append; auto-scroll only while pinned to bottom |
 | Idle | Scrollable; no auto-scroll |
 | Permission pending | PermissionCard inserted inline; transcript continues after resolution |
 | Error | Error MessageBubble with actionable retry link |
@@ -336,20 +359,33 @@ Scrollable container rendering the ordered sequence of user messages, assistant 
 ### 7.4 Interactions
 
 - Scroll: user scroll pauses auto-scroll; "scroll to bottom" floating button appears
-- Click message: no action in MVP (future: copy message)
-- Hover code block: copy button appears (future, not MVP)
+- Hover message: copy action appears
+- Hover code block: copy button appears
+- Hover or focus a minimap marker: show the localized sender and a bounded
+  plaintext preview; nearby markers magnify horizontally without reflowing the
+  rail
+- Click a minimap marker: smoothly scroll its message near the top of the
+  transcript viewport
+- Scroll the transcript: update the active minimap marker against an anchor
+  near the upper third of the viewport
 
 ### 7.5 Accessibility
 
 - `role="log"` container
 - `aria-live="polite"` for new content announcements
 - Each message: `role="article"` with `aria-label` describing sender
+- The minimap is a localized navigation landmark; every marker is a button
+  labeled with its message sender
+- The marker nearest the reading position exposes `aria-current="true"` and
+  keyboard focus opens the same preview available on pointer hover
 
 ### 7.6 MVP constraints
 
 - No message search within transcript
-- No message copy action
 - No message branching/rewind
+- The minimap renders only when at least two visible user or assistant messages
+  exist; tool-only rows do not create markers
+- Marker previews are capped at 280 source characters and are display-only
 
 ---
 
@@ -409,64 +445,115 @@ Single message render — either user (plaintext) or assistant (markdown streami
 - No edit user message (deferred)
 - No "copy message" button (deferred)
 
+### 8.7 Markdown & code rendering (implemented)
+
+Renderer: `apps/desktop/src/components/Markdown.tsx` + `apps/desktop/src/lib/shiki.ts`.
+
+- **Streaming without jank**: source splits into top-level blocks via `marked`'s
+  lexer; each block renders through a memoized `<ReactMarkdown>`. While
+  streaming only the tail block re-parses (incremental re-lex from the last
+  block boundary), so cost stays linear in message length.
+- **Plugins**: `remark-gfm` (tables, task lists, strikethrough, autolinks),
+  `remark-math` + `rehype-katex` (inline `$…$`, display `$$…$$`). Raw HTML
+  stays escaped (no `rehype-raw`).
+- **Syntax highlighting**: Shiki singleton with the JavaScript regex engine
+  (no wasm), themes `github-light`/`github-dark` following `data-theme`.
+  Languages lazy-load per fence tag with a plain-mono fallback until ready.
+  Streaming code re-tokenizes only changed lines by chaining GrammarState
+  (per-line cache), so per-frame cost is constant regardless of block size.
+- **Code block chrome**: `.code-block` card (radius-md-plus, hairline border,
+  `--gray-1000` dark / `#f3f3f3` light) with `.code-block-head` — language tag
+  (text-xs, muted) left, persistent copy button right (copies the raw code
+  string). Body `pre` at text-sm-plus / leading-relaxed with horizontal
+  scroll.
+- **Prose**: heading ramp h1 `text-lg-plus` → h4+ `text-base` (semibold,
+  tracking-tight), token-based lists/task lists/blockquote/hr/kbd/img; tables
+  wrap in `.table-wrap` (rounded hairline shell, horizontal scroll).
+- **Links**: rendered with `target="_blank"` so the main process routes them
+  through `shell.openExternal`; in-window navigation stays blocked.
+- **Typewriter**: rAF-driven reveal (speed scales with backlog);
+  `prefers-reduced-motion` renders the buffer verbatim. `.thread-scroll` sets
+  `overflow-anchor: none` (pinned-follow owns the scroll position) and
+  `.message-row` uses `content-visibility: auto` for long transcripts.
+
 ---
 
-## 9. ToolCallCard
+## 9. ToolCallRow
 
 ### 9.1 Purpose
 
-Inline card showing a tool invocation with name, status, args preview, result preview, and duration. Defined in [01-ui-ia.md](01-ui-ia.md) §5.
+Lightweight inline disclosure row showing a semantic tool action, its primary
+argument hint, status, input, and output. It follows D071 and is intentionally
+not an elevated card.
+
+Consecutive tool calls form one ChatGPT-style processing group. The group is
+collapsed by default and its header shows `Processing · 12s` while active or
+`Processed for 12s` after completion. Expanding it reveals the ordered tool
+activity rows and their nested input/output disclosures.
 
 ### 9.2 Anatomy
 
 ```text
-+----------------------------------------------+
-| 🔧 toolName                    [status]      |
-| ───────────────────────────                  |
-| Args: { file: "/src/foo.ts", ... }           |
-| ───────────────────────────                  |
-| [Result preview / truncated]                 |
-| Duration: 1.2s                               |
-+----------------------------------------------+
+[sparkle] Processed for 12s  3 steps      [›]
+          ├─ [file] Read /src/foo.ts      [›]
+          ├─ [search] Searched tool-row   [›]
+          └─ [terminal] Ran pnpm test     [›]
 ```
 
-(Icon uses Lucide `Wrench` or appropriate tool-type icon, not emoji.)
+- The leading Lucide icon reflects the action type: file, folder, search,
+  edit, terminal, web, or generic tool.
+- The group header owns the elapsed timer and step count. It stays in the
+  transcript after completion and remains collapsed unless explicitly opened.
+- The visible label is a natural-language action (`Read`, `Ran`, `Searched`),
+  not the raw function name. Running actions use the progressive form.
+- The primary argument is a clamped single-line monospace hint.
+- The disclosure chevron is quiet until hover/focus or expansion.
 
 ### 9.3 Layout
 
-- Background: bg-secondary
-- Border: border-default, radius-md
-- Left accent border: 2px — success (green), running (accent), error (red), denied (red)
-- Font: args/result in font-mono text-sm
-- Max width: 720px (same as messages)
+- Outer row: transparent, borderless, shadowless, approximately 24px high
+- Icon: 15–16px; disclosure chevron: 12px
+- Header gap: 4px; expanded body inset: 24px
+- Input/output: `font-mono text-sm`, independently copyable, capped at 220px
+  with internal scrolling
+- Only expanded content receives an inset surface and subtle border
 
 ### 9.4 States
 
-| State | Left border | Status label | Content |
-|---|---|---|---|
-| Running | accent pulse | "Running" | args preview shown |
-| Success | success (green) | "Completed" | result preview, truncated per D033 |
-| Error | error (red) | "Error" | error message preview |
-| Denied | error (red) | "Denied" | "Permission denied" message |
-| Timeout | warning (amber) | "Timeout" | "Timed out" message |
+| State | Header treatment | Expanded content |
+|---|---|---|
+| Running | Progressive action + shimmer + spinner | Latest partial output |
+| Success | Past-tense action; no green success badge | Final output, then raw input |
+| Error | Past-tense action + compact danger status; auto-expanded | Error output, then raw input |
+| Denied | Muted `Denied` status | Permission result when available |
 
 ### 9.5 Interactions
 
-- Click card header: expand/collapse full args/result (default collapsed for long content)
-- Truncated result: "Show more" link expands to full content (capped at 256KB/4000 lines per D033)
-- Copy button on result: deferred (not MVP)
+- Click the row: expand/collapse output and input; successful rows default
+  collapsed and failed rows open automatically.
+- Click the processing header: expand/collapse the ordered activity list.
+  Processing groups default collapsed, including while the turn is active.
+- Failed groups use an explicit `Failed after {elapsed}` header. Expansion uses
+  a short height/opacity transition and keeps collapsed content inert.
+- Running updates replace the latest partial output in place.
+- Output is presented before raw input so the primary result has higher
+  information priority.
+- Input and output each expose a compact copy action.
+- Host truncation markers remain visible and cannot be bypassed by expansion.
 
 ### 9.6 Accessibility
 
 - `role="region"` with `aria-label="Tool call: {toolName}"`
-- Status announced via `aria-label` on status badge
-- Expand/collapse: `aria-expanded` toggle
+- Status announced through localized `aria-label` text
+- Expand/collapse: `aria-expanded` + `aria-controls`
+- Keyboard focus uses the standard inset focus ring
 
 ### 9.7 MVP constraints
 
 - No inline diff rendering for Edit/Write results
 - No file path click-to-open (deferred)
-- No "copy result" button (deferred)
+- No cross-row activity grouping until turn boundaries are available to the
+  transcript component
 
 ---
 
@@ -569,7 +656,7 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 
 | State | Appearance | Actions |
 |---|---|---|
-| Idle (no model) | textarea active, send button disabled + tooltip "Configure a model first" | Send disabled |
+| Idle (no model) | textarea active, send button disabled + tooltip "Configure a model first" | Configuration link remains available in model menu |
 | Idle (ready) | textarea active, send button enabled | Send active |
 | Running | textarea disabled, abort button visible | Abort active, Send hidden |
 | Permission pending | textarea disabled (per [03-permission-ux.md](03-permission-ux.md) §7) | Send disabled, abort visible |
@@ -584,6 +671,9 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 - Auto-grow: textarea measures wrapped visual lines, starts at one visible
   line, expands through seven lines, then scrolls internally; deleting content
   shrinks it back to one line
+- Chat / Agent and provider/model changes update the active session, not the
+  app default. They are disabled while a turn runs.
+- The model menu lists only enabled, runnable providers with a default model.
 
 ### 11.6 Accessibility
 
@@ -595,6 +685,9 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 ### 11.7 MVP constraints
 
 - No file attachment (deferred)
+- No image/appshot attachment stubs
+- No reasoning-effort selector until pi model capabilities drive the available
+  levels and the selection reaches the runtime
 - No slash-command autocomplete in composer (command palette is separate)
 - No voice input
 
@@ -706,7 +799,7 @@ Guidance surfaces when key data is absent. Must always provide an **action link*
 | Context | Message | Action |
 |---|---|---|
 | No sessions | "Start your first conversation" | "New Chat" button → focus composer |
-| No provider | "No model provider configured" | "Add provider" link → settings/providers |
+| No provider | "No model provider configured" | "Add provider" link → Settings → Configuration → Providers |
 | No project (Agent mode) | "No project open — local tools unavailable" | "Open folder" button → ProjectPicker |
 | No project (Chat mode) | "Open a project for context" (muted warning) | "Open folder" button |
 | Session empty (first message) | "Ask Codex to do anything" placeholder (home variant "Ask anything", D046/D066) | N/A |
@@ -848,7 +941,60 @@ dismissToast(id: number); // ToastHost internal / tests
 
 ---
 
-## 18. Acceptance criteria (all components)
+## 18. SessionImportPanel
+
+### 18.1 Purpose
+
+Scan supported local agent stores, review discovered sessions in manageable
+groups, select candidates, and start an explicit import.
+
+### 18.2 Anatomy
+
+```text
+[Found N sessions]  [Group by: Source ▾]  [Import selected (N)]
+──────────────────────────────────────────────────────────────────
+[ ] [›] Claude Code                                      N sessions
+[ ] [›] Codex                                            N sessions
+```
+
+- The grouping control supports **Project path** and **Source**.
+- Source is the default grouping.
+- In project-path mode, exact paths remain visible in group headers.
+- Sessions without a project path appear in a final **No project** group.
+- Each group header includes group selection, disclosure, label, and count.
+- Import source names, grouping controls, counts, results, and accessible names
+  come from the shared i18n catalog. Candidate dates use the active app locale.
+
+### 18.3 States and interactions
+
+- A successful scan replaces the prior candidate set, clears selection, and
+  leaves every group collapsed.
+- A successful import creates or reuses one durable Projects-index entry for
+  each distinct non-empty project path and refreshes sessions/projects.
+- Path-less imports create no project entry and remain under Temporary
+  sessions. Import never creates a physical filesystem directory.
+- Re-importing an existing source session skips it without duplicating its
+  project entry.
+- Changing the grouping mode preserves candidate selection but collapses every
+  newly formed group.
+- Expanding or collapsing one group does not affect the others.
+- Group and global checkboxes support checked, unchecked, and indeterminate
+  selection states as applicable.
+- Candidates inside each group and groups themselves are ordered newest first;
+  the path-less group remains last in project-path mode.
+
+### 18.4 Accessibility
+
+- Each disclosure button exposes `aria-expanded` and references its body with
+  `aria-controls`.
+- Global and group checkboxes have localized accessible names.
+- The grouping selector has a visible label and is keyboard-operable.
+- Projects-row disclosure and action-menu buttons expose localized,
+  project-specific accessible names.
+
+---
+
+## 19. Acceptance criteria (all components)
 
 1. All components use semantic color tokens from [07-ui-design-system.md](07-ui-design-system.md) — no raw hex
 2. All interactive elements have visible focus rings (2px accent, offset 2px)
@@ -866,3 +1012,5 @@ dismissToast(id: number); // ToastHost internal / tests
 11. All components have correct ARIA roles and labels
 12. Responsive collapse works at 800px and 640px breakpoints
 13. Toasts stack top-center with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17
+14. Session import defaults to source grouping, offers project-path grouping, collapses all groups after scan/group changes, and exposes accessible group disclosure state per §18
+15. Imported project paths materialize exactly once in the durable Projects index; path-less imports remain Temporary sessions and no filesystem directory is created
