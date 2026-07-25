@@ -1,6 +1,6 @@
 # PI-Desktop Baseline Freeze
 
-- Baseline Version: `0.4.2`
+- Baseline Version: `0.4.3`
 - Date: `2026-07-26`
 - Status: `Frozen for implementation details (provider + runtime safety + M5 hardening + settings IA)`
 - Language policy: **English-first**
@@ -13,6 +13,8 @@
 > log channels, window state). `0.4.1` freezes the compact four-destination
 > settings directory from D090 / ADR 0013. `0.4.2` replaces the frozen 720px
 > settings content cap with the window-responsive D092 / ADR 0015 layout.
+> `0.4.3` removes composer workspace context chrome through D093 / ADR 0017
+> while preserving workspace selection, session binding, and tool scoping.
 
 ## Frozen Decisions
 
@@ -57,6 +59,7 @@
 39. Tool result limits: **256KB / 4000 lines with truncation markers**
 40. Settings directory: **General / Configuration / Import sessions / About**;
     plugin management remains the app shell's independent **Plugins** destination
+41. Composer workspace context: **no project / Local / branch rail**
 
 ## Source of Truth
 

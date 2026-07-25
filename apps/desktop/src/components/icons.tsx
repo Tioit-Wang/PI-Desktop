@@ -23,7 +23,6 @@ import {
   FileText,
   Folder,
   Globe2,
-  GitBranch,
   GitPullRequestArrow,
   Hammer,
   Image,
@@ -31,7 +30,6 @@ import {
   Keyboard,
   Link,
   Mic,
-  Monitor,
   Palette,
   PanelLeft,
   PanelRight,
@@ -82,7 +80,6 @@ export const IconGlobe = icon(Globe2);
 export const IconTerminal = icon(Terminal);
 export const IconPencil = icon(PencilLine);
 export const IconWrench = icon(Wrench);
-export const IconGitBranch = icon(GitBranch);
 export const IconPullRequest = icon(GitPullRequestArrow);
 export const IconClock = icon(Clock);
 export const IconAt = icon(AtSign);
@@ -94,7 +91,6 @@ export const IconArrowUp = icon(ArrowUp);
 export const IconArrowDown = icon(ArrowDown);
 export const IconCopy = icon(Copy);
 export const IconCheck = icon(Check);
-export const IconComputer = icon(Monitor);
 export const IconShield = icon(Shield);
 export const IconChevronDown = icon(ChevronDown);
 export const IconClose = icon(X);

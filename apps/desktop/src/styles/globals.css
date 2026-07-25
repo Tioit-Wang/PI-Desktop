@@ -879,39 +879,6 @@ textarea:disabled {
   gap: 0;
 }
 
-.composer-chips {
-  position: relative;
-  z-index: 1;
-  display: inline-flex;
-  flex-wrap: nowrap;
-  gap: 0;
-  align-items: center;
-  align-self: flex-start;
-  width: auto;
-  max-width: calc(100% - 24px);
-  margin-inline-start: 12px;
-  margin-bottom: -1px;
-  overflow: hidden;
-  border-radius: var(--radius-md-plus) var(--radius-md-plus) 0 0;
-  background: var(--ds-bg-composer);
-  box-shadow:
-    -0.5px 0 var(--ds-border-default),
-    0.5px 0 var(--ds-border-default),
-    0 -0.5px var(--ds-border-default);
-  padding: 3px 6px;
-  backdrop-filter: none;
-  min-height: 32px;
-  max-height: 34px;
-}
-
-.chip-sep {
-  width: 1px;
-  height: 14px;
-  margin: 0 1px;
-  background: var(--ds-border-strong);
-  flex: 0 0 auto;
-}
-
 .composer-shell {
   width: 100%;
   border-radius: var(--ds-composer-radius, var(--radius-2xl));
@@ -927,28 +894,6 @@ textarea:disabled {
   gap: 10px;
   align-items: center;
   padding: 10px 14px 0;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 220px;
-  border-radius: var(--radius-full);
-  padding: 4px 9px;
-  color: var(--ds-text-secondary);
-  font-size: var(--text-sm);
-  white-space: nowrap;
-}
-
-.chip:hover {
-  background: var(--ds-bg-hover);
-  color: var(--ds-text-primary);
-}
-
-.chip-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .composer-input-wrap {
@@ -2264,16 +2209,6 @@ textarea:disabled {
 
 
 /* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
-:root[data-theme="light"] .composer-chips {
-  /* Attached context rail shares the composer surface and elevation. */
-  background: var(--ds-bg-composer);
-  box-shadow:
-    -0.5px 0 color-mix(in oklab, #1a1c1f 14%, transparent),
-    0.5px 0 color-mix(in oklab, #1a1c1f 14%, transparent),
-    0 -0.5px color-mix(in oklab, #1a1c1f 14%, transparent);
-  color: #1a1c1f;
-}
-
 :root[data-theme="light"] .composer-shell {
   /* WorkBuddy-style restraint: one solid plate, no decorative gradient. */
   background: var(--ds-bg-composer);
@@ -2281,19 +2216,6 @@ textarea:disabled {
   box-shadow: var(--ds-shadow-composer);
   outline: none;
   border: 0;
-}
-
-.composer-dock-home .composer-chips .chip {
-  padding: 4px 9px;
-  font-size: var(--text-sm-plus);
-  gap: 6px;
-}
-
-.composer-dock-home .composer-chips {
-  border-radius: var(--radius-md-plus) var(--radius-md-plus) 0 0;
-  padding: 3px 6px;
-  min-height: 32px;
-  max-height: 34px;
 }
 
 .composer-dock-home .composer-shell {
@@ -2328,12 +2250,6 @@ textarea:disabled {
   padding: 6px 14px 10px;
 }
 
-:root[data-theme="light"] .composer-chips .chip,
-:root[data-theme="light"] .composer-chips .chip-label {
-  color: #1a1c1f;
-  opacity: 0.82;
-}
-
 :root[data-theme="light"] .composer-toolbar .icon-btn,
 :root[data-theme="light"] .mode-chip,
 :root[data-theme="light"] .model-chip {
@@ -2351,10 +2267,6 @@ textarea:disabled {
   /* Gold infinity ink is near primary (#1a1c1f) */
   color: #1a1c1f;
   opacity: 0.88;
-}
-
-:root[data-theme="light"] .chip-sep {
-  background: color-mix(in oklab, #1a1c1f 14%, transparent);
 }
 
 :root[data-theme="light"] .new-task-btn,
@@ -2534,16 +2446,6 @@ textarea:disabled {
 
 
 /* DARK_COMPOSER_BOX — Codex elevated-primary + elevation-prominent */
-:root[data-theme="dark"] .composer-chips {
-  background: var(--ds-bg-elevated-primary);
-  background-color: #212121f5;
-  box-shadow:
-    -0.5px 0 color-mix(in oklab, var(--gray-0) 10%, transparent),
-    0.5px 0 color-mix(in oklab, var(--gray-0) 10%, transparent),
-    0 -0.5px color-mix(in oklab, var(--gray-0) 10%, transparent);
-  backdrop-filter: none;
-}
-
 :root[data-theme="dark"] .composer-shell {
   /* Codex elevated-primary: #212121f5 / gray-800 96% (not flat solid) */
   background: var(--ds-bg-elevated-primary);
@@ -2551,19 +2453,6 @@ textarea:disabled {
   box-shadow: var(--ds-shadow-composer);
   border: 0;
   outline: 0;
-}
-
-:root[data-theme="dark"] .composer-dock-home .composer-chips .chip {
-  padding: 4px 9px;
-  font-size: var(--text-sm-plus);
-  gap: 6px;
-}
-
-.composer-dock-home .composer-chips {
-  border-radius: var(--radius-md-plus) var(--radius-md-plus) 0 0;
-  padding: 3px 6px;
-  min-height: 32px;
-  max-height: 34px;
 }
 
 :root[data-theme="dark"] .composer-dock-home .composer-shell {

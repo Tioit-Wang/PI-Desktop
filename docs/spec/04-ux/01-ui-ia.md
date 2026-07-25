@@ -56,7 +56,7 @@ Codex index table (search, name/sources/updated columns, expand, actions;
 D066). The durable D086 `projects` table is the index source of truth, so
 imported sessions with project paths immediately materialize corresponding
 project rows without switching the current workspace. Opening/switching a
-project rebinds the workspace for tools and chips.
+project rebinds the workspace for tools and future project-scoped sessions.
 
 ### 3.3 Pull requests
 Segmented Open/Draft/All filters with counts; rows carry icon plate, number,
@@ -116,8 +116,8 @@ independent Plugins destination described in §3.5.
 
 - No provider configured → blocking guidance toward Settings before first run
   (`MODEL_NOT_CONFIGURED`).
-- No workspace → home hero without project underline; composer chips hidden
-  on empty home (D056); Pull requests shows workspace-required empty state.
+- No workspace → home hero without project underline; Pull requests shows a
+  workspace-required empty state.
 - Backend degraded → status capsule (restarting) or fatal banner with Open
   logs (D080); composer submits are rejected with readable errors while down.
 

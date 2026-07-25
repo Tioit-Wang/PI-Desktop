@@ -1,6 +1,6 @@
 # Decisions Log
 
-> Baseline delta: `0.3.0` → `0.4.2`
+> Baseline delta: `0.3.0` → `0.4.3`
 > Date: `2026-07-26`
 > Status: Accepted for implementation
 
@@ -127,7 +127,13 @@ Gold source: local Codex electron captures; latest row wins where rows conflict.
 | D091 | Composer runtime configuration | **Mode and provider/model controls update the active session and are read from that session by the pi prompt path; controls without an end-to-end runtime implementation are not rendered.** | Prevent decorative effort/attachment controls and keep every visible composer action operational |
 | D092 | Responsive settings content | **The settings content fills the width available after the fixed 275px rail and pane gutters, resizing through CSS flex layout with the native window. This supersedes only D070's fixed 720px content band and the corresponding visual-metric retention in D090.** | Use wide desktop windows efficiently without adding renderer resize state or changing the compact settings directory |
 
-## G. Still deferred
+## G. Baseline 0.4.3 product decisions
+
+| ID | Topic | Decision | Rationale |
+|---|---|---|---|
+| D093 | Composer workspace context | **The composer renders no project / Local / branch rail in either home or thread-docked mode. Project switching remains available through the home hero, sidebar, and Projects destination; branch metadata remains on Projects. This supersedes the workspace-chip and context-rail portions of D052, D055, D056, D066, D067, and D087.** | The rail duplicated existing project navigation, its Local and branch labels were passive, and the branch fallback could present `main` when detection failed |
+
+## H. Still deferred
 
 1. Exact marketplace domain / provider IDs
 2. Private marketplace auth mechanism
@@ -138,7 +144,7 @@ Gold source: local Codex electron captures; latest row wins where rows conflict.
 The full open list lives in [open-questions.md](open-questions.md); this
 section mirrors only marketplace/catalog items still blocking nothing.
 
-## G. Decision rules going forward
+## I. Decision rules going forward
 
 - Architecture-boundary changes require a new ADR
 - Implementation defaults can be updated in this log + related specs
