@@ -68,9 +68,10 @@ This log freezes previously open questions into concrete decisions.
 | D045 | Home empty stack | **Empty chat keeps composer in home flow (not absolute bottom-only dock); refined by D047 split grow** | Initial fix for large empty gap; D047 corrects dual-grow vertical model |
 | D046 | Composer placeholder | **Empty draft uses Codex placeholder (EN/zh-CN) instead of blank** | Empty white plate read as broken without ink; match Codex `composer.placeholder.newTask.doAnything` |
 | D047 | Home split grow | **Empty home uses upper/lower grow regions (hero items-end + composer justify-end), not a single optical-center stack; dark box uses Codex elevation-prominent** | Match electron `home-main-content` dual grow + identical elevation-prominent dark/light |
-| D048 | Sidebar tasks label | **Recents section uses Codex `Tasks` / `任务` (`sidebarElectron.recentChats`)** | Match electron sidebar section heading, not “Recent tasks” |
+| D048 | Sidebar recents label | **Recents section uses live Codex gold label EN `Recents` / zh-CN `最近` (not asar-only `Tasks`/`任务`)** | Visual gold + live coding shell section heading between plugins and thread list |
 | D049 | Home suggestion cards | **Empty home portals 4 Codex ambient cards under hero (`top-full mt-8`, auto-fit row); lower flex hosts composer only; click prefills starter prompt** | Match electron portal + dual-grow so hero Y and 4-up cards stay visible |
 | D050 | Empty composer plate height | **Home empty composer min-height ~112px (compact); model chip shows model id (effort stays in menu)** | Match Codex empty plate density; model chip chrome closer to electron model picker trigger |
+| D051 | Sidebar nav density | **Nav rows ~32px pitch, recents rows ~28–31px, section label `最近`/`Recents`** | Close light-home sidebar residual vs cx-home-clean |
 
 ## C. Still deferred (not blocking M1)
 

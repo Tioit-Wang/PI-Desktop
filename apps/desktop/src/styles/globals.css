@@ -874,9 +874,9 @@ textarea:disabled {
   width: 100%;
   align-items: center;
   gap: 10px;
-  border-radius: 10px;
-  padding: 7px 8px;
-  min-height: 34px; /* Codex nav row pitch */
+  border-radius: 8px;
+  padding: 6px 8px;
+  min-height: 32px; /* Codex nav ~31-32px pitch */
   color: var(--ds-text-secondary);
   font-size: 13px;
   text-align: left;
@@ -898,10 +898,10 @@ textarea:disabled {
   width: 100%;
   align-items: center;
   gap: 8px;
-  border-radius: 10px;
+  border-radius: 8px;
   background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
-  padding: 6px 8px;
-  min-height: 32px;
+  padding: 5px 8px;
+  min-height: 30px;
   color: var(--ds-text-primary);
   font-size: 13px;
   font-weight: 500;
@@ -917,8 +917,8 @@ textarea:disabled {
   width: 100%;
   overflow: hidden;
   border-radius: 8px;
-  padding: 6px 8px;
-  min-height: 30px; /* Codex recents row pitch ~31px */
+  padding: 5px 8px;
+  min-height: 28px; /* Codex recents row pitch ~31px optical with gap-px */
   color: var(--ds-text-secondary);
   font-size: 13px;
   line-height: 18px;
@@ -945,11 +945,12 @@ textarea:disabled {
 }
 
 .section-label {
-  /* Codex: h3.px-2.py-1.text-xs.font-medium.text-token-text-tertiary */
+  /* Live Codex gold: "最近" / muted xs between plugins and threads */
   padding: 4px 8px;
-  margin-top: 8px;
+  margin-top: 10px;
+  margin-bottom: 2px;
   color: var(--ds-text-muted);
-  font-size: 11px; /* text-xs */
+  font-size: 12px; /* text-xs ~12 in electron */
   font-weight: 500;
   letter-spacing: 0;
   line-height: 1.3;
