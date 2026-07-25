@@ -17,6 +17,14 @@ import {
 
 type Effort = "low" | "mid" | "high" | "max";
 
+const COMPOSER_MIN_HEIGHT_PX = 28;
+const COMPOSER_MAX_VISIBLE_ROWS = 7;
+
+function cssPixels(value: string) {
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
 function projectName(path?: string | null, name?: string | null, fallback = "") {
   if (name) return name;
   if (!path) return fallback;
@@ -74,11 +82,25 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    // Measure scrollHeight from a clean auto height. Never collapse empty
-    // draft to 0 — that hides placeholder/infinity optical row (Codex ~28px).
+    // Measure wrapped visual lines, not newline characters. The draft starts
+    // at one optical row, grows through seven rows, then scrolls internally.
     el.style.height = "auto";
-    const next = Math.max(28, Math.min(el.scrollHeight, 180));
+    const style = window.getComputedStyle(el);
+    const lineHeight = cssPixels(style.lineHeight) || COMPOSER_MIN_HEIGHT_PX;
+    const verticalChrome =
+      cssPixels(style.paddingTop) +
+      cssPixels(style.paddingBottom) +
+      cssPixels(style.borderTopWidth) +
+      cssPixels(style.borderBottomWidth);
+    const maxHeight = Math.ceil(
+      lineHeight * COMPOSER_MAX_VISIBLE_ROWS + verticalChrome,
+    );
+    const next = Math.max(
+      COMPOSER_MIN_HEIGHT_PX,
+      Math.min(el.scrollHeight, maxHeight),
+    );
     el.style.height = `${next}px`;
+    el.style.overflowY = el.scrollHeight > maxHeight ? "auto" : "hidden";
   }, [value]);
 
   useEffect(() => {

@@ -537,7 +537,7 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 +----------------------------------------------+
 | [model: provider/model · mode badge]         |
 | ───────────────────────────                  |
-| textarea (auto-growing, min 1 line)          |
+| textarea (auto-growing, 1 line → max 7)      |
 | placeholder: "Ask Codex to do anything"      |
 | (D046; zh-CN 向 Codex 下达任意指令; home     |
 |  variant "Ask anything" when project open,   |
@@ -549,7 +549,8 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 
 ### 11.3 Layout
 
-- Height: min 80px, max 320px (auto-grow with content)
+- Height: compact one-line shell by default; textarea auto-grows through seven
+  visible lines, then the textarea scrolls internally
 - Workspace context rail: attached to the shell's upper-left edge with zero
   visible gap; project / Local / branch retain internal separators but share
   the shell surface and its single elevation
@@ -578,7 +579,9 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 - Shift+Enter: newline in textarea
 - Escape: when textarea focused, clears input or blurs (not abort)
 - Abort: stops running turn and cancels pending permission
-- Auto-grow: textarea expands with content up to max height, then scrolls internally
+- Auto-grow: textarea measures wrapped visual lines, starts at one visible
+  line, expands through seven lines, then scrolls internally; deleting content
+  shrinks it back to one line
 
 ### 11.6 Accessibility
 
@@ -847,11 +850,14 @@ dismissToast(id: number); // ToastHost internal / tests
 
 1. All components use semantic color tokens from [07-ui-design-system.md](07-ui-design-system.md) — no raw hex
 2. All interactive elements have visible focus rings (2px accent, offset 2px)
-3. Layout shell metrics (46px titlebar row, ~275/48 sidebar, 280 context, 80–320 composer) match spec (D034/D070)
+3. Layout shell metrics (46px titlebar row, ~275/48 sidebar, 280 context,
+   compact composer with 1–7-line draft growth) match spec
 4. Chat messages constrained to 720px max width
 5. ToolCallCard shows status, args preview, result preview, duration per [01-ui-ia.md](01-ui-ia.md) §5
 6. PermissionCard shows tool name, risk, args, countdown, and three action buttons per [03-permission-ux.md](03-permission-ux.md)
-7. Composer: Enter sends, Shift+Enter newline, disabled during running/pending, abort button visible during run
+7. Composer: Enter sends, Shift+Enter newline, draft grows from one through
+   seven visible lines then scrolls, disabled during running/pending, abort
+   button visible during run
 8. ModelSelector shows provider/model pair; disabled during stream; links to settings when unconfigured
 9. Command palette opens at z-index 60, traps focus, supports keyboard navigation
 10. Empty states always provide an actionable next step, not just a message

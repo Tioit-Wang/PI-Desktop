@@ -373,12 +373,16 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Card actions prefill composer with Codex starter prompts (Explore / Build / Review / Fix)
 - Composer is **not** absolute-docked on empty home; thread mode keeps the bottom dock + fade veil
 - Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
-- Empty-home composer plate targets gold draft→toolbar spacing (**~144–148px** min-height at 1200×690) so draft ink lands near y556; not a collapsed hole
+- Empty-home composer height is content-driven: a one-line draft renders the
+  compact shell, grows with the draft through seven visible rows, and then
+  keeps the shell stable while the textarea scrolls internally
 - Home dual-grow content width is **`min(100%, 768px)`** (true max-w-3xl at 16px), not `48rem` under the 14px root — prevents ~120px-narrow plate vs Codex gold
 - Light **New task** control is a **ghost row** (transparent fill, hover wash only), not a solid chip
 - Empty hero title uses `var(--ds-text-primary)` (light override `#1a1c1f`); never hardcode light ink for shared hero styles
 - Night home composer plate styles are **dark-scoped only** (elevated-primary `#212121f5` + standard elevation-prominent)
-- Empty draft row keeps **min textarea height 28px** (auto-resize must not collapse to 0) so placeholder remains visible
+- Empty draft row keeps **one visible line / 28px optical minimum** so the
+  placeholder remains visible; it auto-grows to seven visual lines and
+  scrolls internally from line eight onward
 - Left **∞** thread mark beside empty draft; light mark near primary dark ink; light placeholder ~`#525355`
 - Disabled send is a **solid gray chip** (`#8e8e90` light, white arrow), not opacity-only fade
 - Floating composer plates use one solid semantic surface with no internal
@@ -433,8 +437,8 @@ Codex parity decisions (D034/D070) supersede any older value here.
 | Sidebar width (expanded) | ~275px | Codex sidebar width (D034/D070) |
 | Context panel width (collapsed) | 0px | Hidden by default |
 | Context panel width (expanded) | 280px | Project/status panel |
-| Composer min height | 80px | Single-line + padding |
-| Composer max height | 320px | ~10 lines before scroll |
+| Composer shell minimum | ~80px | One-line draft + toolbar padding |
+| Composer draft height | 1–7 text lines | Auto-grow; internal scroll beyond line 7 |
 | Chat message max width | 720px | Prevent eye-span over-stretch |
 | Window min width | 800px | Below this, hide context panel |
 | Window min height | 600px | Below this, compress sidebar |

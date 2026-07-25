@@ -686,7 +686,8 @@ This test plan spec is accepted when:
 - Activating a card prefills the composer with the matching starter prompt and focuses the input.
 
 ### US-UI-35 Empty composer plate density
-- Empty-home floating composer plate uses gold draft→toolbar spacing (~148px min height at 1200×690); draft densest ink near y556 (±8).
+- Empty-home composer is compact and content-driven with an empty or one-line
+  draft; it does not reserve the former fixed ~148px empty plate.
 
 ### US-UI-36 Hero Y + night box elevation
 - At ~1200×690 light home, hero first dark ink is near y≈300 (±12px) vs Codex gold.
@@ -716,8 +717,9 @@ This test plan spec is accepted when:
 
 ### US-UI-43 Empty home plate Y + night elevated-primary
 - Open empty home at ~1200×690 light theme.
-- Composer plate top edge ≈y537, draft ≈y552, and plate min-height ~140px;
-  the surface is uniformly solid with no decorative wash.
+- Composer plate is bottom-aligned and content-driven: an empty or one-line
+  draft uses the compact shell rather than a fixed ~140px minimum; the surface
+  remains uniformly solid with no decorative wash.
 - Switch dark theme: night plate is elevated-primary (`#212121f5` / gray-800
   96%) with the same restrained elevation and no internal gradient.
 
@@ -792,4 +794,14 @@ This test plan spec is accepted when:
 - Success/info auto-dismiss ~4s, error lingers ~8s; hovering a card pauses its countdown; X removes it immediately.
 - Repeating the same action restarts the existing toast instead of stacking a duplicate; stack never exceeds 4.
 - Capture rig scenes `pi-toasts-light` / `pi-toasts-dark` show the stack in both themes.
+
+### US-UI-55 Composer textarea growth (D089)
+- In both home and thread-docked composers, an empty or single-line draft
+  displays one visible text line.
+- Enter or paste two through seven visual lines; the textarea grows with the
+  wrapped content without manual resizing.
+- Add an eighth visual line; the textarea stays at seven visible lines and
+  scrolls internally instead of growing the composer further.
+- Delete back to one line or submit the draft; the textarea contracts to its
+  one-line default.
 

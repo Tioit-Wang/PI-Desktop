@@ -886,7 +886,8 @@ textarea:disabled {
 .composer-input {
   width: 100%;
   min-height: 28px;
-  max-height: 180px;
+  max-height: 7lh;
+  overflow-y: hidden;
   resize: none;
   border: 0;
   outline: none;
@@ -1796,20 +1797,14 @@ textarea:disabled {
 
 .composer-dock-home .composer-shell {
   display: flex;
-  /*
-    Gold empty plate top ~y538 / draft ~y551 / foot ~y672 (+ shadow y674).
-    Bottom-aligned min-height grows upward; 140px matches gold plate height.
-  */
-  min-height: 140px;
   flex-direction: column;
 }
 
 .composer-dock-home .composer-input-wrap {
-  flex: 1 1 auto;
-  min-height: 76px;
+  flex: 0 0 auto;
+  min-height: 44px;
   align-items: flex-start;
-  /* Gold: plate top ~y538, draft ink ~y551 → ~13px inset */
-  padding: 13px 14px 0 14px;
+  padding: 10px 14px 0;
   gap: 8px;
 }
 
