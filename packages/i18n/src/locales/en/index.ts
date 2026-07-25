@@ -8,8 +8,6 @@ export const en = {
   nav: {
     newTask: "New task",
     projects: "Projects",
-    pullRequests: "Pull requests",
-    scheduled: "Scheduled",
     plugins: "Plugins",
     recents: "Recents",
     settings: "Settings",

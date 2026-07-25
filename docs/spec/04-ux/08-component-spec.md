@@ -109,6 +109,8 @@ Global controls bar: project identity, model selection, mode indicator, abort bu
 ### 3.1 Purpose
 
 Session navigation and management. Toggle between expanded (session list) and collapsed (icon rail).
+The home destination controls expose Projects and Plugins only; Pull requests
+and Scheduled are not rendered in the sidebar.
 
 ### 3.2 Anatomy
 

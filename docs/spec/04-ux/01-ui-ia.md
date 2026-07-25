@@ -18,9 +18,7 @@ destination, chat as the home surface, tools and permissions inline.
 +------------------+-------------------------------------------+
 | Sidebar (~275px) | Main pane (active destination)            |
 |  New task        |  chat home / transcript                   |
-|  Projects        |  or Projects / Pull requests /            |
-|  Pull requests   |     Scheduled / Plugins page              |
-|  Scheduled       |                                           |
+|  Projects        |  or Projects / Plugins page               |
 |  Plugins         |  [Context panel overlays on toggle]       |
 |  Recents (pins)  |                                           |
 |  Footer: Custom  |  Floating composer (chat destination)     |
@@ -28,9 +26,10 @@ destination, chat as the home surface, tools and permissions inline.
 ```
 
 - **Sidebar**: primary navigation — New task, destination entries
-  (Projects / Pull requests / Scheduled / Plugins), Recents thread list
-  (with pin + open-in-panel row actions, D068), profile footer (Custom →
-  Settings / Logs / Theme, D041). Collapsible to an icon rail (Cmd/Ctrl+B).
+  (Projects / Plugins), Recents thread list (with pin + open-in-panel row
+  actions, D068), and the profile footer (Custom → Settings / Logs / Theme,
+  D041). Pull requests and Scheduled are intentionally omitted from the home
+  sidebar. Collapsible to an icon rail (Cmd/Ctrl+B).
 - **Main pane**: exactly one destination at a time; destinations replace the
   pane (they are pages, not modals).
 - **Titlebar**: hiddenInset traffic lights; back/forward controls traverse

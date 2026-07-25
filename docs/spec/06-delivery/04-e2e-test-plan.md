@@ -546,17 +546,19 @@ This test plan spec is accepted when:
 - Expect centered hero copy: "What should we build" with optional project name underline when a workspace is open.
 
 ### US-UI-03 Sidebar destinations
-- Click Projects, Pull requests, Scheduled, and Plugins in the left sidebar.
+- Expect the expanded home sidebar to show Projects and Plugins, without Pull
+  requests or Scheduled entries.
+- Click Projects and Plugins in the left sidebar.
 - Expect each destination to replace the main pane with a dedicated page (not only a toast).
 - From Projects, open/switch/close a local folder workspace.
-- From Pull requests with an active workspace, "Review with agent" creates a chat turn.
 
 ### US-UI-04 Composer context chips
 - With a git workspace open, composer shows project name, Local, and detected branch.
 - Permission toggle switches between Agent and Request approval (chat mode).
 
 ### US-UI-05 Locale chrome
-- On a zh-CN system locale, sidebar labels render in Chinese (新建任务 / 项目 / 拉取请求 / 已安排 / 插件 / 最近任务).
+- On a zh-CN system locale, sidebar labels render in Chinese (新建任务 / 项目 /
+  插件 / 最近任务), without 拉取请求 or 已安排 entries.
 - Empty-thread hero remains English Codex copy: "What should we build?".
 - Composer shows 本地, 请求批准 (chat mode), and 自定义 + effort on the right.
 
@@ -595,7 +597,9 @@ This test plan spec is accepted when:
 ### US-UI-13 Light theme shell parity
 - Set theme to system/light on a light macOS appearance.
 - Expect sidebar `#f3f3f3`, main `#ffffff`, text `#1a1c1f`, white floating composer, and home hero with project underline.
-- Sidebar nav labels (New task / Projects / Pull requests / Scheduled / Plugins / Recent tasks), thread titles, and composer chips must remain readable dark-on-light (≥4.5:1). Never white/translucent text on the light sidebar.
+- Sidebar nav labels (New task / Projects / Plugins / Recent tasks), thread
+  titles, and composer chips must remain readable dark-on-light (≥4.5:1).
+  Never white/translucent text on the light sidebar.
 - Titlebar back/forward controls use dark ink on light chrome.
 
 ### US-UI-14 Semantic chrome tokens

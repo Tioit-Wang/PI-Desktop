@@ -11,8 +11,6 @@ export const zhCN = {
   nav: {
     newTask: "新建任务",
     projects: "项目",
-    pullRequests: "拉取请求",
-    scheduled: "已安排",
     plugins: "插件",
     recents: "最近",
     settings: "设置",

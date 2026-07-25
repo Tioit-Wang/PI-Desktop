@@ -5,7 +5,6 @@ import {
   IconAt,
   IconChevronLeft,
   IconChevronRight,
-  IconClock,
   IconCompose,
   IconFolder,
   IconCloudDown,
@@ -13,7 +12,6 @@ import {
   IconGear,
   IconPanel,
   IconPin,
-  IconPullRequest,
   IconSearch,
   IconSettings,
   IconSliders,
@@ -215,22 +213,6 @@ export function Sidebar({
           >
             <IconFolder size={15} />
             <span>{t("nav.projects")}</span>
-          </button>
-          <button
-            className={`nav-item ${page === "pulls" ? "active" : ""}`}
-            data-nav="pulls"
-            onClick={() => setPage("pulls")}
-          >
-            <IconPullRequest size={15} />
-            <span>{t("nav.pullRequests")}</span>
-          </button>
-          <button
-            className={`nav-item ${page === "scheduled" ? "active" : ""}`}
-            data-nav="scheduled"
-            onClick={() => setPage("scheduled")}
-          >
-            <IconClock size={15} />
-            <span>{t("nav.scheduled")}</span>
           </button>
           <button
             className={`nav-item ${page === "plugins" ? "active" : ""}`}
