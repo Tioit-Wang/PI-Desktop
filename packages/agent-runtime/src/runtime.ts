@@ -21,7 +21,7 @@ import type {
   UiMessage,
 } from "@pi-desktop/shared";
 import type { HostClient } from "./host-client.js";
-import { clampThinkingLevel } from "./model-capabilities.js";
+import { clampThinkingLevel } from "./thinking-level.js";
 
 export type RuntimeProviderConfig = {
   id: string;

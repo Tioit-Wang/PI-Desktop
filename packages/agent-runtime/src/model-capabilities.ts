@@ -1,6 +1,10 @@
 import type { ThinkingLevel } from "@pi-desktop/shared";
 import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
 import { builtinModels } from "@earendil-works/pi-ai/providers/all";
+export {
+  clampThinkingLevel,
+  type ThinkingCapabilitySet,
+} from "./thinking-level.js";
 
 export type ModelCapabilityInput = {
   vendorKey: string;
@@ -16,27 +20,12 @@ export type ModelCapabilities = {
 /** Public name used by the desktop main-process provider enrichment. */
 export type ThinkingCapabilities = ModelCapabilities;
 
-export type ThinkingCapabilitySet = {
-  supportsReasoning: boolean;
-  supportedThinkingLevels: readonly ThinkingLevel[];
-};
-
 const DEFAULT_REASONING_LEVELS: ThinkingLevel[] = [
   "off",
   "minimal",
   "low",
   "medium",
   "high",
-];
-
-const THINKING_LEVELS: ThinkingLevel[] = [
-  "off",
-  "minimal",
-  "low",
-  "medium",
-  "high",
-  "xhigh",
-  "max",
 ];
 
 let cachedBuiltinModels: ReturnType<typeof builtinModels> | undefined;
@@ -84,29 +73,4 @@ export function resolveThinkingCapabilities(
     supportsReasoning: false,
     supportedThinkingLevels: ["off"],
   };
-}
-
-/**
- * Apply pi-ai's nearest-supported-level rule at the desktop boundary.
- * Keeping this deterministic prevents UI, main, and sidecar from selecting
- * different effective levels when a provider exposes a sparse capability list.
- */
-export function clampThinkingLevel(
-  capabilities: ThinkingCapabilitySet,
-  requested: ThinkingLevel,
-): ThinkingLevel {
-  if (!capabilities.supportsReasoning) return "off";
-  const supported = new Set(capabilities.supportedThinkingLevels ?? ["off"]);
-  if (supported.has(requested)) return requested;
-
-  const requestedIndex = THINKING_LEVELS.indexOf(requested);
-  for (let index = requestedIndex; index < THINKING_LEVELS.length; index += 1) {
-    const candidate = THINKING_LEVELS[index];
-    if (supported.has(candidate)) return candidate;
-  }
-  for (let index = requestedIndex - 1; index >= 0; index -= 1) {
-    const candidate = THINKING_LEVELS[index];
-    if (supported.has(candidate)) return candidate;
-  }
-  return "off";
 }
