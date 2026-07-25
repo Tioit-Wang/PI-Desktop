@@ -329,12 +329,20 @@ export function IconExplore(props: IconProps) {
   return (
     <svg width={props.size ?? 16} height={props.size ?? 16} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M9.2 7.2 4.8 12l4.4 4.8M14.8 7.2 19.2 12l-4.4 4.8"
+        d="M8.2 6.8 3.6 12l4.6 5.2"
         stroke="currentColor"
-        strokeWidth="1.7"
+        strokeWidth="1.8"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+      <path
+        d="M15.8 6.8 20.4 12l-4.6 5.2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M13.2 6.5 10.8 17.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
@@ -386,11 +394,17 @@ export function IconFix(props: IconProps) {
   return (
     <svg width={props.size ?? 16} height={props.size ?? 16} viewBox="0 0 24 24" fill="none" aria-hidden>
       <path
-        d="M8.5 9.2c0-2 1.6-3.7 3.5-3.7s3.5 1.7 3.5 3.7v5.1c0 1.9-1.6 3.4-3.5 3.4s-3.5-1.5-3.5-3.4V9.2Z"
+        d="M9 10.2c0-1.8 1.3-3.2 3-3.2s3 1.4 3 3.2v5c0 1.7-1.3 3-3 3s-3-1.3-3-3v-5Z"
         stroke="currentColor"
-        strokeWidth="1.6"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
       />
-      <path d="M8.5 12h7M5.5 9.5l2.2 1.2M18.5 9.5l-2.2 1.2M5.5 14.5l2.2-1M18.5 14.5l-2.2-1M12 5.5V3.8M9.2 6.2 7.8 4.6M14.8 6.2l1.4-1.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M9 12.2h6M12 7V4.8M7.2 8.2 5.4 6.6M16.8 8.2l1.8-1.6M5.2 12.2h2.6M16.2 12.2h2.6M5.4 16.2l1.8-1.4M16.8 14.8l1.8 1.4M9.2 18.6 7.6 20M14.8 18.6 16.4 20"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

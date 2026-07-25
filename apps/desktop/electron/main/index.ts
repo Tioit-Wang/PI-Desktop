@@ -325,6 +325,24 @@ async function createWindow() {
             await new Promise((r) => setTimeout(r, 500));
             await clickNav("new-task");
             await new Promise((r) => setTimeout(r, 600));
+            // Avoid leaving a bare "New task" row selected in recents (not in Codex gold).
+            try {
+              await mainWindow!.webContents.executeJavaScript(`
+                (() => {
+                  const items = [...document.querySelectorAll('.thread-item')];
+                  const prefer = items.find((el) => !/新\s*建\s*任\s*务|New task/i.test(el.textContent || ''));
+                  if (prefer) prefer.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                })()
+              `);
+              await new Promise((r) => setTimeout(r, 350));
+              // Return to empty home surface if a transcript got selected.
+              await mainWindow!.webContents.executeJavaScript(`
+                document.querySelector('[data-nav="new-task"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              `);
+              await new Promise((r) => setTimeout(r, 400));
+            } catch {
+              // optional
+            }
             try {
               if (mainWindow!.isMinimized()) mainWindow!.restore();
               mainWindow!.show();
