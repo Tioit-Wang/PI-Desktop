@@ -190,31 +190,39 @@ function AppShell() {
           <>
             {!hasTranscript ? (
               <div className="home-main-content">
-                <div className="home-stack">
-                  <div className="empty-hero">
-                    <div className="empty-hero-icon" data-testid="home-icon" aria-hidden>
-                      <IconCodexHome size={56} />
+                <div className="home-upper">
+                  <div className="home-upper-inner">
+                    <div className="empty-hero">
+                      <div className="empty-hero-icon" data-testid="home-icon" aria-hidden>
+                        <IconCodexHome size={56} />
+                      </div>
+                      <h1>
+                        {heroProject ? (
+                          <>
+                            What should we build in{" "}
+                            <button
+                              type="button"
+                              className="project-underline"
+                              onClick={() => void openProject()}
+                              title={workspace?.path || t("project.open")}
+                            >
+                              {heroProject}
+                            </button>
+                            ?
+                          </>
+                        ) : (
+                          t("chat.emptyTitle")
+                        )}
+                      </h1>
                     </div>
-                    <h1>
-                      {heroProject ? (
-                        <>
-                          What should we build in{" "}
-                          <button
-                            type="button"
-                            className="project-underline"
-                            onClick={() => void openProject()}
-                            title={workspace?.path || t("project.open")}
-                          >
-                            {heroProject}
-                          </button>
-                          ?
-                        </>
-                      ) : (
-                        t("chat.emptyTitle")
-                      )}
-                    </h1>
                   </div>
-                  {showComposer && <Composer variant="home" />}
+                </div>
+                <div className="home-lower">
+                  {showComposer && (
+                    <div className="home-composer-wrap">
+                      <Composer variant="home" />
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

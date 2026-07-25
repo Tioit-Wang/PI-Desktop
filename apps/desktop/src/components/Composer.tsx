@@ -158,11 +158,6 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
 
         <div className="composer-shell">
           <div className="composer-input-wrap">
-            <div className="composer-thread-mark" aria-hidden>
-              <span className="infinity-mark" title="Thread">
-                ∞
-              </span>
-            </div>
             <textarea
               ref={ref}
               className="composer-input"

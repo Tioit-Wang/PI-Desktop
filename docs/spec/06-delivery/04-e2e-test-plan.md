@@ -601,8 +601,8 @@ This test plan spec is accepted when:
 - Force dark theme and open Projects, Pull requests, and Settings.
 - Expect black sidebar, main `#181818`, and destination cards/rows readable on elevated dark plates (not flat same-gray).
 
-### US-UI-28 Home centered composer stack
-- On empty chat home (light + dark), expect hero icon/title and composer to share one vertically centered stack (not a large empty gap with bottom-only dock).
+### US-UI-28 Home empty composer association
+- On empty chat home (light + dark), expect hero in the upper grow region and composer in the lower grow region (Codex dual-grow), not a large empty gap with a wrongly absolute-docked box.
 - Workspace chips remain directly associated with the composer plate.
 - Starting a transcript restores the bottom-docked composer with fade veil.
 
@@ -614,6 +614,12 @@ This test plan spec is accepted when:
 - Empty composer shows Codex placeholder copy: EN `Ask Codex to do anything`, zh-CN `向 Codex 下达任意指令`.
 - Placeholder ink is legible on light and dark floating plates.
 
-### US-UI-31 Home stack optical center
-- Empty home stack is vertically centered with a slight optical lift; chips sit immediately above the composer shell (not bottom-docked).
+### US-UI-31 Home split-grow vertical layout
+- Given empty chat home, when the window is ~1200×690, the hero sits in the upper grow region and the composer plate in the lower grow region (composer lower half), matching Codex dual-grow home — not a single mid-stack blob.
+
+### US-UI-32 Dark floating box elevation
+- Given dark theme empty home, when the composer shell is painted, it uses elevated-primary `#212121` on `#181818` with elevation-prominent stroke+lift identical to light (no heavier custom dark shadow).
+
+### US-UI-31b (superseded)
+- Superseded by US-UI-31 split-grow layout.
 

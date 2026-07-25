@@ -21,7 +21,7 @@ export const zhCN = {
     profileTheme: "主题",
     openProfileMenu: "打开个人菜单",
     search: "搜索",
-    noRecentTasks: "没有最近任务",
+    noRecentTasks: "暂无任务",
     newChat: "新对话",
     sessions: "会话",
     commandPalette: "命令面板",

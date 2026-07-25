@@ -18,7 +18,7 @@ export const en = {
     profileTheme: "Theme",
     openProfileMenu: "Open profile menu",
     search: "Search",
-    noRecentTasks: "No recent tasks",
+    noRecentTasks: "No tasks",
     newChat: "New chat",
     sessions: "Sessions",
     commandPalette: "Command palette",

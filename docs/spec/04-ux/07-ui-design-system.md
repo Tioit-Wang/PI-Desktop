@@ -338,13 +338,15 @@ All motion tokens must respect `prefers-reduced-motion: reduce`:
 
 Empty composer placeholder: EN `Ask Codex to do anything` / zh-CN `向 Codex 下达任意指令`.
 
-Empty chat home uses a **centered column** (`home-main-content` / `home-stack`) matching Codex `home-main-content`:
+Empty chat home matches Codex electron **split grow** layout inside `home-main-content`:
 
-- `flex: 1; align-items: center; justify-content: center`
-- Stack order: hero (icon + `heading-xl`) → combined workspace chips → floating composer shell
-- Composer is **not** bottom-docked on empty home; thread mode keeps the bottom dock + fade veil
+- Column `flex: 1; min-height: 0; overflow: hidden` (not a single optical-center stack)
+- **Upper grow** (`.home-upper`): `flex: 1 1 0; align-items: flex-end; justify-content: center; padding-bottom: 96px` holds hero (icon + `heading-xl`)
+- **Lower grow** (`.home-lower`): `flex: 1 1 0; justify-content: flex-end` holds workspace chips + floating composer
+- Composer is **not** absolute-docked on empty home; thread mode keeps the bottom dock + fade veil
 - Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
-- Light plates: white shell + elevation-prominent stroke/shadow so the box reads on `#ffffff`
+- Floating plates use Codex `--elevation-prominent`: stroke `0 0 0 0.5px` + `0 3px 7.5px #0000000a` + `0 0 20px #0000000d` in **both** themes (dark does not invent a heavier box shadow)
+- Dark elevated shell reads as solid `#212121` on `#181818` (Codex elevated-primary)
 
 ## 8.1 Composer workspace chips (Codex parity)
 
@@ -575,7 +577,7 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 
 - Main surface: `#181818` (`gray-900`)
 - Sidebar / surface-under: `#000000`
-- Floating composer plate: solid `#212121` (`gray-800`) with elevation-prominent stroke + soft lift (dark uses slightly stronger shadow than light so the box reads)
+- Floating composer plate: solid `#212121` (`gray-800` / elevated-primary) with **the same** elevation-prominent stroke + soft lift as light (`#0000000a` / `#0000000d`)
 - Combined workspace chips: elevated translucent plate over main, not flat main gray
 - Stage Manager: host re-asserts min bounds while collapsed (permanent watchdog)
 

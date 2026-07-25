@@ -65,8 +65,9 @@ This log freezes previously open questions into concrete decisions.
 | D042 | Projects page | **Projects is a card grid of recent/active local workspaces with pin + glyph color (localStorage recents)** | Match Codex Projects destination density without cloud project backend |
 | D043 | Settings shell | **Settings uses left nav rail on sidebar surface + content pane (General/Providers/Plugins/About)** | Closer to Codex settings IA than a top-only tab strip |
 | D044 | Destination list chrome | **PRs/Scheduled/Plugins use shared dest-row list + filter chips; light cards white elevated** | Match Codex destination density without full cloud backends |
-| D045 | Home empty stack | **Empty chat centers hero + chips + composer as one column; thread mode keeps bottom dock** | Match Codex `home-main-content` justify-center stack; fixes large empty gap / bottom-only box |
+| D045 | Home empty stack | **Empty chat keeps composer in home flow (not absolute bottom-only dock); refined by D047 split grow** | Initial fix for large empty gap; D047 corrects dual-grow vertical model |
 | D046 | Composer placeholder | **Empty draft uses Codex placeholder (EN/zh-CN) instead of blank** | Empty white plate read as broken without ink; match Codex `composer.placeholder.newTask.doAnything` |
+| D047 | Home split grow | **Empty home uses upper/lower grow regions (hero items-end + composer justify-end), not a single optical-center stack; dark box uses Codex elevation-prominent** | Match electron `home-main-content` dual grow + identical elevation-prominent dark/light |
 
 ## C. Still deferred (not blocking M1)
 
