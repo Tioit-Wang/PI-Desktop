@@ -40,6 +40,11 @@ export const en = {
     send: "Send",
     abort: "Stop",
     running: "Working…",
+    copy: "Copy",
+    copied: "Copied",
+    scrollToBottom: "Scroll to latest",
+    toolFailed: "Failed",
+    toolDenied: "Denied",
     noModel: "Configure a model in Settings before chatting.",
     local: "Local",
     branch: "Branch",
@@ -253,6 +258,10 @@ export const en = {
     degraded: "Degraded",
     hostOk: "Host connected",
     hostDown: "Host unavailable",
+    restarting: "Reconnecting to local backend…",
+    restored: "Backend reconnected",
+    fatal: "Local backend unavailable",
+    openLogs: "Open logs",
   },
   home: {
     suggestions: {

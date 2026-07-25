@@ -70,6 +70,9 @@ function AppShell() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
+  const [backendDown, setBackendDown] = useState<
+    { fatal: boolean; component?: string } | null
+  >(null);
 
   useEffect(() => {
     const theme = settings?.theme ?? "system";
@@ -99,6 +102,20 @@ function AppShell() {
       setToast(message);
       window.setTimeout(() => setToast(null), 2500);
     });
+    const offHostStatus = api.onHostStatus((status) => {
+      if (status.ok) {
+        setBackendDown(null);
+        if (status.restarted) {
+          setToast(t("status.restored"));
+          window.setTimeout(() => setToast(null), 2500);
+        }
+      } else {
+        setBackendDown({
+          fatal: status.fatal === true,
+          component: status.component,
+        });
+      }
+    });
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -117,9 +134,10 @@ function AppShell() {
     return () => {
       offEvent();
       offToast();
+      offHostStatus();
       window.removeEventListener("keydown", onKey);
     };
-  }, [bootstrap, handleAgentEvent, setToast, abort]);
+  }, [bootstrap, handleAgentEvent, setToast, abort, t]);
 
   const heroProject = useMemo(
     () => projectName(workspace?.path, workspace?.name),
@@ -274,6 +292,27 @@ function AppShell() {
             </button>
           </div>
         </div>
+
+        {backendDown && (
+          <div
+            className={`backend-banner no-drag ${backendDown.fatal ? "fatal" : "warn"}`}
+            role="status"
+          >
+            <span className="backend-dot" aria-hidden />
+            <span>
+              {backendDown.fatal ? t("status.fatal") : t("status.restarting")}
+            </span>
+            {backendDown.fatal && (
+              <button
+                type="button"
+                className="backend-action"
+                onClick={() => void api.openLogs()}
+              >
+                {t("status.openLogs")}
+              </button>
+            )}
+          </div>
+        )}
 
         {page === "projects" ? (
           <ProjectsPage />

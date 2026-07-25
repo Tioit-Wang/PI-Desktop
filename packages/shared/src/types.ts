@@ -205,6 +205,16 @@ export type HostHealth = {
   uptimeMs: number;
 };
 
+/** Payload of the `hostStatus` push event (backend supervision state). */
+export type HostStatusEvent = {
+  ok: boolean;
+  component?: "host" | "sidecar";
+  restarting?: boolean;
+  restarted?: boolean;
+  fatal?: boolean;
+  message?: string;
+};
+
 export type OnboardingState = {
   showChecklist: boolean;
   steps: Array<{

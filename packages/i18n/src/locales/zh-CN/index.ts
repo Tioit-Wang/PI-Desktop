@@ -43,6 +43,11 @@ export const zhCN = {
     send: "发送",
     abort: "停止",
     running: "处理中…",
+    copy: "复制",
+    copied: "已复制",
+    scrollToBottom: "回到最新",
+    toolFailed: "失败",
+    toolDenied: "已拒绝",
     noModel: "请先在设置中配置模型。",
     local: "本地",
     branch: "分支",
@@ -254,6 +259,10 @@ export const zhCN = {
     degraded: "降级",
     hostOk: "Host 已连接",
     hostDown: "Host 不可用",
+    restarting: "正在重连本地后端…",
+    restored: "后端已重新连接",
+    fatal: "本地后端不可用",
+    openLogs: "打开日志",
   },
   home: {
     suggestions: {

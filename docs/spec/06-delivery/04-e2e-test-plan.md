@@ -423,7 +423,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/07-process-model.md`
 - **Acceptance**: Quality (main path no crash)
 - **Milestone**: M5
-- **Status**: Documented
+- **Status**: Automated (`scripts/e2e-supervision.mjs` — SIGKILL host-core, assert restart + healthy RPC)
 
 #### E2E-033: Window bounds persist across restart
 

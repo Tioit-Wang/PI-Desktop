@@ -7,6 +7,7 @@ import type {
   AppVersionInfo,
   CommandItem,
   HostHealth,
+  HostStatusEvent,
   OnboardingState,
   PluginSummary,
   ProjectWorkspace,
@@ -140,6 +141,12 @@ export const api = {
     if (!window.piDesktop?.on) return () => undefined;
     return window.piDesktop.on(IPC.event.toast, (payload) =>
       listener((payload as { message: string }).message),
+    );
+  },
+  onHostStatus: (listener: (status: HostStatusEvent) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.hostStatus, (payload) =>
+      listener(payload as HostStatusEvent),
     );
   },
 };

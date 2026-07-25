@@ -1301,6 +1301,42 @@ app.whenReady().then(async () => {
       })();
     }, 800);
   }
+  // Supervision probe (scripts/e2e-supervision.mjs): SIGKILL our own
+  // host-core child, then assert the supervisor brings a fresh one back
+  // that answers RPCs. Deterministic crash-recovery e2e without pid hunts.
+  if (process.env.PI_DESKTOP_SUPERVISION_PROBE === "1") {
+    const initialHost = host;
+    setTimeout(() => {
+      logger.app("info", "supervision probe: killing host-core");
+      (initialHost as any)?.child?.kill("SIGKILL");
+    }, 1500);
+    const t0 = Date.now();
+    const poll = setInterval(() => {
+      void (async () => {
+        if (Date.now() - t0 > 30_000) {
+          clearInterval(poll);
+          console.log(
+            "SUPERVISION_PROBE",
+            JSON.stringify({ ok: false, reason: "timeout" }),
+          );
+          app.quit();
+          return;
+        }
+        if (!host || host === initialHost) return;
+        try {
+          const health = await host.call<{ ok: boolean }>("app.health");
+          clearInterval(poll);
+          console.log(
+            "SUPERVISION_PROBE",
+            JSON.stringify({ ok: health.ok === true, restarted: true }),
+          );
+          app.quit();
+        } catch {
+          // restart still settling; keep polling
+        }
+      })();
+    }, 500);
+  }
 });
 
 app.on("window-all-closed", () => {
