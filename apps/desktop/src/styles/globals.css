@@ -545,13 +545,14 @@ textarea:disabled {
 
 .home-suggestion-title {
   display: -webkit-box;
-  -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
+  color: var(--ds-text-primary);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.35;
-  color: var(--ds-text-primary);
+  text-align: left;
 }
 
 :root[data-theme="light"] .home-suggestion-card {
@@ -703,7 +704,7 @@ textarea:disabled {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 10px; /* chips sit just above shell */
+  gap: 8px; /* gold: chips tightly above shell */
 }
 
 .composer-chips {
@@ -718,9 +719,10 @@ textarea:disabled {
   border-radius: 999px;
   background: var(--ds-bg-elevated);
   box-shadow: 0 0 0 1px var(--ds-border-default);
-  padding: 2px 4px;
+  padding: 3px 6px;
   backdrop-filter: blur(16px);
-  max-height: 28px;
+  min-height: 32px;
+  max-height: 34px;
 }
 
 .chip-sep {
@@ -1340,9 +1342,17 @@ textarea:disabled {
 }
 
 .composer-dock-home .composer-chips .chip {
-  padding: 3px 8px;
-  font-size: 12px;
-  gap: 5px;
+  padding: 4px 9px;
+  font-size: 12.5px;
+  gap: 6px;
+}
+
+.composer-dock-home .composer-chips {
+  /* gold: compact capsule, not full plate width */
+  border-radius: 999px;
+  padding: 3px 6px;
+  min-height: 32px;
+  max-height: 34px;
 }
 
 .composer-dock-home .composer-shell {
@@ -1605,9 +1615,17 @@ textarea:disabled {
 }
 
 :root[data-theme="dark"] .composer-dock-home .composer-chips .chip {
-  padding: 3px 8px;
-  font-size: 12px;
-  gap: 5px;
+  padding: 4px 9px;
+  font-size: 12.5px;
+  gap: 6px;
+}
+
+.composer-dock-home .composer-chips {
+  /* gold: compact capsule, not full plate width */
+  border-radius: 999px;
+  padding: 3px 6px;
+  min-height: 32px;
+  max-height: 34px;
 }
 
 :root[data-theme="dark"] .composer-dock-home .composer-shell {

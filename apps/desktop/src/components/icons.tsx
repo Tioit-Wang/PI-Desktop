@@ -324,37 +324,73 @@ export function IconCodexHome(props: IconProps) {
   );
 }
 
+/** Codex home suggestion: code brackets */
 export function IconExplore(props: IconProps) {
   return (
     <svg width={props.size ?? 16} height={props.size ?? 16} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.6" />
-      <path d="M12 7.5v9M7.5 12h9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M9.2 7.2 4.8 12l4.4 4.8M14.8 7.2 19.2 12l-4.4 4.8"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   );
 }
 
+/** Codex home suggestion: hammer */
 export function IconBuild(props: IconProps) {
   return (
     <svg width={props.size ?? 16} height={props.size ?? 16} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M4 18.5h16M7 18.5V9.5l5-4 5 4v9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M10 18.5v-4h4v4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M14.2 4.8c1.8-1.2 4.2-.9 5.5.4 1.3 1.3 1.6 3.7.4 5.5l-3.2-3.2-6.6 6.6c-.4.4-1 .4-1.4 0l-.9-.9c-.4-.4-.4-1 0-1.4l6.6-6.6-3.4-3.4Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="m10.2 13.8-5.4 5.4c-.5.5-1.3.5-1.8 0v0c-.5-.5-.5-1.3 0-1.8l5.4-5.4"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
     </svg>
   );
 }
 
+/** Codex home suggestion: dual refresh arrows */
 export function IconReview(props: IconProps) {
   return (
     <svg width={props.size ?? 16} height={props.size ?? 16} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M7 4.5h10a2 2 0 0 1 2 2v11l-3.5-2H7a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
-      <path d="M9 9h6M9 12.5h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path
+        d="M7.2 9.2A6.2 6.2 0 0 1 18 10.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path d="M17.2 7.2v3.6H13.8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M16.8 14.8A6.2 6.2 0 0 1 6 13.5"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+      />
+      <path d="M6.8 16.8v-3.6H10.2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
+/** Codex home suggestion: bug */
 export function IconFix(props: IconProps) {
   return (
     <svg width={props.size ?? 16} height={props.size ?? 16} viewBox="0 0 24 24" fill="none" aria-hidden>
-      <path d="M14.5 6.5a3.5 3.5 0 0 0-4.7 4.7L5 16v3h3l4.8-4.8a3.5 3.5 0 0 0 4.7-4.7l-2.2 2.2-2.8-2.8 2-2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path
+        d="M8.5 9.2c0-2 1.6-3.7 3.5-3.7s3.5 1.7 3.5 3.7v5.1c0 1.9-1.6 3.4-3.5 3.4s-3.5-1.5-3.5-3.4V9.2Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+      />
+      <path d="M8.5 12h7M5.5 9.5l2.2 1.2M18.5 9.5l-2.2 1.2M5.5 14.5l2.2-1M18.5 14.5l-2.2-1M12 5.5V3.8M9.2 6.2 7.8 4.6M14.8 6.2l1.4-1.6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }

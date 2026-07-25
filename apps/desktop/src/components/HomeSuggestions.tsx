@@ -27,14 +27,14 @@ export function HomeSuggestions() {
       id: "codex-create",
       titleKey: "home.suggestions.create",
       promptKey: "home.suggestions.createPrompt",
-      tone: "green",
+      tone: "purple",
       icon: <IconBuild size={16} />,
     },
     {
       id: "codex-review",
       titleKey: "home.suggestions.review",
       promptKey: "home.suggestions.reviewPrompt",
-      tone: "purple",
+      tone: "green",
       icon: <IconReview size={16} />,
     },
     {

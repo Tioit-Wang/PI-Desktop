@@ -87,6 +87,7 @@ This log freezes previously open questions into concrete decisions.
 | D064 | Settings general content parity | **General card rows match Codex: default open target, language, menu bar, bottom panel; nav adds Pets/Appshots; sun/pet/snapshot icons; pill selects** | Closer 1:1 to live Codex settings gold content band |
 | D065 | Settings general gold polish | **Permission rows include blue Learn more links + full-access risk copy; open-target pill shows VS Code glyph; Configuration uses circular-arrow icon; Integrations order Appshots→Plugins→Browser→Computer→MCP; Enter-to-send moves to Configuration** | Residual gaps vs cx-settings-try after full-page shell |
 | D066 | Home-with-project chrome + projects index | **Home shows workspace chips when project open (no ∞); home placeholder 随心输入/Ask anything; model chip Custom+effort; footer gear+help; Projects page is Codex index (search/columns/expand/actions) using setProject** | Gold cx-home-clean with project + projects-index-page parity |
+| D067 | Home suggestion glyphs + chip gap | **Suggestion icons match Codex (code/hammer/refresh/bug) with blue/purple/green/orange tones; composer chip gap 8px and denser capsule** | Card icon residual was dominant vs cx-home-clean |
 
 ## C. Still deferred (not blocking M1)
 

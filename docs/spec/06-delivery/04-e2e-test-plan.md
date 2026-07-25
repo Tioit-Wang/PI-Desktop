@@ -700,3 +700,8 @@ This test plan spec is accepted when:
 - Open Projects destination.
 - Expect large title, search pill, New button, and table columns Name / Sources / Updated.
 - Rows expand for recent tasks + actions (pin, start task, remove/close); activating a recent path uses setProject without re-picking via dialog when possible.
+
+
+### US-UI-48 Home suggestion glyph parity
+- On empty home, four ambient cards show Codex glyphs in order: code brackets (blue), hammer (purple), refresh (green), bug (orange).
+- Labels remain explore / create / review / fix localization keys.
