@@ -1135,7 +1135,7 @@ textarea:disabled {
 }
 
 :root[data-theme="light"] .composer-input::placeholder {
-  color: color-mix(in oklab, #1a1c1f 45%, transparent);
+  color: color-mix(in oklab, #1a1c1f 52%, transparent);
 }
 
 :root[data-theme="light"] .composer-thread-mark {
