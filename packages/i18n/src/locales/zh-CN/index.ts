@@ -30,7 +30,7 @@ export const zhCN = {
     emptyTitle: "What should we build?",
     emptyTitleInProject: "What should we build in {{project}}?",
     emptyHint: "配置模型提供方、打开项目，然后发送第一条消息。",
-    placeholder: "",
+    placeholder: "向 Codex 下达任意指令",
     addFiles: "添加文件等内容",
     attachFiles: "附加文件和文件夹",
     addPhotos: "添加照片",

@@ -610,3 +610,10 @@ This test plan spec is accepted when:
 - On light theme empty home, the white composer shell must read as an elevated box (hairline stroke + elevation-prominent shadow) against `#ffffff` main.
 - Toolbar controls and placeholder remain legible (not pure white-on-white).
 
+### US-UI-30 Composer placeholder copy
+- Empty composer shows Codex placeholder copy: EN `Ask Codex to do anything`, zh-CN `向 Codex 下达任意指令`.
+- Placeholder ink is legible on light and dark floating plates.
+
+### US-UI-31 Home stack optical center
+- Empty home stack is vertically centered with a slight optical lift; chips sit immediately above the composer shell (not bottom-docked).
+

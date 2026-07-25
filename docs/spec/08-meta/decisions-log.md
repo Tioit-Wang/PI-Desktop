@@ -66,6 +66,7 @@ This log freezes previously open questions into concrete decisions.
 | D043 | Settings shell | **Settings uses left nav rail on sidebar surface + content pane (General/Providers/Plugins/About)** | Closer to Codex settings IA than a top-only tab strip |
 | D044 | Destination list chrome | **PRs/Scheduled/Plugins use shared dest-row list + filter chips; light cards white elevated** | Match Codex destination density without full cloud backends |
 | D045 | Home empty stack | **Empty chat centers hero + chips + composer as one column; thread mode keeps bottom dock** | Match Codex `home-main-content` justify-center stack; fixes large empty gap / bottom-only box |
+| D046 | Composer placeholder | **Empty draft uses Codex placeholder (EN/zh-CN) instead of blank** | Empty white plate read as broken without ink; match Codex `composer.placeholder.newTask.doAnything` |
 
 ## C. Still deferred (not blocking M1)
 

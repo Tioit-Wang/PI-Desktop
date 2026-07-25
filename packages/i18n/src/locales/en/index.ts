@@ -27,7 +27,7 @@ export const en = {
     emptyTitle: "What should we build?",
     emptyTitleInProject: "What should we build in {{project}}?",
     emptyHint: "Configure a provider, open a project, then send your first prompt.",
-    placeholder: "",
+    placeholder: "Ask Codex to do anything",
     addFiles: "Add files and more",
     attachFiles: "Attach files and folders",
     addPhotos: "Add photos",
