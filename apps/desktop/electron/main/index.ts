@@ -127,39 +127,46 @@ async function createWindow() {
 
   const CODEX_BOUNDS = { x: 40, y: 30, width: 1200, height: 800 } as const;
   let boundsGuard = false;
+  let boundsTimer: NodeJS.Timeout | null = null;
   const ensureStableBounds = (force = false) => {
     if (!mainWindow || boundsGuard) return;
     const bounds = mainWindow.getBounds();
     // Stage Manager / tiling can collapse the window; restore a Codex-like footprint.
-    if (force || bounds.width < 1000 || bounds.height < 700) {
+    if (force || bounds.width < 960 || bounds.height < 640) {
       boundsGuard = true;
       try {
+        if (mainWindow.isMinimized()) mainWindow.restore();
         mainWindow.setMinimumSize(960, 640);
         mainWindow.setBounds({ ...CODEX_BOUNDS }, false);
         mainWindow.setSize(CODEX_BOUNDS.width, CODEX_BOUNDS.height, false);
-        mainWindow.setContentSize(CODEX_BOUNDS.width, CODEX_BOUNDS.height - 28, false);
       } finally {
         setTimeout(() => {
           boundsGuard = false;
-        }, 50);
+        }, 120);
       }
     }
+  };
+  const scheduleBoundsCheck = () => {
+    if (boundsTimer) clearTimeout(boundsTimer);
+    boundsTimer = setTimeout(() => ensureStableBounds(false), 80);
   };
 
   mainWindow.on("show", () => ensureStableBounds(false));
   mainWindow.on("focus", () => ensureStableBounds(false));
   mainWindow.on("restore", () => ensureStableBounds(true));
-  mainWindow.on("resize", () => ensureStableBounds(false));
-  mainWindow.on("move", () => ensureStableBounds(false));
+  mainWindow.on("resize", scheduleBoundsCheck);
+  mainWindow.on("move", scheduleBoundsCheck);
 
   mainWindow.once("ready-to-show", () => {
     ensureStableBounds(true);
     mainWindow?.show();
     mainWindow?.focus();
-    // Re-assert after macOS Stage Manager finishes layout.
-    for (const ms of [100, 250, 500, 1000, 2000, 3500, 5000]) {
+    // Re-assert while Stage Manager settles (and keep a short watchdog).
+    for (const ms of [100, 250, 500, 1000, 2000, 3500, 5000, 8000]) {
       setTimeout(() => ensureStableBounds(true), ms);
     }
+    const watchdog = setInterval(() => ensureStableBounds(false), 1000);
+    setTimeout(() => clearInterval(watchdog), 20000);
     if (process.env.PI_DESKTOP_CAPTURE === "1") {
       setTimeout(() => {
         void (async () => {
