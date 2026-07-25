@@ -55,6 +55,9 @@ type AppState = {
     decision: "allow-once" | "allow-session" | "deny",
   ) => Promise<void>;
   setToast: (message: string | null) => void;
+  composerPrefill: string | null;
+  prefillComposer: (text: string) => void;
+  clearComposerPrefill: () => void;
 };
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -71,6 +74,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   navStack: [{ page: "chat" }],
   navIndex: 0,
   toast: null,
+  composerPrefill: null,
   error: null,
 
   bootstrap: async () => {
@@ -429,4 +433,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ permission: null });
   },
   setToast: (message) => set({ toast: message }),
+
+  prefillComposer: (text) => set({ composerPrefill: text }),
+  clearComposerPrefill: () => set({ composerPrefill: null }),
 }));

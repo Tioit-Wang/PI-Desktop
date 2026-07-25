@@ -4,6 +4,7 @@ import { Sidebar } from "./components/Sidebar";
 import { ContextPanel } from "./components/ContextPanel";
 import { ChatTranscript } from "./components/ChatTranscript";
 import { Composer } from "./components/Composer";
+import { HomeSuggestions } from "./components/HomeSuggestions";
 import { PermissionDialog } from "./components/PermissionDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -218,6 +219,7 @@ function AppShell() {
                   </div>
                 </div>
                 <div className="home-lower">
+                  <HomeSuggestions />
                   {showComposer && (
                     <div className="home-composer-wrap">
                       <Composer variant="home" />

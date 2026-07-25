@@ -160,6 +160,18 @@ export const zhCN = {
     hostOk: "Host 已连接",
     hostDown: "Host 不可用",
   },
+  home: {
+    suggestions: {
+      explore: "探索并理解代码",
+      explorePrompt: "探索",
+      create: "构建新功能、应用或工具",
+      createPrompt: "构建",
+      review: "审查代码并提出修改建议",
+      reviewPrompt: "审查",
+      fix: "修复问题和失败",
+      fixPrompt: "修复",
+    },
+  },
   errors: {
     HOST_UNAVAILABLE: "Host core 不可用",
     MODEL_NOT_CONFIGURED: "尚未配置模型",

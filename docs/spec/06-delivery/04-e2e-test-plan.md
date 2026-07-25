@@ -624,6 +624,11 @@ This test plan spec is accepted when:
 - Sidebar recents section label matches Codex `sidebarElectron.recentChats`: EN `Tasks` / zh-CN `任务` (not “Recent tasks” / “最近任务”).
 - Section label uses compact `text-xs` tertiary styling (`px-2 py-1` rhythm).
 
+### US-UI-34 Home suggestion cards
+- On empty chat home (light + dark), four ambient suggestion cards render above the composer: Explore / Build / Review / Fix (localized).
+- Cards use Codex electron elevated plate chrome (hairline ring + shadow-md-strong); dark cards remain visible on `#181818`.
+- Activating a card prefills the composer with the matching starter prompt and focuses the input.
+
 ### US-UI-31b (superseded)
 - Superseded by US-UI-31 split-grow layout.
 

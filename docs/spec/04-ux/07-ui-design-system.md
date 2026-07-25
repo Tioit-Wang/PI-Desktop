@@ -342,7 +342,9 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 
 - Column `flex: 1; min-height: 0; overflow: hidden` (not a single optical-center stack)
 - **Upper grow** (`.home-upper`): `flex: 1 1 0; align-items: flex-end; justify-content: center; padding-bottom: 96px` holds hero (icon + `heading-xl`)
-- **Lower grow** (`.home-lower`): `flex: 1 1 0; justify-content: flex-end` holds workspace chips + floating composer
+- **Lower grow** (`.home-lower`): `flex: 1 1 0; justify-content: flex-end` holds Codex ambient **suggestion cards** + workspace chips + floating composer
+- Suggestion cards: 4-up auto-fit grid (`minmax(10rem,1fr)`, `gap: 12px`, `min-height: 104px`, `rounded-2xl`); electron ring `0.5px` border-heavy + `shadow-md-strong` (`0 2px 4px -1px #0000001a`); dark plate on `#181818` with white 16% hairline (not a heavier invented shadow)
+- Card actions prefill composer with Codex starter prompts (Explore / Build / Review / Fix)
 - Composer is **not** absolute-docked on empty home; thread mode keeps the bottom dock + fade veil
 - Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
 - Floating plates use Codex `--elevation-prominent`: stroke `0 0 0 0.5px` + `0 3px 7.5px #0000000a` + `0 0 20px #0000000d` in **both** themes (dark does not invent a heavier box shadow)

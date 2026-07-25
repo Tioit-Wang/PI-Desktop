@@ -34,6 +34,8 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   const providers = useAppStore((s) => s.providers);
   const openProject = useAppStore((s) => s.openProject);
   const setToast = useAppStore((s) => s.setToast);
+  const composerPrefill = useAppStore((s) => s.composerPrefill);
+  const clearComposerPrefill = useAppStore((s) => s.clearComposerPrefill);
   const [value, setValue] = useState("");
   const [plusOpen, setPlusOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
@@ -55,6 +57,19 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   useEffect(() => {
     localStorage.setItem("pi.desktop.effort", effort);
   }, [effort]);
+
+  useEffect(() => {
+    if (!composerPrefill) return;
+    setValue(composerPrefill);
+    clearComposerPrefill();
+    requestAnimationFrame(() => {
+      const el = ref.current;
+      if (!el) return;
+      el.focus();
+      const len = el.value.length;
+      el.setSelectionRange(len, len);
+    });
+  }, [composerPrefill, clearComposerPrefill]);
 
   useEffect(() => {
     const el = ref.current;

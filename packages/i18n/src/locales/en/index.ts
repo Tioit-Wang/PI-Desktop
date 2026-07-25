@@ -159,6 +159,18 @@ export const en = {
     hostOk: "Host connected",
     hostDown: "Host unavailable",
   },
+  home: {
+    suggestions: {
+      explore: "Explore and understand code",
+      explorePrompt: "Explore ",
+      create: "Build a new feature, app, or tool",
+      createPrompt: "Build ",
+      review: "Review code and suggest changes",
+      reviewPrompt: "Review ",
+      fix: "Fix issues and failures",
+      fixPrompt: "Fix ",
+    },
+  },
   errors: {
     HOST_UNAVAILABLE: "Host core is unavailable",
     MODEL_NOT_CONFIGURED: "No model is configured",

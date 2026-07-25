@@ -69,6 +69,7 @@ This log freezes previously open questions into concrete decisions.
 | D046 | Composer placeholder | **Empty draft uses Codex placeholder (EN/zh-CN) instead of blank** | Empty white plate read as broken without ink; match Codex `composer.placeholder.newTask.doAnything` |
 | D047 | Home split grow | **Empty home uses upper/lower grow regions (hero items-end + composer justify-end), not a single optical-center stack; dark box uses Codex elevation-prominent** | Match electron `home-main-content` dual grow + identical elevation-prominent dark/light |
 | D048 | Sidebar tasks label | **Recents section uses Codex `Tasks` / `任务` (`sidebarElectron.recentChats`)** | Match electron sidebar section heading, not “Recent tasks” |
+| D049 | Home suggestion cards | **Empty home shows 4 Codex ambient suggestion cards (Explore/Build/Review/Fix) above composer; click prefills starter prompt** | Match electron `newChatPageSuggestions` codex-* top-level cards + prefill behavior |
 
 ## C. Still deferred (not blocking M1)
 

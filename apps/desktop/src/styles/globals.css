@@ -399,6 +399,7 @@ textarea:disabled {
   flex-direction: column;
   justify-content: flex-end;
   padding-bottom: 16px; /* pb-4 */
+  gap: 0;
 }
 
 .home-composer-wrap {
@@ -409,6 +410,153 @@ textarea:disabled {
   margin-inline: auto;
   padding: 12px 24px 0; /* pt-3 */
 }
+
+/* Codex home ambient suggestion cards (electron cards mode) */
+.home-suggestions {
+  width: min(100%, 760px);
+  margin: 0 auto 12px;
+  container-type: inline-size;
+}
+
+.home-suggestions-grid {
+  display: grid;
+  /* Codex empty-home ambient cards read as 2x2 at desktop width */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 720px) {
+  .home-suggestions-grid {
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  }
+}
+
+@container (max-width: 42.249rem) {
+  .home-suggestions-grid > :nth-child(n + 4) {
+    display: none;
+  }
+}
+
+@container (max-width: 31.499rem) {
+  .home-suggestions-grid > :nth-child(n + 3) {
+    display: none;
+  }
+}
+
+@container (max-width: 20.749rem) {
+  .home-suggestions-grid > :nth-child(n + 2) {
+    display: none;
+  }
+}
+
+.home-suggestion-card {
+  display: flex;
+  min-height: 104px;
+  min-width: 0;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  border: 0;
+  border-radius: 16px; /* rounded-2xl */
+  padding: 12px 16px;
+  text-align: left;
+  color: var(--ds-text-primary);
+  background: var(--ds-bg-primary);
+  /* Codex electron: ring border-heavy + shadow-md-strong */
+  box-shadow:
+    0 0 0 0.5px color-mix(in oklab, var(--gray-0) 16%, transparent),
+    0 2px 4px -1px #0000001a;
+  cursor: pointer;
+  transition: background 120ms ease, box-shadow 120ms ease;
+}
+
+.home-suggestion-card:hover {
+  background: var(--ds-bg-hover);
+}
+
+.home-suggestion-card:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 1px var(--ds-accent),
+    0 2px 4px -1px #0000001a;
+}
+
+.home-suggestion-icon {
+  display: inline-flex;
+  height: 24px;
+  width: 24px;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.home-suggestion-card.tone-blue .home-suggestion-icon {
+  color: var(--blue-300);
+}
+
+.home-suggestion-card.tone-green .home-suggestion-icon {
+  color: var(--ds-success);
+}
+
+.home-suggestion-card.tone-purple .home-suggestion-icon {
+  color: #c27aff;
+}
+
+.home-suggestion-card.tone-orange .home-suggestion-icon {
+  color: var(--ds-warning);
+}
+
+.home-suggestion-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ds-text-primary);
+}
+
+:root[data-theme="light"] .home-suggestion-card {
+  background: #ffffff;
+  box-shadow:
+    0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
+    0 2px 4px -1px #0000001a;
+}
+
+:root[data-theme="light"] .home-suggestion-card:hover {
+  background: color-mix(in oklab, #1a1c1f 3%, #ffffff);
+}
+
+:root[data-theme="light"] .home-suggestion-card.tone-blue .home-suggestion-icon {
+  color: #0285ff;
+}
+
+:root[data-theme="light"] .home-suggestion-card.tone-green .home-suggestion-icon {
+  color: #00a240;
+}
+
+:root[data-theme="light"] .home-suggestion-card.tone-purple .home-suggestion-icon {
+  color: #7c3aed;
+}
+
+:root[data-theme="light"] .home-suggestion-card.tone-orange .home-suggestion-icon {
+  color: #e25507;
+}
+
+:root[data-theme="dark"] .home-suggestion-card {
+  /* Codex electron card: main surface + elevated-secondary wash + border-heavy ring */
+  background: color-mix(in oklab, #ffffff 3%, #181818);
+  box-shadow:
+    0 0 0 0.5px color-mix(in oklab, #ffffff 16%, transparent),
+    0 2px 4px -1px #0000001a;
+}
+
+:root[data-theme="dark"] .home-suggestion-card:hover {
+  background: color-mix(in oklab, #ffffff 6%, #181818);
+}
+
+
 
 /* legacy alias kept for capture hooks */
 .home-stack {
