@@ -143,7 +143,7 @@ async function main() {
     });
     const got = await host.call("session.get", { id: session.session.id });
     record(
-      "E2E-009-session-persist",
+      "E2E-020-session-persist",
       got.session?.messages?.length === 1,
       `messages=${got.session?.messages?.length}`,
     );
@@ -159,7 +159,7 @@ async function main() {
       mode: "agent",
     });
     record(
-      "E2E-016-read-tool",
+      "E2E-013-read-tool",
       read.ok === true && String(read.content?.content || "").includes("Sample Project"),
     );
 
@@ -170,7 +170,7 @@ async function main() {
       args: { pattern: "src/**/*.js" },
       mode: "agent",
     });
-    record("E2E-016-glob-tool", glob.ok === true && (glob.content?.count ?? 0) >= 2);
+    record("E2E-013-glob-tool", glob.ok === true && (glob.content?.count ?? 0) >= 2);
 
     // path escape denied
     const escape = await host.call("tools.execute", {
@@ -181,7 +181,7 @@ async function main() {
       mode: "agent",
     });
     record(
-      "E2E-020-path-sandbox",
+      "E2E-019-path-sandbox",
       escape.ok === false &&
         (escape.errorCode === "PATH_OUTSIDE_WORKSPACE" ||
           escape.content?.code === "PATH_OUTSIDE_WORKSPACE"),
@@ -197,7 +197,7 @@ async function main() {
       mode: "chat",
     });
     record(
-      "E2E-017-chat-write-denied",
+      "E2E-018-chat-write-denied",
       chatWrite.denied === true || chatWrite.ok === false,
       chatWrite.errorCode,
     );
@@ -244,7 +244,7 @@ async function main() {
       const body = await res.json();
       const content = body?.choices?.[0]?.message?.content || "";
       record(
-        "E2E-011-live-model",
+        "E2E-008-live-model",
         res.ok && content.toLowerCase().includes("pong"),
         content.slice(0, 80),
       );
@@ -265,13 +265,13 @@ async function main() {
       });
       const text = await streamRes.text();
       record(
-        "E2E-012-stream",
+        "E2E-009-stream",
         streamRes.ok && text.includes("data:"),
         `bytes=${text.length}`,
       );
     } else {
-      record("E2E-011-live-model", false, "PI_DESKTOP_TEST_API_KEY not set");
-      record("E2E-012-stream", false, "skipped");
+      record("E2E-008-live-model", false, "PI_DESKTOP_TEST_API_KEY not set");
+      record("E2E-009-stream", false, "skipped");
     }
 
     // agent-runtime unit-ish import check

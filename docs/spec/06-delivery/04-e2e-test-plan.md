@@ -19,7 +19,7 @@
 - Performance / stress testing (post-MVP).
 - Cross-platform testing (macOS arm64 only for first release — D010).
 - Plugin marketplace scenarios (post-MVP).
-- Remote gateway / control-plane scenarios (post-MVP — D004).
+- Remote gateway / control-plane scenarios (post-MVP — ADR 0004 / baseline #20).
 
 ---
 
@@ -35,7 +35,7 @@
 |---|---|---|---|
 | **Unit** | Single module, no IPC | Many | Vitest / Rust #[test] |
 | **Integration** | IPC contract, host↔renderer, host↔sidecar | Moderate | Vitest + IPC mocks or live Electron |
-| **E2E** | Full user journey through the desktop app | Few (MVP: ~20) | Playwright / Spectron-like (future) |
+| **E2E** | Full user journey through the desktop app | ~34 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
 
 **Strategy**: document all E2E scenarios now; write unit/integration tests alongside code; automate E2E after M5.
 
@@ -45,10 +45,11 @@
 
 | Tool | Purpose | Status |
 |---|---|---|
-| **Vitest** | Unit + integration (TS side) | Planned (M1) |
-| **Rust #[test]** | Host-core unit tests | Planned (M1) |
-| **Playwright** | E2E browser-style testing in Electron | Planned (post-M5) |
-| **Spectron-like** | Electron-specific app-level testing | Investigate (post-M5) |
+| **Vitest** | Unit + integration (TS side) | Active (`pnpm test`, shared package) |
+| **Rust #[test]** | Host-core unit tests | Active (`cargo test -p host-core`) |
+| **Protocol smoke** | Host RPC + tools + plugins headless | Active (`test:e2e`, 15 checks) |
+| **Electron probes** | Boot bridge + crash supervision | Active (`test:e2e:boot`, `test:e2e:supervision`) |
+| **Playwright** | Full UI-driven journeys | Planned (post-M5) |
 
 > Decision: document scenarios now; pick concrete E2E runner when code is ready for M5 hardening.
 
@@ -127,7 +128,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `04-ux/05-onboarding.md`
 - **Acceptance**: A (first-run checklist)
 - **Milestone**: M2
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: host onboarding state; UI checklist manual)
 
 ### Provider & Key
 
@@ -139,7 +140,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/12-provider-config-schema.md`, `03-runtime/14-secrets-storage.md`
 - **Acceptance**: B (add provider, save key)
 - **Milestone**: M2
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: provider create + secret, no plaintext echo)
 
 #### E2E-006: Key survives restart
 
@@ -171,7 +172,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/02-agent-runtime.md`, `03-runtime/10-session-state-machine.md`
 - **Acceptance**: C (new session, send message)
 - **Milestone**: M2
-- **Status**: Draft
+- **Status**: Automated (protocol smoke, live-model lane; requires PI_DESKTOP_TEST_API_KEY)
 
 #### E2E-009: Streamed tokens visible in UI
 
@@ -181,7 +182,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/02-agent-runtime.md`
 - **Acceptance**: C (streamed output)
 - **Milestone**: M2
-- **Status**: Draft
+- **Status**: Automated (protocol smoke, live-model lane; requires PI_DESKTOP_TEST_API_KEY)
 
 #### E2E-010: Abort generation
 
@@ -223,7 +224,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/03-tools-and-permissions.md`
 - **Acceptance**: E (Read/Glob/Grep work), D (tools based on project)
 - **Milestone**: M3
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: Read + Glob in sample project)
 
 ### Permission Allow / Deny / Timeout
 
@@ -275,7 +276,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/03-tools-and-permissions.md`
 - **Acceptance**: E (Chat read-only)
 - **Milestone**: M3
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: WRITE_DISABLED_IN_CHAT)
 
 #### E2E-019: Workspace-outside paths are rejected
 
@@ -285,7 +286,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/15-workspace-ignore-rules.md`
 - **Acceptance**: E (workspace-outside rejected)
 - **Milestone**: M3
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: PATH_OUTSIDE_WORKSPACE)
 
 ### Session Persistence
 
@@ -297,7 +298,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `03-runtime/04-data-storage.md`, `03-runtime/10-session-state-machine.md`
 - **Acceptance**: F (session survives restart)
 - **Milestone**: M2
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: host-level persistence; full restart lane manual)
 
 #### E2E-021: Delete session works
 
@@ -319,7 +320,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `07-plugins/01-plugin-system.md`, `07-plugins/05-plugin-lifecycle.md`
 - **Acceptance**: G (load local plugin)
 - **Milestone**: M4
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: plugins.loadDev)
 
 #### E2E-023: Plugin command in palette and executes
 
@@ -349,7 +350,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `07-plugins/05-plugin-lifecycle.md`
 - **Acceptance**: G (disable removes contributions)
 - **Milestone**: M4
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: disable clears enabled flag; palette removal manual)
 
 #### E2E-026: Plugin error does not crash app
 
@@ -371,7 +372,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `05-security/01-security.md`, `03-runtime/09-logging-and-observability.md`
 - **Acceptance**: H (secrets not in logs)
 - **Milestone**: M2
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: provider list carries no secret material)
 
 #### E2E-028: Renderer has no Node integration
 
