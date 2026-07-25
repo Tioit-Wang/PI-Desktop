@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import {
@@ -13,6 +13,7 @@ import {
   IconPullRequest,
   IconSearch,
   IconSettings,
+  IconSliders,
 } from "./icons";
 
 export function Sidebar({
@@ -28,6 +29,7 @@ export function Sidebar({
   const selectSession = useAppStore((s) => s.selectSession);
   const newSession = useAppStore((s) => s.newSession);
   const setPage = useAppStore((s) => s.setPage);
+  const settings = useAppStore((s) => s.settings);
   const page = useAppStore((s) => s.page);
   const navBack = useAppStore((s) => s.navBack);
   const navForward = useAppStore((s) => s.navForward);
@@ -37,6 +39,24 @@ export function Sidebar({
   const canForward = navIndex < navStack.length - 1;
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!profileOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!profileRef.current?.contains(e.target as Node)) setProfileOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setProfileOpen(false);
+    };
+    window.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [profileOpen]);
 
   const taskTitle = (title?: string | null) => {
     const value = (title || "").trim();
@@ -110,7 +130,7 @@ export function Sidebar({
           <div className="flex-1" />
           <button
             className="icon-btn"
-            title={t("nav.custom")}
+            title={t("nav.settings")}
             data-nav="settings"
             onClick={() => setPage("settings")}
           >
@@ -236,12 +256,68 @@ export function Sidebar({
           )}
         </div>
 
-        <div className="sidebar-footer no-drag">
+        <div className="sidebar-footer no-drag" ref={profileRef}>
+          {profileOpen && (
+            <div className="profile-menu" role="menu">
+              <button
+                className="profile-menu-item"
+                role="menuitem"
+                data-nav="settings"
+                onClick={() => {
+                  setProfileOpen(false);
+                  setPage("settings");
+                }}
+              >
+                <IconSettings size={15} />
+                <span>{t("nav.settings")}</span>
+              </button>
+              <button
+                className="profile-menu-item"
+                role="menuitem"
+                onClick={async () => {
+                  setProfileOpen(false);
+                  try {
+                    await (await import("../lib/api")).api.openLogs();
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                <IconCloudDown size={15} />
+                <span>{t("nav.profileLogs")}</span>
+              </button>
+              <button
+                className="profile-menu-item"
+                role="menuitem"
+                onClick={async () => {
+                  setProfileOpen(false);
+                  const cur = useAppStore.getState().settings;
+                  if (!cur) return;
+                  const order = ["system", "light", "dark"] as const;
+                  const idx = order.indexOf((cur.theme as (typeof order)[number]) || "system");
+                  const theme = order[(idx + 1) % order.length];
+                  try {
+                    await (await import("../lib/api")).api.setSettings({ ...cur, theme });
+                    // store refresh via host settings event path
+                    useAppStore.setState({ settings: { ...cur, theme } });
+                  } catch {
+                    // ignore
+                  }
+                }}
+              >
+                <IconSliders size={15} />
+                <span>{t("nav.profileTheme")}</span>
+                <span className="meta">{settings?.theme || "system"}</span>
+              </button>
+            </div>
+          )}
           <button
-            className={`nav-item footer-profile ${page === "settings" ? "active" : ""}`}
+            className={`nav-item footer-profile ${page === "settings" || profileOpen ? "active" : ""}`}
             data-nav="settings"
-            onClick={() => setPage("settings")}
-            title={t("nav.custom")}
+            aria-haspopup="menu"
+            aria-expanded={profileOpen}
+            onClick={() => setProfileOpen((v) => !v)}
+            title={t("nav.openProfileMenu")}
           >
             <span className="footer-avatar" aria-hidden>
               <IconSettings size={12} />

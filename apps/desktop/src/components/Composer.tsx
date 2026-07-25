@@ -12,6 +12,7 @@ import {
   IconPlus,
   IconShield,
   IconStop,
+  IconChevronDown,
 } from "./icons";
 
 type Effort = "low" | "mid" | "high" | "max";
@@ -35,6 +36,7 @@ export function Composer() {
   const setToast = useAppStore((s) => s.setToast);
   const [value, setValue] = useState("");
   const [plusOpen, setPlusOpen] = useState(false);
+  const [modelOpen, setModelOpen] = useState(false);
   const [mode, setMode] = useState<"chat" | "agent">(settings?.defaultMode ?? "chat");
   const [effort, setEffort] = useState<Effort>(() => {
     const saved = localStorage.getItem("pi.desktop.effort");
@@ -44,6 +46,7 @@ export function Composer() {
   });
   const ref = useRef<HTMLTextAreaElement>(null);
   const plusRef = useRef<HTMLDivElement>(null);
+  const modelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMode(settings?.defaultMode ?? "chat");
@@ -61,12 +64,17 @@ export function Composer() {
   }, [value]);
 
   useEffect(() => {
-    if (!plusOpen) return;
+    if (!plusOpen && !modelOpen) return;
     const onPointer = (e: MouseEvent) => {
-      if (!plusRef.current?.contains(e.target as Node)) setPlusOpen(false);
+      const t = e.target as Node;
+      if (plusOpen && !plusRef.current?.contains(t)) setPlusOpen(false);
+      if (modelOpen && !modelRef.current?.contains(t)) setModelOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPlusOpen(false);
+      if (e.key === "Escape") {
+        setPlusOpen(false);
+        setModelOpen(false);
+      }
     };
     window.addEventListener("mousedown", onPointer);
     window.addEventListener("keydown", onKey);
@@ -74,7 +82,7 @@ export function Composer() {
       window.removeEventListener("mousedown", onPointer);
       window.removeEventListener("keydown", onKey);
     };
-  }, [plusOpen]);
+  }, [plusOpen, modelOpen]);
 
   const provider = providers.find((p) => p.id === settings?.defaultProviderId);
   const modelLabel = settings?.defaultModelId || provider?.defaultModelId || "Model";
@@ -267,24 +275,72 @@ export function Composer() {
             </div>
 
             <div className="composer-right">
-              <button
-                className="icon-btn"
-                title={`${provider?.name || "Provider"} · ${modelLabel}`}
-                onClick={() => {
-                  const order: Effort[] = ["low", "mid", "high", "max"];
-                  const idx = order.indexOf(effort);
-                  setEffort(order[(idx + 1) % order.length]);
-                }}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  useAppStore.getState().setSettingsTab("providers");
-                  useAppStore.getState().setPage("settings");
-                }}
-              >
-                <span className="max-w-[190px] truncate text-[12px] leading-none text-text-secondary">
-                  {t("chat.effortCustom")}&nbsp;{effortLabel}
-                </span>
-              </button>
+              <div className="composer-model" ref={modelRef}>
+                <button
+                  className={`icon-btn model-chip ${modelOpen ? "active" : ""}`}
+                  title={`${provider?.name || "Provider"} · ${modelLabel}`}
+                  aria-haspopup="menu"
+                  aria-expanded={modelOpen}
+                  onClick={() => setModelOpen((v) => !v)}
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    useAppStore.getState().setSettingsTab("providers");
+                    useAppStore.getState().setPage("settings");
+                  }}
+                >
+                  <span className="max-w-[190px] truncate text-[12px] leading-none">
+                    {t("chat.effortCustom")}&nbsp;{effortLabel}
+                  </span>
+                  <IconChevronDown size={12} />
+                </button>
+                {modelOpen && (
+                  <div className="composer-model-menu" role="menu">
+                    <div className="composer-model-heading">
+                      <div className="truncate text-[12.5px] font-medium text-text-primary">
+                        {modelLabel}
+                      </div>
+                      <div className="truncate text-[11.5px] text-text-muted">
+                        {provider?.name || "Provider"}
+                      </div>
+                    </div>
+                    <div className="composer-plus-sep" />
+                    {(
+                      [
+                        ["low", t("chat.effortLow")],
+                        ["mid", t("chat.effortMid")],
+                        ["high", t("chat.effortHigh")],
+                        ["max", t("chat.effortMax")],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <button
+                        key={key}
+                        className={`composer-plus-item ${effort === key ? "active" : ""}`}
+                        role="menuitemradio"
+                        aria-checked={effort === key}
+                        onClick={() => {
+                          setEffort(key);
+                          setModelOpen(false);
+                        }}
+                      >
+                        <span>{t("chat.effortCustom")}</span>
+                        <span className="ml-auto text-text-secondary">{label}</span>
+                      </button>
+                    ))}
+                    <div className="composer-plus-sep" />
+                    <button
+                      className="composer-plus-item"
+                      role="menuitem"
+                      onClick={() => {
+                        setModelOpen(false);
+                        useAppStore.getState().setSettingsTab("providers");
+                        useAppStore.getState().setPage("settings");
+                      }}
+                    >
+                      <span>{t("nav.settings")}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
 
               {isRunning ? (
                 <button className="stop-btn" title={t("chat.abort")} onClick={() => void abort()}>

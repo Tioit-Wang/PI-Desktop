@@ -60,6 +60,8 @@ This log freezes previously open questions into concrete decisions.
 | D037 | Dark sidebar surface | **Dark sidebar uses `#000000` (Codex `surface-under`); main pane stays `#181818` (`gray-900`)** | Match electron-dark sideBar vs main surface separation |
 | D038 | Dark composer plate | **Dark floating composer uses solid `#212121` with stronger elevation shadow than light** | Codex elevated-primary must read as a box against `#181818`; transparent mix alone looks flat |
 | D039 | Stage Manager bounds | **Permanent host watchdog restores footprint while width/height remain collapsed** | 20s burst was insufficient under Stage Manager thrash |
+| D040 | Composer intelligence control | **Custom effort chip opens a popover (effort radio + model heading + settings) instead of cycling on click** | Match Codex model/intelligence affordance without full cloud model catalog yet |
+| D041 | Profile footer | **Custom footer opens profile menu (Settings / Logs / Theme); cloud badge remains update stand-in** | Match Codex profileFooter + profileDropdown entry points |
 
 ## C. Still deferred (not blocking M1)
 

@@ -210,6 +210,17 @@ async function createWindow() {
             await mainWindow!.webContents.executeJavaScript(`
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
             `);
+            await mainWindow!.webContents.executeJavaScript(`
+              (() => {
+                const btn = document.querySelector('.composer-model button, .model-chip');
+                if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+              })()
+            `);
+            await new Promise((r) => setTimeout(r, 250));
+            await shot("pi-model-menu");
+            await mainWindow!.webContents.executeJavaScript(`
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            `);
             // Dark shell parity capture (temporary attribute; restore system after).
             await mainWindow!.webContents.executeJavaScript(
               `document.documentElement.dataset.theme = "dark"`,

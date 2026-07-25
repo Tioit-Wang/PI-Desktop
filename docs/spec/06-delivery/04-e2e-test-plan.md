@@ -572,3 +572,12 @@ This test plan spec is accepted when:
 ### US-UI-20 Dark floating composer box
 - Switch to dark theme on chat home.
 - Expect main `#181818`, sidebar `#000000`, and the floating composer plate at solid elevated `#212121` with a visible 0.5px stroke + soft lift shadow so the box reads against the main surface (not flat same-gray).
+
+### US-UI-21 Composer model / effort menu
+- On chat home, click the composer right control labeled Custom + effort (e.g. Custom Max / 自定义 最高).
+- Expect a popover listing effort options Light/Medium/High/Max (轻度/中/高/最高), current model heading, and a Settings entry. Selecting an effort updates the chip label.
+
+### US-UI-22 Profile footer menu
+- On the sidebar footer, click Custom (profile row).
+- Expect a Codex-style profile menu with Settings, Logs, and Theme cycle; Settings navigates to the settings page.
+
