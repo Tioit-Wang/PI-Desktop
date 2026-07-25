@@ -72,19 +72,31 @@ Open issue:
 - Windows/Linux packaging
 - Skills depth / MCP / additional locales (post-MVP)
 
-## Validation snapshot (2026-07-25, evening)
+## Validation snapshot (2026-07-25, late evening — post impl-audit fixes)
 
-- `cargo test -p host-core` — pass (2)
+- `cargo test -p host-core` — pass (11: workspace escape/symlink suite,
+  bash pipe-drain, oversized-read refusal, shell module)
 - `pnpm --filter @pi-desktop/shared test` — pass (4)
-- `pnpm typecheck` — pass (all packages)
-- `node scripts/e2e-smoke.mjs` — 13/13 pass without live key
-  (15/15 with `PI_DESKTOP_TEST_API_KEY` live-model lane)
+- `pnpm typecheck` — pass (all 5 packages)
+- `node scripts/e2e-smoke.mjs` — 14/14 pass without live key incl. new
+  E2E-024 plugin tool dispatch (16/16 with live-model lane)
 - `node scripts/e2e-electron-boot.mjs` — PASS (sandboxed preload + IPC
   round-trip, dev build AND packaged .app)
 - `node scripts/e2e-supervision.mjs` — PASS (host-core SIGKILL →
   supervised restart → healthy RPC)
 - `electron-builder --mac --arm64` — DMG built with icon + resources;
   packaged-app boot probe PASS
+
+Impl-audit hardening landed: workspace write-escape closed, bash >64KB
+deadlock fixed, sidecar host-proxy allowlist, AGENT_BUSY + turnId +
+provider error mapping, D003 default-mode restored, cross-session event
+bleed fixed, permission countdown + timeout auto-close, onboarding
+checklist UI, palette session-delete + spec-conformant builtins,
+plugin agent tools wired to the model (E2E-024), real provider network
+test, capture fixtures gated. Known deferred (documented): plugin
+process isolation + panels (ADR 0008 / post-MVP), model catalog +
+native Anthropic/Google adapters (11-provider §5 status), session-
+scoped mode (02-agent-runtime §11).
 
 ## Upgrade to GitHub Projects later
 

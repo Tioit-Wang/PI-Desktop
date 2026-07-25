@@ -57,8 +57,8 @@ MVP passes when:
 ### G. Plugin system (local minimum)
 - [x] Plugin loads from a local directory — auto:`test:e2e` (dev load)
 - [x] Plugin command appears in the palette and executes — manual:M4
-- [x] Plugin can open a panel (if declared) — manual:M4
-- [x] Plugin can register and serve at least one agent tool — manual:M4
+- [ ] Plugin can open a panel (if declared) — open (ui.openPanel is a toast stub; PluginPanelHost tracked post-MVP)
+- [x] Plugin can register and serve at least one agent tool — auto:`test:e2e` (E2E-024 dispatch roundtrip)
 - [x] Disabling removes commands and tools — auto:`test:e2e` (plugin disable)
 - [x] A plugin exception does not crash the app — manual:M4
 
