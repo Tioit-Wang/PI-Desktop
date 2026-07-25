@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
-import { Agent, type AgentEvent, type AgentTool } from "@earendil-works/pi-agent-core";
+import {
+  Agent,
+  type AgentEvent,
+  type AgentMessage,
+  type AgentTool,
+} from "@earendil-works/pi-agent-core";
 import {
   createModels,
   createProvider,
   Type,
   type Model,
+  type Usage,
 } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import type {
@@ -23,12 +29,25 @@ export type RuntimeProviderConfig = {
   apiKey: string;
 };
 
+export type PluginToolDef = {
+  /** Full exposed name (`plugin_<pluginIdSafe>_<toolName>`, D015). */
+  name: string;
+  description?: string;
+  /** JSON schema for arguments (manifest agentTools[].schema). */
+  parameters?: unknown;
+};
+
 export type AgentRuntimeOptions = {
   host: HostClient;
   sessionId: string;
   mode: Mode;
   provider: RuntimeProviderConfig;
   systemPrompt?: string;
+  /** Persisted transcript to seed the agent with (session isolation: each
+   * session's agent carries only its own history). */
+  history?: UiMessage[];
+  /** Plugin agent tools to expose to the model this session. */
+  pluginTools?: PluginToolDef[];
   onEvent: (envelope: AgentEventEnvelope) => void;
 };
 
@@ -59,6 +78,7 @@ export class DesktopAgentRuntime {
   private host: HostClient;
   private onEvent: (envelope: AgentEventEnvelope) => void;
   private currentAssistant?: UiMessage;
+  private pluginTools: PluginToolDef[];
 
   constructor(opts: AgentRuntimeOptions) {
     this.sessionId = opts.sessionId;
@@ -66,6 +86,7 @@ export class DesktopAgentRuntime {
     this.provider = opts.provider;
     this.host = opts.host;
     this.onEvent = opts.onEvent;
+    this.pluginTools = opts.pluginTools ?? [];
 
     const model = this.buildModel();
     const tools = this.buildTools();
@@ -97,12 +118,67 @@ export class DesktopAgentRuntime {
         model,
         tools,
         thinkingLevel: "off",
+        messages: this.historyToAgentMessages(opts.history ?? []),
       },
     });
 
     this.agent.subscribe((event) => {
       void this.handleAgentEvent(event);
     });
+  }
+
+  /** True when this runtime can be reused for a prompt with the given config. */
+  matches(
+    mode: Mode,
+    provider: RuntimeProviderConfig,
+    pluginToolNames: string[] = [],
+  ): boolean {
+    const current = this.pluginTools.map((t) => t.name).sort().join(",");
+    const next = [...pluginToolNames].sort().join(",");
+    return (
+      !this.disposed &&
+      this.mode === mode &&
+      this.provider.id === provider.id &&
+      this.provider.modelId === provider.modelId &&
+      (this.provider.baseUrl ?? "") === (provider.baseUrl ?? "") &&
+      this.provider.apiKey === provider.apiKey &&
+      current === next
+    );
+  }
+
+  /* Rebuild pi-ai messages from the persisted transcript. Tool rows are
+   * transcript-only (call/result pairs can't be reconstructed reliably), so
+   * only user/assistant text is restored. */
+  private historyToAgentMessages(history: UiMessage[]): AgentMessage[] {
+    const zeroUsage: Usage = {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      totalTokens: 0,
+      cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    };
+    const messages: AgentMessage[] = [];
+    for (const m of history) {
+      const text = (m.content || "").trim();
+      if (!text) continue;
+      const timestamp = Date.parse(m.createdAt) || Date.now();
+      if (m.role === "user") {
+        messages.push({ role: "user", content: m.content, timestamp });
+      } else if (m.role === "assistant") {
+        messages.push({
+          role: "assistant",
+          content: [{ type: "text", text: m.content }],
+          api: "openai-completions",
+          provider: this.provider.id,
+          model: this.provider.modelId,
+          usage: zeroUsage,
+          stopReason: "stop",
+          timestamp,
+        });
+      }
+    }
+    return messages;
   }
 
   private buildModel(): Model<"openai-completions"> {
@@ -180,7 +256,19 @@ export class DesktopAgentRuntime {
     if (this.mode === "agent") {
       tools.push("Write", "Edit", "Bash");
     }
-    return tools.map(exec);
+    const builtins = tools.map(exec);
+
+    const hostExecute = (toolName: string) =>
+      exec(toolName).execute;
+    const pluginTools: AgentTool[] = this.pluginTools.map((def) => ({
+      name: def.name,
+      label: def.name,
+      description: def.description || `${def.name} plugin tool`,
+      parameters: (def.parameters ??
+        Type.Object({})) as AgentTool["parameters"],
+      execute: hostExecute(def.name),
+    }));
+    return [...builtins, ...pluginTools];
   }
 
   private emit(event: AgentEventEnvelope["event"], turnId?: string) {
@@ -211,18 +299,10 @@ export class DesktopAgentRuntime {
             status: "streaming",
           };
           this.emit({ type: "message_start", message: this.currentAssistant });
-        } else if (event.message.role === "user") {
-          const content = textFromContent((event.message as any).content);
-          const message: UiMessage = {
-            id: randomUUID(),
-            role: "user",
-            content,
-            createdAt: nowIso(),
-            status: "complete",
-          };
-          this.emit({ type: "message_start", message });
-          this.emit({ type: "message_end", message });
         }
+        // User messages are echoed and persisted by the desktop main process
+        // (agentPrompt handler); re-emitting them here would duplicate the
+        // bubble in the transcript since each emit mints a fresh id.
         break;
       }
       case "message_update": {

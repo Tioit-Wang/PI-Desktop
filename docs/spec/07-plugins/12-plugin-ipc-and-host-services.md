@@ -104,3 +104,24 @@ plugin runtime
 2. The command palette IPC can execute plugin commands
 3. Start/stop triggers contribution registration/deregistration
 4. The market IPC runs end-to-end under a mock provider (later milestone)
+
+## Appendix: agent-tool dispatch protocol (implemented M5)
+
+Plugin agent tools execute in the desktop runner (Electron main), while the
+permission gate and result envelope stay in host-core:
+
+1. Model calls `plugin_<pluginIdSafe>_<toolName>`; the sidecar forwards it
+   to host `tools.execute` like any built-in tool.
+2. host-core runs the normal permission flow (risk, session grants,
+   120s timeout), then emits notification `plugins.execute`
+   `{ executionId, sessionId, toolCallId, toolName, args }`.
+3. Electron main executes the registered plugin tool JS and answers via RPC
+   `plugins.resolveExecution` `{ executionId, ok, content, errorCode? }`.
+4. host-core resolves the pending execution and returns a standard
+   `ToolsExecuteResult` to the sidecar. Dispatch timeout maps to
+   `TOOL_TIMEOUT`; an unknown/unloaded tool maps to `TOOL_NOT_FOUND`.
+
+The model-facing toolset gains plugin tools per prompt: main passes
+registered defs (`fullName`, description, JSON-schema parameters) to
+`agent.prompt`, and the runtime appends them to the built-in six.
+Covered by protocol smoke scenario E2E-024.

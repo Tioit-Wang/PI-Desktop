@@ -85,8 +85,8 @@ impl PluginManager {
             return Err(anyhow!("PLUGIN_INVALID: manifest.json missing"));
         }
         let raw = fs::read_to_string(&manifest_path)?;
-        let manifest: PluginManifest = serde_json::from_str(&raw)
-            .map_err(|e| anyhow!("PLUGIN_INVALID: {e}"))?;
+        let manifest: PluginManifest =
+            serde_json::from_str(&raw).map_err(|e| anyhow!("PLUGIN_INVALID: {e}"))?;
         if manifest.id.is_empty() || manifest.main.is_empty() {
             return Err(anyhow!("PLUGIN_INVALID: id/main required"));
         }

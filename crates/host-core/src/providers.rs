@@ -58,7 +58,11 @@ pub struct ProviderUpdateInput {
     pub enabled: Option<bool>,
 }
 
-pub fn list_providers(db: &Database, secrets: &SecretStore, include_disabled: bool) -> Result<Vec<ProviderPublic>> {
+pub fn list_providers(
+    db: &Database,
+    secrets: &SecretStore,
+    include_disabled: bool,
+) -> Result<Vec<ProviderPublic>> {
     let sql = if include_disabled {
         "SELECT id, name, vendor_key, type, protocol, enabled, base_url, auth_kind, secret_ref,
                 default_model_id, api_style, created_at, updated_at FROM providers ORDER BY created_at ASC"
@@ -71,10 +75,7 @@ pub fn list_providers(db: &Database, secrets: &SecretStore, include_disabled: bo
     let rows = stmt.query_map([], |row| {
         let secret_ref: Option<String> = row.get(8)?;
         let id: String = row.get(0)?;
-        let has_secret = secret_ref
-            .as_ref()
-            .map(|r| secrets.has(r))
-            .unwrap_or(false);
+        let has_secret = secret_ref.as_ref().map(|r| secrets.has(r)).unwrap_or(false);
         Ok(ProviderPublic {
             id,
             name: row.get(1)?,
@@ -117,9 +118,7 @@ pub fn create_provider(
     let provider_type = input
         .provider_type
         .unwrap_or_else(|| "openai_compatible".into());
-    let protocol = input
-        .protocol
-        .unwrap_or_else(|| "openai_compatible".into());
+    let protocol = input.protocol.unwrap_or_else(|| "openai_compatible".into());
     let auth_kind = input
         .auth_kind
         .unwrap_or_else(|| "api_key_and_base_url".into());
@@ -213,15 +212,21 @@ pub fn update_provider(
 pub fn delete_provider(db: &Database, secrets: &SecretStore, id: &str) -> Result<bool> {
     let sref = secret_ref_for_provider(id);
     let _ = secrets.delete(&sref);
-    db.conn()
-        .execute("DELETE FROM secrets_meta WHERE secret_ref = ?1", params![sref])?;
+    db.conn().execute(
+        "DELETE FROM secrets_meta WHERE secret_ref = ?1",
+        params![sref],
+    )?;
     let n = db
         .conn()
         .execute("DELETE FROM providers WHERE id = ?1", params![id])?;
     Ok(n > 0)
 }
 
-pub fn get_provider(db: &Database, secrets: &SecretStore, id: &str) -> Result<Option<ProviderPublic>> {
+pub fn get_provider(
+    db: &Database,
+    secrets: &SecretStore,
+    id: &str,
+) -> Result<Option<ProviderPublic>> {
     db.conn()
         .query_row(
             "SELECT id, name, vendor_key, type, protocol, enabled, base_url, auth_kind, secret_ref,

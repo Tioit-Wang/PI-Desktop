@@ -91,7 +91,10 @@ impl PermissionManager {
         tool_name: &str,
         args_preview: serde_json::Value,
         reason: &str,
-    ) -> (PermissionRequest, tokio::sync::oneshot::Receiver<PermissionDecision>) {
+    ) -> (
+        PermissionRequest,
+        tokio::sync::oneshot::Receiver<PermissionDecision>,
+    ) {
         let request_id = Uuid::new_v4().to_string();
         let request = PermissionRequest {
             request_id: request_id.clone(),
@@ -115,7 +118,11 @@ impl PermissionManager {
         (request, rx)
     }
 
-    pub fn resolve(&mut self, request_id: &str, decision: PermissionDecision) -> Result<(), String> {
+    pub fn resolve(
+        &mut self,
+        request_id: &str,
+        decision: PermissionDecision,
+    ) -> Result<(), String> {
         let Some(mut pending) = self.pending.remove(request_id) else {
             return Err("NOT_FOUND".into());
         };

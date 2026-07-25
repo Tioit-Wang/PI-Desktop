@@ -7,7 +7,7 @@ import { createInterface } from "node:readline";
 import { randomUUID } from "node:crypto";
 import { ParentHostProxy } from "./parent-host-proxy.js";
 import { DesktopAgentRuntime } from "./runtime.js";
-import type { AgentEventEnvelope, Mode } from "@pi-desktop/shared";
+import type { AgentEventEnvelope, Mode, UiMessage } from "@pi-desktop/shared";
 
 type RuntimeMap = Map<string, DesktopAgentRuntime>;
 
@@ -52,6 +52,12 @@ async function handle(method: string, params: any): Promise<unknown> {
         modelId: string;
         apiKey: string;
       };
+      const pluginTools = (params.pluginTools ?? []) as Array<{
+        name: string;
+        description?: string;
+        parameters?: unknown;
+      }>;
+      const pluginToolNames = pluginTools.map((t) => t.name);
       if (!provider?.apiKey || !provider?.modelId) {
         throw Object.assign(new Error("model/provider not configured"), {
           rpcCode: -32000,
@@ -59,29 +65,54 @@ async function handle(method: string, params: any): Promise<unknown> {
         });
       }
       // A session runs one turn at a time (AGENT_BUSY, spec 02-agent-runtime).
-      // Idle runtimes are recreated so provider/mode changes apply.
+      // Session isolation: one persistent pi-agent per session — reuse the
+      // idle runtime so the session keeps its own context, and recreate only
+      // when provider/model/mode changed (seeding from the persisted
+      // transcript so no context is lost, and none leaks across sessions).
       const existing = runtimes.get(sessionId);
-      if (existing) {
-        if (existing.getStatus().isRunning) {
-          throw Object.assign(new Error("session already has an active turn"), {
-            rpcCode: -32000,
-            errorCode: "AGENT_BUSY",
-          });
-        }
+      if (existing?.getStatus().isRunning) {
+        throw Object.assign(new Error("session already has an active turn"), {
+          rpcCode: -32000,
+          errorCode: "AGENT_BUSY",
+        });
+      }
+      let runtime = existing?.matches(mode, provider, pluginToolNames)
+        ? existing
+        : undefined;
+      if (existing && !runtime) {
         await existing.dispose();
         runtimes.delete(sessionId);
       }
       const turnId = randomUUID();
-      const runtime = new DesktopAgentRuntime({
-        host: hostProxy as any,
-        sessionId,
-        mode,
-        provider,
-        onEvent: (envelope: AgentEventEnvelope) => {
-          notify("agent.event", envelope);
-        },
-      });
-      runtimes.set(sessionId, runtime);
+      if (!runtime) {
+        let history: UiMessage[] = [];
+        try {
+          const detail = await hostProxy.call<{
+            session?: { messages?: UiMessage[] } | null;
+          }>("session.get", { id: sessionId });
+          history = detail?.session?.messages ?? [];
+        } catch {
+          // history restore is best-effort
+        }
+        // Main persists the current user message before calling us; drop it
+        // from the seed so prompt() doesn't add it to the context twice.
+        const last = history[history.length - 1];
+        if (last?.role === "user" && last.content === content) {
+          history = history.slice(0, -1);
+        }
+        runtime = new DesktopAgentRuntime({
+          host: hostProxy as any,
+          sessionId,
+          mode,
+          provider,
+          history,
+          pluginTools,
+          onEvent: (envelope: AgentEventEnvelope) => {
+            notify("agent.event", envelope);
+          },
+        });
+        runtimes.set(sessionId, runtime);
+      }
       void runtime.prompt(content).catch((err) => {
         const message = err instanceof Error ? err.message : String(err);
         let code = "PROVIDER_ERROR";

@@ -25,6 +25,7 @@ export type RegisteredPluginTool = {
   name: string;
   description: string;
   risk?: string;
+  schema?: unknown;
   execute: (args: unknown) => Promise<unknown>;
 };
 
@@ -134,6 +135,7 @@ export class PluginRuntime {
             name: tool.name,
             description: tool.description,
             risk: tool.risk,
+            schema: (tool as { schema?: unknown }).schema,
             execute: async (args) => tool.execute(args),
           });
         },

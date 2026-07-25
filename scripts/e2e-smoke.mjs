@@ -209,6 +209,44 @@ async function main() {
       "E2E-022-plugin-load",
       plugin.plugin?.id === "demo.hello" && plugin.plugin?.enabled === true,
     );
+
+    // E2E-024: plugin agent tool dispatch roundtrip. The smoke harness acts
+    // as the desktop runner: host emits plugins.execute, we answer via
+    // plugins.resolveExecution, and tools.execute returns the plugin result.
+    {
+      const toolName = "plugin_demo_hello_echo_text";
+      const dispatchP = host.call("tools.execute", {
+        sessionId: session.session.id,
+        toolCallId: randomUUID(),
+        toolName,
+        args: { text: "roundtrip" },
+        mode: "agent",
+      });
+      // wait for the plugins.execute notification and answer it
+      let execNote = null;
+      for (let i = 0; i < 100 && !execNote; i++) {
+        execNote = host.notifications.find(
+          (n) => n.method === "plugins.execute" && n.params?.toolName === toolName,
+        );
+        if (!execNote) await new Promise((r) => setTimeout(r, 50));
+      }
+      if (execNote) {
+        await host.call("plugins.resolveExecution", {
+          executionId: execNote.params.executionId,
+          ok: true,
+          content: { echo: String(execNote.params.args?.text || "") },
+        });
+      }
+      const dispatched = await dispatchP;
+      record(
+        "E2E-024-plugin-tool-dispatch",
+        Boolean(execNote) &&
+          dispatched.ok === true &&
+          dispatched.content?.echo === "roundtrip",
+        execNote ? `echo=${dispatched.content?.echo}` : "no plugins.execute notification",
+      );
+    }
+
     await host.call("plugins.disable", { id: "demo.hello" });
     const plugins = await host.call("plugins.list");
     const disabled = plugins.plugins.find((p) => p.id === "demo.hello");

@@ -340,7 +340,7 @@ Each scenario is documented in this format:
 - **Specs linked**: `07-plugins/03-plugin-api.md`, `07-plugins/13-plugin-permissions-matrix.md`
 - **Acceptance**: G (plugin agent tool)
 - **Milestone**: M4
-- **Status**: Draft
+- **Status**: Automated (protocol smoke: dispatch roundtrip host->runner->host; in-app JS execution via PluginRuntime)
 
 #### E2E-025: Disable plugin removes contributions
 

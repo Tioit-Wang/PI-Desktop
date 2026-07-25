@@ -5,7 +5,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::sync::{Mutex, mpsc};
+use tokio::sync::{mpsc, Mutex};
 use tracing;
 
 use crate::audit;
@@ -150,6 +150,78 @@ async fn emit_notification(tx: &mpsc::UnboundedSender<String>, method: &str, par
     }
 }
 
+/// Dispatch a `plugin_*` tool to the desktop runner (Electron main), which
+/// executes the plugin JS and answers via `plugins.resolveExecution`.
+async fn execute_plugin_tool(
+    state: &Arc<Mutex<AppState>>,
+    tx: &mpsc::UnboundedSender<String>,
+    p: &ToolsExecuteParams,
+    timeout_ms: u64,
+) -> tools::ToolsExecuteResult {
+    let started = std::time::Instant::now();
+    let execution_id = uuid::Uuid::new_v4().to_string();
+    let (otx, orx) = tokio::sync::oneshot::channel::<Value>();
+    {
+        let mut st = state.lock().await;
+        st.plugin_execs.insert(execution_id.clone(), otx);
+    }
+    emit_notification(
+        tx,
+        "plugins.execute",
+        json!({
+            "executionId": execution_id,
+            "sessionId": p.session_id,
+            "toolCallId": p.tool_call_id,
+            "toolName": p.tool_name,
+            "args": p.args,
+        }),
+    )
+    .await;
+
+    let outcome =
+        tokio::time::timeout(std::time::Duration::from_millis(timeout_ms), orx).await;
+    let duration_ms = started.elapsed().as_millis() as u64;
+    match outcome {
+        Ok(Ok(resp)) => {
+            let ok = resp.get("ok").and_then(|v| v.as_bool()).unwrap_or(false);
+            let content = resp.get("content").cloned().unwrap_or(Value::Null);
+            let error_code = resp
+                .get("errorCode")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string());
+            tools::ToolsExecuteResult {
+                tool_call_id: p.tool_call_id.clone(),
+                ok,
+                is_error: if ok { None } else { Some(true) },
+                content,
+                duration_ms,
+                denied: None,
+                error_code: if ok {
+                    None
+                } else {
+                    Some(error_code.unwrap_or_else(|| "TOOL_FAILED".into()))
+                },
+            }
+        }
+        _ => {
+            let mut st = state.lock().await;
+            st.plugin_execs.remove(&execution_id);
+            tools::ToolsExecuteResult {
+                tool_call_id: p.tool_call_id.clone(),
+                ok: false,
+                is_error: Some(true),
+                content: json!({
+                    "error": "plugin tool dispatch timed out or no desktop runner is attached",
+                    "code": "TOOL_TIMEOUT"
+                }),
+                duration_ms,
+                denied: None,
+                error_code: Some("TOOL_TIMEOUT".into()),
+            }
+        }
+    }
+}
+
 async fn handle_request(
     state: Arc<Mutex<AppState>>,
     method: &str,
@@ -178,11 +250,13 @@ async fn handle_request(
             }
             let mut st = state.lock().await;
             st.handshook = true;
-            if let Ok(path) = st.db.conn().query_row(
-                "SELECT path FROM workspace WHERE id = 1",
-                [],
-                |row| row.get::<_, Option<String>>(0),
-            ) {
+            if let Ok(path) =
+                st.db
+                    .conn()
+                    .query_row("SELECT path FROM workspace WHERE id = 1", [], |row| {
+                        row.get::<_, Option<String>>(0)
+                    })
+            {
                 if let Some(path) = path {
                     if !path.is_empty() {
                         st.workspace.set(PathBuf::from(path));
@@ -420,11 +494,26 @@ async fn handle_request(
             let st = state.lock().await;
             let session = sessions::create_session(
                 &st.db,
-                params.get("title").and_then(|v| v.as_str()).map(str::to_string),
-                params.get("mode").and_then(|v| v.as_str()).map(str::to_string),
-                params.get("providerId").and_then(|v| v.as_str()).map(str::to_string),
-                params.get("modelId").and_then(|v| v.as_str()).map(str::to_string),
-                params.get("projectPath").and_then(|v| v.as_str()).map(str::to_string),
+                params
+                    .get("title")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                params
+                    .get("mode")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                params
+                    .get("providerId")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                params
+                    .get("modelId")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
+                params
+                    .get("projectPath")
+                    .and_then(|v| v.as_str())
+                    .map(str::to_string),
             )
             .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "session": session }))
@@ -582,15 +671,16 @@ async fn handle_request(
                         "mode": p.mode
                     }),
                 );
-                let error_code = if p.mode == "chat" && !PermissionManager::chat_mode_allows(&p.tool_name) {
-                    if p.tool_name == "Bash" {
-                        "BASH_DISABLED_IN_CHAT"
+                let error_code =
+                    if p.mode == "chat" && !PermissionManager::chat_mode_allows(&p.tool_name) {
+                        if p.tool_name == "Bash" {
+                            "BASH_DISABLED_IN_CHAT"
+                        } else {
+                            "WRITE_DISABLED_IN_CHAT"
+                        }
                     } else {
-                        "WRITE_DISABLED_IN_CHAT"
-                    }
-                } else {
-                    "TOOL_DENIED"
-                };
+                        "TOOL_DENIED"
+                    };
                 return Ok(json!({
                     "toolCallId": p.tool_call_id,
                     "ok": false,
@@ -612,8 +702,11 @@ async fn handle_request(
 
             let ws_path = workspace_path.map(PathBuf::from);
             let timeout = p.timeout_ms.unwrap_or(60_000);
-            let mut result =
-                tools::execute_tool(ws_path.as_deref(), &p.tool_name, &p.args, timeout).await;
+            let mut result = if p.tool_name.starts_with("plugin_") {
+                execute_plugin_tool(&state, &tx, &p, timeout).await
+            } else {
+                tools::execute_tool(ws_path.as_deref(), &p.tool_name, &p.args, timeout).await
+            };
             result.tool_call_id = p.tool_call_id.clone();
 
             let st = state.lock().await;
@@ -634,16 +727,22 @@ async fn handle_request(
         }
 
         "permissions.evaluate" => {
-            let session_id = params.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
-            let tool_name = params.get("toolName").and_then(|v| v.as_str()).unwrap_or("");
-            let mode = params.get("mode").and_then(|v| v.as_str()).unwrap_or("agent");
+            let session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let tool_name = params
+                .get("toolName")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
+            let mode = params
+                .get("mode")
+                .and_then(|v| v.as_str())
+                .unwrap_or("agent");
             let st = state.lock().await;
-            let decision = st.permissions.evaluate_auto(
-                session_id,
-                tool_name,
-                mode,
-                &st.session_grants,
-            );
+            let decision =
+                st.permissions
+                    .evaluate_auto(session_id, tool_name, mode, &st.session_grants);
             Ok(json!({
                 "decision": decision,
                 "risk": PermissionManager::tool_risk(tool_name)
@@ -673,14 +772,20 @@ async fn handle_request(
             Ok(json!({ "ok": true }))
         }
         "permissions.listSessionGrants" => {
-            let session_id = params.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
+            let session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let st = state.lock().await;
             Ok(json!({
                 "grants": st.session_grants.get(session_id).cloned().unwrap_or_default()
             }))
         }
         "permissions.clearSessionGrants" => {
-            let session_id = params.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
+            let session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .unwrap_or("");
             let mut st = state.lock().await;
             st.session_grants.remove(session_id);
             Ok(json!({ "ok": true }))
@@ -689,6 +794,23 @@ async fn handle_request(
         "plugins.list" => {
             let st = state.lock().await;
             Ok(json!({ "plugins": st.plugins.list() }))
+        }
+        "plugins.resolveExecution" => {
+            let execution_id = params
+                .get("executionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "executionId required", "INVALID_PARAMS"))?;
+            let sender = {
+                let mut st = state.lock().await;
+                st.plugin_execs.remove(execution_id)
+            };
+            match sender {
+                Some(sender) => {
+                    let _ = sender.send(params.clone());
+                    Ok(json!({ "ok": true }))
+                }
+                None => Err(rpc_err(1003, "unknown executionId", "NOT_FOUND")),
+            }
         }
         "plugins.loadDev" => {
             let path = params
@@ -788,7 +910,10 @@ async fn handle_request(
         }
 
         "audit.append" => {
-            let kind = params.get("kind").and_then(|v| v.as_str()).unwrap_or("custom");
+            let kind = params
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .unwrap_or("custom");
             let session_id = params.get("sessionId").and_then(|v| v.as_str());
             let payload = params.get("payload").cloned().unwrap_or(json!({}));
             let st = state.lock().await;

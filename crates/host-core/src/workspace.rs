@@ -25,7 +25,10 @@ impl WorkspaceState {
     }
 
     pub fn set(&mut self, path: impl AsRef<Path>) -> ProjectWorkspace {
-        let path = path.as_ref().canonicalize().unwrap_or_else(|_| path.as_ref().to_path_buf());
+        let path = path
+            .as_ref()
+            .canonicalize()
+            .unwrap_or_else(|_| path.as_ref().to_path_buf());
         let name = path
             .file_name()
             .and_then(|s| s.to_str())

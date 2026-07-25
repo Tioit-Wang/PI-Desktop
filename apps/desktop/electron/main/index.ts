@@ -538,6 +538,57 @@ function wireHost(h: HostProcess) {
         },
       };
       sendToRenderer(IPC.event.agentMessage, envelope);
+    } else if (method === "plugins.execute") {
+      // Host dispatches plugin_* tools to us; run the plugin JS and answer.
+      void (async () => {
+        const q = params as {
+          executionId: string;
+          toolCallId?: string;
+          toolName: string;
+          args: unknown;
+        };
+        const tool = plugins.getTools().find((t) => t.fullName === q.toolName);
+        let payload: Record<string, unknown>;
+        if (!tool) {
+          payload = {
+            executionId: q.executionId,
+            ok: false,
+            errorCode: "TOOL_NOT_FOUND",
+            content: { error: `plugin tool not loaded: ${q.toolName}` },
+          };
+        } else {
+          try {
+            const result = await tool.execute(q.args);
+            payload = {
+              executionId: q.executionId,
+              ok: true,
+              content: result ?? null,
+            };
+          } catch (e) {
+            payload = {
+              executionId: q.executionId,
+              ok: false,
+              errorCode: "TOOL_FAILED",
+              content: { error: e instanceof Error ? e.message : String(e) },
+            };
+          }
+        }
+        logger.app("info", "plugin tool executed", {
+          toolCallId: q.toolCallId,
+          pluginId: tool?.pluginId,
+          data: { toolName: q.toolName, ok: payload.ok === true },
+        });
+        try {
+          await h.call("plugins.resolveExecution", payload);
+        } catch (e) {
+          logger.app("warn", "plugin execution resolve failed", {
+            data: String(e),
+          });
+        }
+        for (const toast of plugins.drainToasts()) {
+          sendToRenderer(IPC.event.toast, { message: toast });
+        }
+      })();
     }
   });
   h.onExit(({ code, signal, intentional }) => {
@@ -1184,6 +1235,13 @@ function registerIpc() {
           modelId,
           apiKey: secret.value || "",
         },
+        // Registered plugin agent tools join the model's toolset; execution
+        // round-trips host -> main (plugins.execute) -> plugin JS.
+        pluginTools: plugins.getTools().map((t) => ({
+          name: t.fullName,
+          description: t.description,
+          parameters: t.schema ?? { type: "object", properties: {} },
+        })),
       },
     );
     logger.app("info", "prompt accepted", {

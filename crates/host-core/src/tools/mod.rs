@@ -75,12 +75,12 @@ pub async fn execute_tool(
         "Write" => tool_write(workspace, args),
         "Edit" => tool_edit(workspace, args),
         "Bash" => tool_bash(workspace, args, timeout_ms).await,
-        other if other.starts_with("plugin_") => Ok(json!({
-            "ok": true,
-            "note": "plugin tools are executed by the plugin runtime in Electron/Node",
-            "toolName": other,
-            "args": args,
-        })),
+        other if other.starts_with("plugin_") => Err((
+            "TOOL_NOT_FOUND".into(),
+            format!(
+                "plugin tool {other} requires the desktop runner (dispatched via plugins.execute)"
+            ),
+        )),
         other => Err(("TOOL_NOT_FOUND".into(), format!("unknown tool: {other}"))),
     };
 

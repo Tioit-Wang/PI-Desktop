@@ -24,6 +24,9 @@ pub struct AppState {
     pub handshook: bool,
     /// session_id -> toolName grants
     pub session_grants: HashMap<String, Vec<String>>,
+    /// executionId -> responder for plugin tool dispatches awaiting the
+    /// desktop runner (Electron main executes the plugin JS and resolves).
+    pub plugin_execs: HashMap<String, tokio::sync::oneshot::Sender<serde_json::Value>>,
 }
 
 impl AppState {
@@ -42,6 +45,7 @@ impl AppState {
             started_at: Instant::now(),
             handshook: false,
             session_grants: HashMap::new(),
+            plugin_execs: HashMap::new(),
         })
     }
 

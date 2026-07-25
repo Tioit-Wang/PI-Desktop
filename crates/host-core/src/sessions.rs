@@ -240,14 +240,8 @@ pub fn append_message(db: &Database, session_id: &str, message: &UiMessage) -> R
             message.tool_name,
             message.tool_call_id,
             message.tool_status,
-            message
-                .tool_args
-                .as_ref()
-                .map(|v| v.to_string()),
-            message
-                .tool_result
-                .as_ref()
-                .map(|v| v.to_string()),
+            message.tool_args.as_ref().map(|v| v.to_string()),
+            message.tool_result.as_ref().map(|v| v.to_string()),
             if message.is_error.unwrap_or(false) {
                 1
             } else {
@@ -266,8 +260,10 @@ pub fn append_message(db: &Database, session_id: &str, message: &UiMessage) -> R
 }
 
 pub fn replace_messages(db: &Database, session_id: &str, messages: &[UiMessage]) -> Result<()> {
-    db.conn()
-        .execute("DELETE FROM messages WHERE session_id = ?1", params![session_id])?;
+    db.conn().execute(
+        "DELETE FROM messages WHERE session_id = ?1",
+        params![session_id],
+    )?;
     for message in messages {
         append_message(db, session_id, message)?;
     }
