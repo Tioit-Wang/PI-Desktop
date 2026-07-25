@@ -436,7 +436,8 @@ textarea:disabled {
   width: min(100%, 768px);
   max-width: 100%;
   margin-inline: auto;
-  padding: 6px 12px 14px; /* footing; plate min-height lifts draft */
+  /* Extra bottom footing lifts plate foot ~y674 vs window bottom (gold 690) */
+  padding: 6px 12px 20px;
 }
 
 /* Codex home ambient suggestion cards (electron cards mode) */
@@ -927,6 +928,7 @@ textarea:disabled {
   align-items: center;
   gap: 8px;
   border-radius: 8px;
+  /* Dark keeps soft elevated fill; light is transparent (Codex gold) */
   background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
   padding: 5px 8px;
   min-height: 30px;
@@ -1321,11 +1323,12 @@ textarea:disabled {
     #ffffff 48px,
     #ffffff 100%
   );
-  /* Soft lift; keep pre-plate halo minimal (gold stays pure white until y538) */
+  /* Stroke + downward soft lift (gold foot band y674–680) */
   box-shadow:
-    0 0 0 0.5px color-mix(in oklab, #1a1c1f 11%, transparent),
-    0 2px 5px #00000008,
-    0 0 14px #0000000a;
+    0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
+    0 1px 2px #0000000a,
+    0 4px 10px #00000010,
+    0 8px 18px #0000000c;
   outline: none;
   border: 0;
 }
@@ -1403,14 +1406,27 @@ textarea:disabled {
   background: color-mix(in oklab, #1a1c1f 14%, transparent);
 }
 
-:root[data-theme="light"] .new-task-btn {
+:root[data-theme="light"] .new-task-btn,
+:root[data-theme="light"] .nav-item.new-task-btn {
+  /* Gold empty-home: ghost row, no solid chip fill */
+  background: transparent;
+  font-weight: 400;
+  box-shadow: none;
+}
+
+:root[data-theme="light"] .new-task-btn:hover,
+:root[data-theme="light"] .nav-item.new-task-btn:hover {
+  background: color-mix(in oklab, #1a1c1f 5%, transparent);
+}
+
+:root[data-theme="light"] button.nav-item.new-task-btn {
   background: transparent;
   font-weight: 400;
 }
-
-:root[data-theme="light"] .new-task-btn:hover {
+:root[data-theme="light"] button.nav-item.new-task-btn:hover {
   background: color-mix(in oklab, #1a1c1f 5%, transparent);
 }
+
 
 :root[data-theme="light"] .tool-card {
   background: color-mix(in oklab, #1a1c1f 2%, transparent);

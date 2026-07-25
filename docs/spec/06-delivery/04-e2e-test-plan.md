@@ -653,6 +653,10 @@ This test plan spec is accepted when:
 - Dark empty home hero title ink is light-on-dark (`--ds-text-primary` / near white), not hardcoded `#1a1c1f`.
 - Night composer plate is solid `#212121` on main `#181818` with visible elevation; light theme is not forced to the night plate fill.
 
+### US-UI-42 Light New task ghost chrome
+- Light empty-home **New task** row has no solid gray chip fill (transparent on `#f3f3f3` sidebar); icon+label only until hover.
+
+
 
 ### US-UI-38 Home chips without project
 - On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).

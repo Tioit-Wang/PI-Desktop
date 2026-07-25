@@ -350,6 +350,7 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
 - Empty-home composer plate targets gold draft→toolbar spacing (**~144–148px** min-height at 1200×690) so draft ink lands near y556; not a collapsed hole
 - Home dual-grow content width is **`min(100%, 768px)`** (true max-w-3xl at 16px), not `48rem` under the 14px root — prevents ~120px-narrow plate vs Codex gold
+- Light **New task** control is a **ghost row** (transparent fill, hover wash only), not a solid chip
 - Empty hero title uses `var(--ds-text-primary)` (light override `#1a1c1f`); never hardcode light ink for shared hero styles
 - Night home composer plate styles are **dark-scoped only** (`#212121` elevated-primary + stronger soft lift)
 - Empty draft row keeps **min textarea height 28px** (auto-resize must not collapse to 0) so placeholder remains visible
