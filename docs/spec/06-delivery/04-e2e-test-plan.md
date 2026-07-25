@@ -480,7 +480,7 @@ This test plan spec is accepted when:
 
 ### US-UI-01 Codex-aligned shell chrome
 - Open the desktop app on macOS dark theme.
-- Expect charcoal main surface (`#181818`), left sidebar with New task + Recents, and a floating bottom composer with project/model chips.
+- Expect charcoal main surface (`#181818`), left sidebar with New task + Recent tasks, and a floating bottom composer with project/model chips.
 - Expect no blue-slate marketing chrome; primary send control is a circular inverted button.
 
 ### US-UI-02 Empty thread hero
@@ -498,13 +498,13 @@ This test plan spec is accepted when:
 - Permission toggle switches between Agent and Request approval (chat mode).
 
 ### US-UI-05 Locale chrome
-- On a zh-CN system locale, sidebar labels render in Chinese (新建任务 / 项目 / 拉取请求 / 已安排 / 插件 / 最近).
+- On a zh-CN system locale, sidebar labels render in Chinese (新建任务 / 项目 / 拉取请求 / 已安排 / 插件 / 最近任务).
 - Empty-thread hero remains English Codex copy: "What should we build?".
 - Composer shows 本地, 请求批准 (chat mode), and 自定义 + effort on the right.
 
 ### US-UI-06 Session auto-title
 - Create a new task and send a first prompt such as "同步代码".
-- Expect the Recents item title to become a truncated form of that prompt instead of remaining "New task".
+- Expect the Recent tasks item title to become a truncated form of that prompt instead of remaining "New task".
 
 ### US-UI-07 Pull requests list
 - Open a git workspace with `gh` authenticated.
@@ -517,7 +517,7 @@ This test plan spec is accepted when:
 
 ### US-UI-09 Recents title backfill
 - Open an older session that previously showed "New task"/"New chat" but has a first user message.
-- Expect Recents to display a truncated first-user-message title after session list load.
+- Expect Recent tasks to display a truncated first-user-message title after session list load.
 
 ### US-UI-10 Scheduled local tasks
 - Open Scheduled, create a task with prompt + cadence.
@@ -526,7 +526,7 @@ This test plan spec is accepted when:
 
 ### US-UI-11 Empty draft reuse
 - Click New task twice.
-- Expect only one empty "New task" draft in Recents and the home hero remains visible.
+- Expect only one empty "New task" draft in Recent tasks and the home hero remains visible.
 
 ### US-UI-12 Combined workspace chips
 - On chat home, expect project / Local / branch controls to share one capsule bar above the composer.
@@ -534,7 +534,7 @@ This test plan spec is accepted when:
 ### US-UI-13 Light theme shell parity
 - Set theme to system/light on a light macOS appearance.
 - Expect sidebar `#f3f3f3`, main `#ffffff`, text `#1a1c1f`, white floating composer, and home hero with project underline.
-- Sidebar nav labels (New task / Projects / Pull requests / Scheduled / Plugins / Recents), thread titles, and composer chips must remain readable dark-on-light (≥4.5:1). Never white/translucent text on the light sidebar.
+- Sidebar nav labels (New task / Projects / Pull requests / Scheduled / Plugins / Recent tasks), thread titles, and composer chips must remain readable dark-on-light (≥4.5:1). Never white/translucent text on the light sidebar.
 - Titlebar back/forward controls use dark ink on light chrome.
 
 ### US-UI-14 Semantic chrome tokens
@@ -555,7 +555,7 @@ This test plan spec is accepted when:
 ### US-UI-17 Codex home hero mark
 - On empty chat home, a 56px Codex cloud/glyph mark renders above the title at ~30% opacity (hover ~40%).
 - Title is 28px / weight 400; active project name uses dotted underline (1px, offset 4px).
-- Plus control in composer toolbar is labeled "Add files and more" / 添加文件等.
+- Plus control in composer toolbar is labeled "Add files and more" / 添加文件等内容.
 
 ### US-UI-18 Composer plus context menu
 - On chat home, click the composer `+` control.
