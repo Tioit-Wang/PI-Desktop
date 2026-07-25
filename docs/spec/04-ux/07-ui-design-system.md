@@ -336,6 +336,8 @@ All motion tokens must respect `prefers-reduced-motion: reduce`:
 
 ## 8.0 Home empty stack (Codex parity)
 
+Empty composer placeholder: EN `Ask Codex to do anything` / zh-CN `向 Codex 下达任意指令`.
+
 Empty chat home uses a **centered column** (`home-main-content` / `home-stack`) matching Codex `home-main-content`:
 
 - `flex: 1; align-items: center; justify-content: center`
