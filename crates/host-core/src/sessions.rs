@@ -464,6 +464,7 @@ pub fn get_session(db: &Database, id: &str) -> Result<Option<SessionDetail>> {
 
 /// Backwards-compatible configurator.  Omitting the thinking level preserves
 /// the current persisted value.
+#[allow(dead_code)]
 pub fn configure_session(
     db: &Database,
     id: &str,
