@@ -342,7 +342,7 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 
 - Column `flex: 1; min-height: 0; overflow: hidden` (not a single optical-center stack)
 - **Upper grow** (`.home-upper`): `flex: 1 1 0; align-items: flex-end; justify-content: center; padding-bottom: 96px` holds hero (icon + `heading-xl`)
-- **Upper grow**: `min-h-fit grow basis-0 items-end justify-center pb-24` holds hero; ambient suggestion cards portal under hero (`absolute top-full mt-8`) so they do not steal lower flex height
+- **Upper grow**: `min-h-fit grow basis-0 items-end justify-center` with ~74px bottom pad (tuned from pb-24 so hero first-ink ≈y305 at 1200×690); ambient suggestion cards portal under hero (`absolute top-full mt-8`) so they do not steal lower flex height
 - **Lower grow**: `min-h-fit shrink-0 grow basis-0 flex-col justify-end` holds workspace chips + floating composer only (`pt-3 pb-4`)
 - Suggestion cards: Codex auto-fit grid (`minmax(10rem,1fr)`, often **4-up single row** at desktop width), `min-height: 104px` (`min-h-26`), `rounded-2xl`; electron ring `0.5px` border-heavy + `shadow-md-strong`; dark uses elevated-secondary wash on `#181818`
 - Card actions prefill composer with Codex starter prompts (Explore / Build / Review / Fix)
@@ -581,7 +581,8 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 
 - Main surface: `#181818` (`gray-900`)
 - Sidebar / surface-under: `#000000`
-- Floating composer plate: solid `#212121` (`gray-800` / elevated-primary) with **the same** elevation-prominent stroke + soft lift as light (`#0000000a` / `#0000000d`)
+- Floating composer plate: solid `#212121` (`gray-800` / elevated-primary) with elevation-prominent stroke + soft lift; dark home plate uses a slightly stronger soft lift so the night box does not flatten into main `#181818`
+- Light workspace chips capsule: elevated gray `#f4f4f4` (not pure white-on-white)
 - Combined workspace chips: elevated translucent plate over main, not flat main gray
 - Stage Manager: host re-asserts min bounds while collapsed (permanent watchdog)
 

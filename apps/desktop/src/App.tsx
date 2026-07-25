@@ -126,6 +126,13 @@ function AppShell() {
     [workspace?.path, workspace?.name],
   );
 
+  const emptyTitleParts = useMemo(() => {
+    const marker = "__PROJECT__";
+    const template = t("chat.emptyTitleInProject", { project: marker });
+    const [before = "", after = ""] = template.split(marker);
+    return { before, after };
+  }, [t]);
+
   useEffect(() => {
     (window as any).__PI_DESKTOP__ = {
       setPage: (page: string) => useAppStore.getState().setPage(page as any),
@@ -200,7 +207,7 @@ function AppShell() {
                       <h1>
                         {heroProject ? (
                           <>
-                            What should we build in{" "}
+                            {emptyTitleParts.before}
                             <button
                               type="button"
                               className="project-underline"
@@ -209,7 +216,7 @@ function AppShell() {
                             >
                               {heroProject}
                             </button>
-                            ?
+                            {emptyTitleParts.after}
                           </>
                         ) : (
                           t("chat.emptyTitle")

@@ -633,6 +633,11 @@ This test plan spec is accepted when:
 
 ### US-UI-35 Empty composer plate density
 - Empty-home floating composer plate is compact (~112px min height), not an oversized empty stack.
+
+### US-UI-36 Hero Y + night box elevation
+- At ~1200×690 light home, hero first dark ink is near y≈300 (±12px) vs Codex gold.
+- Dark home composer plate reads as solid `#212121` with visible elevation against `#181818` (not flat same-surface).
+- Light workspace chips capsule is elevated gray (`#f4f4f4`), distinct from main white.
 - Model chip shows the active model id; effort options remain in the model/intelligence menu.
 - Placeholder and approval chip remain legible on light and dark plates.
 

@@ -72,6 +72,7 @@ This log freezes previously open questions into concrete decisions.
 | D049 | Home suggestion cards | **Empty home portals 4 Codex ambient cards under hero (`top-full mt-8`, auto-fit row); lower flex hosts composer only; click prefills starter prompt** | Match electron portal + dual-grow so hero Y and 4-up cards stay visible |
 | D050 | Empty composer plate height | **Home empty composer min-height ~112px (compact); model chip shows model id (effort stays in menu)** | Match Codex empty plate density; model chip chrome closer to electron model picker trigger |
 | D051 | Sidebar nav density | **Nav rows ~32px pitch, recents rows ~28–31px, section label `最近`/`Recents`** | Close light-home sidebar residual vs cx-home-clean |
+| D052 | Home vertical + night box polish | **Upper pb ~74px (hero first-ink ~y305); light chips `#f4f4f4`; dark home composer solid `#212121` with stronger elevation; toolbar controls 28px** | Close residual heat at hero y≈300 and composer band; night plate must not flatten into `#181818` |
 
 ## C. Still deferred (not blocking M1)
 

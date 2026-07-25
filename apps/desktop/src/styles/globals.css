@@ -382,7 +382,8 @@ textarea:disabled {
   width: 100%;
   align-items: flex-end;
   justify-content: center;
-  padding: 0 0 96px; /* pb-24 */
+  /* Gold hero first-ink ~y305; compact project titles need less than full pb-24 */
+  padding: 0 0 74px;
 
   overflow: visible;
 }
@@ -430,7 +431,7 @@ textarea:disabled {
   width: min(100%, 48rem);
   max-width: 100%;
   margin-inline: auto;
-  padding: 12px 24px 16px; /* pt-3 pb-4 */
+  padding: 8px 24px 16px; /* slightly tighter top so plate sits closer to gold band */
 }
 
 /* Codex home ambient suggestion cards (electron cards mode) */
@@ -812,8 +813,8 @@ textarea:disabled {
 
 .icon-btn {
   display: inline-flex;
-  height: 30px;
-  min-width: 30px;
+  height: 28px;
+  min-width: 28px;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -860,8 +861,8 @@ textarea:disabled {
 
 .stop-btn {
   display: inline-flex;
-  height: 30px;
-  width: 30px;
+  height: 28px;
+  width: 28px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
@@ -1275,8 +1276,9 @@ textarea:disabled {
 
 /* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
 :root[data-theme="light"] .composer-chips {
-  background: #ffffff;
-  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 16%, transparent),
+  /* Codex utility capsule reads slightly elevated gray, not pure white-on-white */
+  background: #f4f4f4;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.04);
   color: #1a1c1f;
 }
@@ -1473,15 +1475,23 @@ textarea:disabled {
 
 /* DARK_COMPOSER_BOX — Codex elevated-primary + elevation-prominent */
 :root[data-theme="dark"] .composer-chips {
-  background: color-mix(in oklab, var(--gray-0) 3%, transparent); /* elevated-secondary */
+  background: color-mix(in oklab, var(--gray-0) 6%, transparent); /* elevated-secondary readable on #181818 */
   box-shadow: var(--ds-elevation-stroke);
   backdrop-filter: blur(16px);
 }
 
 :root[data-theme="dark"] .composer-shell {
-  background: #212121; /* elevated-primary opaque read of #212121f5 on #181818 */
+  /* elevated-primary: #212121f5 → opaque read on gray-900 */
+  background: color-mix(in oklab, var(--gray-800) 96%, transparent);
+  background-color: #212121;
   box-shadow: var(--ds-shadow-composer);
   border: 0;
+}
+
+:root[data-theme="dark"] .composer-dock-home .composer-shell {
+  /* Night box: keep solid plate so blur/stacking cannot flatten to main #181818 */
+  background: #212121;
+  box-shadow: var(--ds-elevation-stroke), 0 3px 7.5px #0000001a, 0 0 20px #00000024;
 }
 
 

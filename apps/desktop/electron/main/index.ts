@@ -166,8 +166,9 @@ async function createWindow() {
     if (!mainWindow || boundsGuard) return;
     const electronBounds = mainWindow.getBounds();
     const cg = readCgBounds();
+    // Stage Manager may hide us from CG entirely (cg=null) while Electron still reports large bounds.
     const shelved =
-      !!cg && (cg.width < 500 || cg.height < 400 || cg.x < -40);
+      !cg || cg.width < 500 || cg.height < 400 || cg.x < -40;
     const electronTiny =
       electronBounds.width < 500 || electronBounds.height < 400;
     if (!force && !shelved && !electronTiny) return;
@@ -189,7 +190,7 @@ async function createWindow() {
       }
       mainWindow.setSize(CODEX_BOUNDS.width, CODEX_BOUNDS.height, false);
       mainWindow.setPosition(CODEX_BOUNDS.x, CODEX_BOUNDS.y, false);
-      pinUntil = Date.now() + 12000;
+      pinUntil = Date.now() + (cg ? 12000 : 20000);
       // bust CG cache after mutation
       lastCgAt = 0;
       console.log("BOUNDS_RESTORE", {
@@ -225,7 +226,7 @@ async function createWindow() {
     const cg = readCgBounds();
     const electronBounds = mainWindow.getBounds();
     const shelved =
-      !!cg && (cg.width < 500 || cg.height < 400 || cg.x < -40);
+      !cg || cg.width < 500 || cg.height < 400 || cg.x < -40;
     const electronTiny =
       electronBounds.width < 500 || electronBounds.height < 400;
     if (shelved || electronTiny) {
@@ -371,6 +372,9 @@ async function createWindow() {
             `);
             await new Promise((r) => setTimeout(r, 250));
             await shot("pi-profile-menu");
+            await setTheme("light");
+            await setPage("chat");
+            console.log("CAPTURE_DONE");
             await mainWindow!.webContents.executeJavaScript(`
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
             `);
