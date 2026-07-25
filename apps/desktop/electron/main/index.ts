@@ -9,7 +9,7 @@ import {
 import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import {
   APP_NAME,
   APP_VERSION,
@@ -25,14 +25,20 @@ import {
 import { HostProcess } from "./host-process";
 import { AgentSidecar } from "./agent-sidecar";
 import { PluginRuntime } from "./plugin-runtime";
+import { Logger } from "./logger";
 
 let mainWindow: BrowserWindow | null = null;
 let host: HostProcess | null = null;
 let sidecar: AgentSidecar | null = null;
+let quitting = false;
 const plugins = new PluginRuntime();
 
 const dataDir =
   process.env.PI_DESKTOP_DATA_DIR || join(homedir(), ".pi-desktop");
+const logger = new Logger(
+  dataDir,
+  process.env.NODE_ENV === "production" ? "info" : "debug",
+);
 
 function sendToRenderer(channel: string, payload: unknown) {
   if (!IPC_WHITELIST.has(channel)) return;
@@ -102,10 +108,46 @@ async function withGitBranch<T extends { path?: string; name?: string } | null |
   }
 }
 
+type WindowState = { x: number; y: number; width: number; height: number };
+
+function windowStatePath() {
+  return join(dataDir, "window-state.json");
+}
+
+async function readWindowState(): Promise<WindowState | null> {
+  const { readFile } = await import("node:fs/promises");
+  try {
+    const raw = JSON.parse(await readFile(windowStatePath(), "utf8"));
+    const s = {
+      x: Number(raw.x),
+      y: Number(raw.y),
+      width: Number(raw.width),
+      height: Number(raw.height),
+    };
+    if (![s.x, s.y, s.width, s.height].every(Number.isFinite)) return null;
+    if (s.width < 960 || s.height < 640) return null;
+    return s;
+  } catch {
+    return null;
+  }
+}
+
+function writeWindowState(state: WindowState) {
+  void (async () => {
+    const { writeFile } = await import("node:fs/promises");
+    try {
+      mkdirSync(dataDir, { recursive: true });
+      await writeFile(windowStatePath(), JSON.stringify(state), "utf8");
+    } catch {
+      // best-effort persistence
+    }
+  })();
+}
+
 async function createWindow() {
+  const savedState = await readWindowState();
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    ...(savedState ?? { width: 1200, height: 800 }),
     minWidth: 960,
     minHeight: 640,
     title: APP_NAME,
@@ -126,6 +168,14 @@ async function createWindow() {
     return { action: "deny" };
   });
 
+  // Block navigation away from the app shell (dev server origin or local file).
+  mainWindow.webContents.on("will-navigate", (event, url) => {
+    const devOrigin = process.env.ELECTRON_RENDERER_URL;
+    if (devOrigin && url.startsWith(devOrigin)) return;
+    event.preventDefault();
+    logger.app("warn", "blocked navigation attempt", { data: { url } });
+  });
+
   // Codex-like default footprint. CG bounds are truth under Stage Manager.
   const CODEX_BOUNDS = { x: 40, y: 30, width: 1200, height: 800 } as const;
   let boundsGuard = false;
@@ -134,13 +184,17 @@ async function createWindow() {
   let lastCgAt = 0;
   let lastCg: { x: number; y: number; width: number; height: number } | null = null;
   let missingCgStreak = 0;
+  // The CG helper is dev tooling; without it, CG-based shelf detection must
+  // stay inert or every machine would look permanently "shelved".
+  const cgHelperPath = "/tmp/pi-window-bounds";
+  const cgHelperAvailable = existsSync(cgHelperPath);
 
   const readCgBounds = (): { x: number; y: number; width: number; height: number } | null => {
+    if (!cgHelperAvailable) return null;
     // Cache briefly — Stage Manager checks should not spawn tools every frame.
     if (Date.now() - lastCgAt < 700) return lastCg;
     try {
-      const helper = "/tmp/pi-window-bounds";
-      const out = execFileSync(helper, [String(process.pid)], {
+      const out = execFileSync(cgHelperPath, [String(process.pid)], {
         encoding: "utf8",
         timeout: 800,
       }).trim();
@@ -167,13 +221,13 @@ async function createWindow() {
     if (!mainWindow || boundsGuard) return;
     const electronBounds = mainWindow.getBounds();
     const cg = readCgBounds();
-    if (!cg) missingCgStreak += 1;
+    if (!cg && cgHelperAvailable) missingCgStreak += 1;
     else missingCgStreak = 0;
     // Tiny/offscreen CG footprint is Stage Manager shelf. Missing CG alone is not
     // conclusive (alwaysOnTop can change window layer); require a short streak.
     const shelved =
       (!!cg && (cg.width < 500 || cg.height < 400 || cg.x < -40)) ||
-      (!cg && missingCgStreak >= 3);
+      (!cg && cgHelperAvailable && missingCgStreak >= 3);
     const electronTiny =
       electronBounds.width < 500 || electronBounds.height < 400;
     if (!force && !shelved && !electronTiny) return;
@@ -230,6 +284,20 @@ async function createWindow() {
   mainWindow.on("resize", scheduleBoundsCheck);
   mainWindow.on("move", scheduleBoundsCheck);
 
+  // Persist last good user bounds so relaunch restores them.
+  let saveTimer: NodeJS.Timeout | null = null;
+  const scheduleStateSave = () => {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed() || boundsGuard) return;
+      if (mainWindow.isMinimized() || mainWindow.isFullScreen()) return;
+      const b = mainWindow.getBounds();
+      if (b.width >= 960 && b.height >= 640) writeWindowState(b);
+    }, 600);
+  };
+  mainWindow.on("resize", scheduleStateSave);
+  mainWindow.on("move", scheduleStateSave);
+
   const boundsWatchdog = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) {
       clearInterval(boundsWatchdog);
@@ -237,11 +305,11 @@ async function createWindow() {
     }
     const cg = readCgBounds();
     const electronBounds = mainWindow.getBounds();
-    if (!cg) missingCgStreak += 1;
+    if (!cg && cgHelperAvailable) missingCgStreak += 1;
     else missingCgStreak = 0;
     const shelved =
       (!!cg && (cg.width < 500 || cg.height < 400 || cg.x < -40)) ||
-      (!cg && missingCgStreak >= 3);
+      (!cg && cgHelperAvailable && missingCgStreak >= 3);
     const electronTiny =
       electronBounds.width < 500 || electronBounds.height < 400;
     if (shelved || electronTiny) {
@@ -436,13 +504,21 @@ async function createWindow() {
   }
 }
 
-async function bootBackends() {
-  mkdirSync(join(dataDir, "logs"), { recursive: true });
-  host = new HostProcess(dataDir);
-  await host.handshake();
+const RESTART_WINDOW_MS = 120_000;
+const MAX_RESTARTS_PER_WINDOW = 3;
+const restartState = {
+  host: { count: 0, windowStart: 0 },
+  sidecar: { count: 0, windowStart: 0 },
+};
 
-  host.onNotification((method, params) => {
+function wireHost(h: HostProcess) {
+  h.onNotification((method, params) => {
     if (method === "permissions.request") {
+      logger.app("info", "permission requested", {
+        sessionId: (params as any).sessionId,
+        toolCallId: (params as any).toolCallId,
+        data: { toolName: (params as any).toolName, risk: (params as any).risk },
+      });
       const envelope: AgentEventEnvelope = {
         sessionId: (params as any).sessionId,
         ts: Date.now(),
@@ -462,16 +538,49 @@ async function bootBackends() {
       sendToRenderer(IPC.event.agentMessage, envelope);
     }
   });
-
-  sidecar = new AgentSidecar();
-  sidecar.setHost(host);
-  await sidecar.call("sidecar.configure", {
-    hostBinary: host.binaryPath,
-    dataDir,
+  h.onExit(({ code, signal, intentional }) => {
+    if (intentional || quitting) return;
+    logger.app("error", "host-core exited unexpectedly", {
+      code: ErrorCodes.HOST_UNAVAILABLE,
+      data: { exitCode: code, signal },
+    });
+    sendToRenderer(IPC.event.hostStatus, {
+      ok: false,
+      component: "host",
+      restarting: true,
+    });
+    void superviseRestart("host");
   });
-  sidecar.onNotification((method, params) => {
+}
+
+async function startHost(): Promise<void> {
+  const h = new HostProcess(dataDir, (text) => logger.child("host", text));
+  wireHost(h);
+  host = h;
+  await h.handshake();
+  logger.app("info", "host-core handshake ok");
+}
+
+function wireSidecar(s: AgentSidecar) {
+  s.onNotification((method, params) => {
     if (method === "agent.event") {
+      const envelope = params as AgentEventEnvelope;
+      const event = envelope.event;
+      if (event.type === "tool_start") {
+        logger.app("info", "tool start", {
+          sessionId: envelope.sessionId,
+          toolCallId: (event as any).toolCallId,
+          data: { toolName: (event as any).toolName },
+        });
+      } else if (event.type === "tool_end") {
+        logger.app("info", "tool end", {
+          sessionId: envelope.sessionId,
+          toolCallId: (event as any).toolCallId,
+          data: { isError: (event as any).isError === true },
+        });
+      }
       sendToRenderer(IPC.event.agentMessage, params);
+      persistAgentEvent(envelope);
     } else if (method === "agent.permission") {
       const envelope: AgentEventEnvelope = {
         sessionId: (params as any).sessionId,
@@ -492,21 +601,144 @@ async function bootBackends() {
       sendToRenderer(IPC.event.agentMessage, envelope);
     }
   });
+  s.onExit(({ code, signal, intentional }) => {
+    if (intentional || quitting) return;
+    logger.app("error", "agent sidecar exited unexpectedly", {
+      data: { exitCode: code, signal },
+    });
+    sendToRenderer(IPC.event.hostStatus, {
+      ok: false,
+      component: "sidecar",
+      restarting: true,
+    });
+    void superviseRestart("sidecar");
+  });
+}
+
+async function startSidecar(): Promise<void> {
+  const s = new AgentSidecar((text) => logger.child("agent", text));
+  wireSidecar(s);
+  sidecar = s;
+  if (host) s.setHost(host);
+  await s.call("sidecar.configure", {
+    hostBinary: host?.binaryPath,
+    dataDir,
+  });
+  logger.app("info", "agent sidecar configured");
+}
+
+function persistAgentEvent(envelope: AgentEventEnvelope) {
+  if (!host) return;
+  const event = envelope.event;
+  if (event.type === "message_end" && event.message.role === "assistant") {
+    void host
+      .call("session.appendMessage", {
+        sessionId: envelope.sessionId,
+        message: event.message,
+      })
+      .catch((e) =>
+        logger.app("warn", "assistant message persistence failed", {
+          sessionId: envelope.sessionId,
+          data: String(e),
+        }),
+      );
+  }
+  if (event.type === "tool_end") {
+    void host
+      .call("session.appendMessage", {
+        sessionId: envelope.sessionId,
+        message: {
+          id: crypto.randomUUID(),
+          role: "tool",
+          content:
+            typeof event.result === "string"
+              ? event.result
+              : JSON.stringify(event.result),
+          createdAt: new Date().toISOString(),
+          toolCallId: event.toolCallId,
+          toolStatus: event.isError ? "error" : "success",
+          toolResult: event.result,
+          isError: event.isError,
+          status: "complete",
+        },
+      })
+      .catch((e) =>
+        logger.app("warn", "tool message persistence failed", {
+          sessionId: envelope.sessionId,
+          toolCallId: (event as any).toolCallId,
+          data: String(e),
+        }),
+      );
+  }
+}
+
+async function superviseRestart(kind: "host" | "sidecar"): Promise<void> {
+  const st = restartState[kind];
+  const now = Date.now();
+  if (now - st.windowStart > RESTART_WINDOW_MS) {
+    st.windowStart = now;
+    st.count = 0;
+  }
+  st.count += 1;
+  if (st.count > MAX_RESTARTS_PER_WINDOW) {
+    logger.app("error", `${kind} restart limit reached; giving up`, {
+      code: ErrorCodes.HOST_UNAVAILABLE,
+    });
+    sendToRenderer(IPC.event.hostStatus, {
+      ok: false,
+      component: kind,
+      fatal: true,
+    });
+    return;
+  }
+  const delay = Math.min(500 * 2 ** (st.count - 1), 4000);
+  await new Promise((r) => setTimeout(r, delay));
+  if (quitting) return;
+  try {
+    if (kind === "host") {
+      await startHost();
+      if (sidecar && host) sidecar.setHost(host);
+    } else {
+      await startSidecar();
+    }
+    logger.app("warn", `${kind} restarted after crash`);
+    sendToRenderer(IPC.event.hostStatus, {
+      ok: true,
+      component: kind,
+      restarted: true,
+    });
+  } catch (e) {
+    logger.app("error", `${kind} restart failed`, { data: String(e) });
+    void superviseRestart(kind);
+  }
+}
+
+async function bootBackends() {
+  mkdirSync(join(dataDir, "logs"), { recursive: true });
+  logger.app("info", `app boot ${APP_NAME} ${APP_VERSION}`, {
+    data: { protocolVersion: PROTOCOL_VERSION },
+  });
+  await startHost();
+  await startSidecar();
 
   // Restore enabled plugins
   try {
-    const listed = await host.call<{ plugins: any[] }>("plugins.list");
+    const listed = await host!.call<{ plugins: any[] }>("plugins.list");
     for (const p of listed.plugins ?? []) {
       if (p.enabled && p.path) {
         try {
           await plugins.loadFromPath(p.path);
+          logger.app("info", "plugin restored", { pluginId: p.id });
         } catch (e) {
-          console.error("plugin restore failed", p.id, e);
+          logger.app("error", "plugin restore failed", {
+            pluginId: p.id,
+            data: String(e),
+          });
         }
       }
     }
   } catch (e) {
-    console.error("plugin list failed", e);
+    logger.app("error", "plugin list failed", { data: String(e) });
   }
 }
 
@@ -555,7 +787,12 @@ function registerIpc() {
   });
   handle(IPC.invoke.sessionCreate, async (input = {}) => {
     if (!host) throw new Error("host unavailable");
-    return host.call("session.create", input);
+    const res = await host.call<{ session?: { id?: string } }>(
+      "session.create",
+      input,
+    );
+    logger.app("info", "session created", { sessionId: res.session?.id });
+    return res;
   });
   handle(IPC.invoke.sessionGet, async (id: string) => {
     if (!host) throw new Error("host unavailable");
@@ -563,7 +800,9 @@ function registerIpc() {
   });
   handle(IPC.invoke.sessionDelete, async (id: string) => {
     if (!host) throw new Error("host unavailable");
-    return host.call("session.delete", { id });
+    const res = await host.call("session.delete", { id });
+    logger.app("info", "session deleted", { sessionId: id });
+    return res;
   });
   handle(IPC.invoke.sessionRename, async (id: string, title: string) => {
     if (!host) throw new Error("host unavailable");
@@ -869,11 +1108,17 @@ function registerIpc() {
         },
       },
     );
+    logger.app("info", "prompt accepted", {
+      sessionId: req.sessionId,
+      turnId: result.turnId,
+      data: { providerId: provider.id, modelId },
+    });
     return result;
   });
 
   handle(IPC.invoke.agentAbort, async (req: { sessionId: string }) => {
     if (!sidecar) throw new Error("sidecar unavailable");
+    logger.app("info", "prompt aborted", { sessionId: req.sessionId });
     return sidecar.call("agent.abort", req);
   });
 
@@ -887,6 +1132,9 @@ function registerIpc() {
     decision: string;
   }) => {
     if (!host) throw new Error("host unavailable");
+    logger.app("info", "permission resolved", {
+      data: { requestId: resolution.requestId, decision: resolution.decision },
+    });
     return host.call("permissions.resolve", resolution);
   });
 
@@ -916,18 +1164,21 @@ function registerIpc() {
     if (!host) throw new Error("host unavailable");
     const res = await host.call<{ plugin: any }>("plugins.enable", { id });
     if (res.plugin?.path) await plugins.loadFromPath(res.plugin.path);
+    logger.app("info", "plugin enabled", { pluginId: id });
     return res;
   });
 
   handle(IPC.invoke.pluginDisable, async (id: string) => {
     if (!host) throw new Error("host unavailable");
     await plugins.unload(id);
+    logger.app("info", "plugin disabled", { pluginId: id });
     return host.call("plugins.disable", { id });
   });
 
   handle(IPC.invoke.pluginUninstall, async (id: string) => {
     if (!host) throw new Error("host unavailable");
     await plugins.unload(id);
+    logger.app("info", "plugin uninstalled", { pluginId: id });
     return host.call("plugins.uninstall", { id });
   });
 
@@ -989,61 +1240,30 @@ function registerIpc() {
     await shell.openPath(logs);
     return { ok: true, path: logs };
   });
-
-  // Persist assistant messages when events complete
-  // (renderer also keeps UI state; main stores final messages opportunistically via sidecar events)
-}
-
-// Persist agent message_end events into host DB
-function wirePersistence() {
-  // no-op placeholder; prompt path already stores user messages.
-  // Assistant persistence: listen sidecar events in register phase.
 }
 
 app.whenReady().then(async () => {
   registerIpc();
+  let bootError: unknown = null;
   try {
     await bootBackends();
-    sendToRenderer(IPC.event.hostStatus, { ok: true });
   } catch (e) {
-    console.error("backend boot failed", e);
-  }
-  await createWindow();
-
-  // Attach assistant persistence after window exists
-  if (sidecar) {
-    sidecar.onNotification((method, params) => {
-      if (method !== "agent.event" || !host) return;
-      const envelope = params as AgentEventEnvelope;
-      const event = envelope.event;
-      if (event.type === "message_end" && event.message.role === "assistant") {
-        void host.call("session.appendMessage", {
-          sessionId: envelope.sessionId,
-          message: event.message,
-        });
-      }
-      if (event.type === "tool_end") {
-        void host.call("session.appendMessage", {
-          sessionId: envelope.sessionId,
-          message: {
-            id: crypto.randomUUID(),
-            role: "tool",
-            content:
-              typeof event.result === "string"
-                ? event.result
-                : JSON.stringify(event.result),
-            createdAt: new Date().toISOString(),
-            toolCallId: event.toolCallId,
-            toolStatus: event.isError ? "error" : "success",
-            toolResult: event.result,
-            isError: event.isError,
-            status: "complete",
-          },
-        });
-      }
+    bootError = e;
+    logger.app("error", "backend boot failed", {
+      code: ErrorCodes.HOST_UNAVAILABLE,
+      data: String(e),
     });
   }
-  wirePersistence();
+  await createWindow();
+  // The renderer subscribes on mount; give it the boot outcome once loaded.
+  mainWindow?.webContents.once("did-finish-load", () => {
+    sendToRenderer(IPC.event.hostStatus, {
+      ok: !bootError,
+      ...(bootError
+        ? { component: "host", fatal: true, message: String(bootError) }
+        : {}),
+    });
+  });
 });
 
 app.on("window-all-closed", () => {
@@ -1051,6 +1271,8 @@ app.on("window-all-closed", () => {
 });
 
 app.on("before-quit", () => {
+  quitting = true;
+  logger.app("info", "app shutdown");
   void host?.dispose();
   void sidecar?.dispose();
 });

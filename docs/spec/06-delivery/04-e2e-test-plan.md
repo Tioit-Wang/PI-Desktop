@@ -413,6 +413,38 @@ Each scenario is documented in this format:
 - **Milestone**: M2
 - **Status**: Draft
 
+### Hardening (M5)
+
+#### E2E-032: Backend crash triggers supervised restart
+
+- **Preconditions**: App running; host-core and sidecar healthy.
+- **Steps**: 1) Kill the host-core (or sidecar) process externally. 2) Observe app behavior.
+- **Expected**: In-flight RPCs fail fast (no long hang); `hostStatus` shows degraded then restored; child restarts with backoff; after 3 failed restarts in 2 minutes the app stays degraded with a visible fatal status.
+- **Specs linked**: `03-runtime/07-process-model.md`
+- **Acceptance**: Quality (main path no crash)
+- **Milestone**: M5
+- **Status**: Documented
+
+#### E2E-033: Window bounds persist across restart
+
+- **Preconditions**: App running with default window size.
+- **Steps**: 1) Resize/move the window to a distinct valid size (≥960×640). 2) Quit. 3) Relaunch.
+- **Expected**: Window restores at the saved bounds; invalid/tiny saved bounds fall back to the 1200×800 default.
+- **Specs linked**: `04-ux/09-interaction-patterns.md`
+- **Acceptance**: Quality (key operations feel polished)
+- **Milestone**: M5
+- **Status**: Documented
+
+#### E2E-034: NDJSON log files are written and redacted
+
+- **Preconditions**: Fresh profile; provider configured; one chat turn completed.
+- **Steps**: 1) Run a prompt with a tool call. 2) Open `~/.pi-desktop/logs/`. 3) Inspect `app.log`, `host.log`, `agent.log`.
+- **Expected**: NDJSON records exist with `ts/level/channel/message`; tool start/end carry `sessionId`/`toolCallId`; no API key material appears; files rotate at 5 MB.
+- **Specs linked**: `03-runtime/09-logging-and-observability.md`
+- **Acceptance**: H (diagnostics)
+- **Milestone**: M5
+- **Status**: Documented
+
 ---
 
 ## 8. Traceability Matrix
@@ -426,7 +458,7 @@ Each scenario is documented in this format:
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019 |
 | F — Persistence | E2E-020, E2E-021 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
-| H — Diagnostics | E2E-027, E2E-031 |
+| H — Diagnostics | E2E-027, E2E-031, E2E-034 |
 | Security | E2E-028, E2E-029, E2E-030 |
 
 | Milestone | Scenarios |
@@ -435,7 +467,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030 |
-| M5 | (Packaging, polish — scenarios TBD) |
+| M5 | E2E-032, E2E-033, E2E-034 (+ packaging scenarios in release runbook) |
 
 ---
 

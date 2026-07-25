@@ -24,10 +24,19 @@ Default runtime level:
 | channel | content | location |
 |---|---|---|
 | app | boot, ipc, window, process supervision | `~/.pi-desktop/logs/app.log` |
-| host | rust host-core events | `~/.pi-desktop/logs/host.log` |
-| agent | pi sidecar turn/provider events | `~/.pi-desktop/logs/agent.log` |
-| audit | permissions/tools/plugins sensitive actions | `~/.pi-desktop/logs/audit.log` |
+| host | rust host-core events (stderr capture) | `~/.pi-desktop/logs/host.log` |
+| agent | pi sidecar turn/provider events (stderr capture) | `~/.pi-desktop/logs/agent.log` |
+| audit | permissions/tools/plugins sensitive actions | host-core SQLite `audit_log` table |
 | plugin | per-plugin logs | `~/.pi-desktop/plugins/logs/<id>.log` |
+
+Notes:
+
+- `app`/`host`/`agent` are NDJSON files written by the Electron main
+  `Logger` (`apps/desktop/electron/main/logger.ts`); host/agent stderr lines
+  are wrapped into records on their channel.
+- The audit channel is stored in SQLite (owned by host-core, D006) instead of
+  a flat file: it needs queryability and longer retention than debug logs.
+  `logs folder` diagnostics still apply to the three file channels.
 
 ## 4. Required fields
 
@@ -99,9 +108,10 @@ Not in MVP:
 
 ## 9. Retention
 
-- app/host/agent logs: keep recent N files / size-capped rotation
-- audit logs: longer retention than debug logs
-- exact rotation numbers implementation-defined, but must not grow unbounded
+- app/host/agent logs: size-capped rotation — rotate at 5 MB, keep 2 rotated
+  files per channel (`<channel>.1.log`, `<channel>.2.log`)
+- audit log (SQLite): retained with the database; longer than debug logs
+- rotation must never fail the caller; disk trouble is swallowed
 
 ## 10. Acceptance
 

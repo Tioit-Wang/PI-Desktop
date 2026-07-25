@@ -3,7 +3,7 @@ import { createInterface } from "node:readline";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { existsSync } from "node:fs";
-import type { HostProcess } from "./host-process";
+import type { HostProcess, ProcessExitHandler, StderrHandler } from "./host-process";
 
 export type SidecarNotificationHandler = (method: string, params: unknown) => void;
 
@@ -26,9 +26,12 @@ export class AgentSidecar {
     { resolve: (v: any) => void; reject: (e: Error) => void }
   >();
   private handlers = new Set<SidecarNotificationHandler>();
+  private exitHandlers = new Set<ProcessExitHandler>();
+  private disposed = false;
   private host: HostProcess | null = null;
+  private unsubscribeHost: (() => void) | null = null;
 
-  constructor() {
+  constructor(onStderr?: StderrHandler) {
     const entry = resolveSidecarEntry();
     this.child = spawn(process.execPath, [entry], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -40,16 +43,39 @@ export class AgentSidecar {
 
     this.child.stderr.on("data", (buf) => {
       const text = String(buf).trim();
-      if (text) console.error(`[agent-sidecar] ${text}`);
+      if (!text) return;
+      if (onStderr) onStderr(text);
+      else console.error(`[agent-sidecar] ${text}`);
+    });
+
+    this.child.on("exit", (code, signal) => {
+      this.rejectAllPending(new Error("agent sidecar exited"));
+      for (const h of this.exitHandlers) {
+        h({ code, signal, intentional: this.disposed });
+      }
+    });
+    this.child.on("error", () => {
+      this.rejectAllPending(new Error("agent sidecar spawn failed"));
     });
 
     const rl = createInterface({ input: this.child.stdout });
     rl.on("line", (line) => void this.onLine(line));
   }
 
+  private rejectAllPending(error: Error) {
+    for (const [, p] of this.pending) p.reject(error);
+    this.pending.clear();
+  }
+
+  onExit(handler: ProcessExitHandler): () => void {
+    this.exitHandlers.add(handler);
+    return () => this.exitHandlers.delete(handler);
+  }
+
   setHost(host: HostProcess) {
     this.host = host;
-    host.onNotification((method, params) => {
+    this.unsubscribeHost?.();
+    this.unsubscribeHost = host.onNotification((method, params) => {
       // Forward host notifications to sidecar
       const payload =
         JSON.stringify({
@@ -116,26 +142,6 @@ export class AgentSidecar {
       return;
     }
 
-    // Responses to our calls (have id, no method)
-    if (msg.id !== undefined && msg.id !== null && !msg.method) {
-      const pending = this.pending.get(String(msg.id));
-      if (pending) {
-        this.pending.delete(String(msg.id));
-        if (msg.error) {
-          const err = new Error(msg.error.message) as Error & {
-            code?: number;
-            data?: unknown;
-          };
-          err.code = msg.error.code;
-          err.data = msg.error.data;
-          pending.reject(err);
-        } else {
-          pending.resolve(msg.result);
-        }
-      }
-      return;
-    }
-
     if (msg.method) {
       for (const h of this.handlers) h(msg.method, msg.params);
     }
@@ -170,6 +176,9 @@ export class AgentSidecar {
   }
 
   async dispose(): Promise<void> {
+    this.disposed = true;
+    this.unsubscribeHost?.();
+    this.rejectAllPending(new Error("agent sidecar disposed"));
     this.child.kill();
   }
 }

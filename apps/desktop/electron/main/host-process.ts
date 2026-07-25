@@ -6,6 +6,12 @@ import { join } from "node:path";
 import { PROTOCOL_VERSION } from "@pi-desktop/shared";
 
 export type HostNotificationHandler = (method: string, params: unknown) => void;
+export type ProcessExitHandler = (info: {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  intentional: boolean;
+}) => void;
+export type StderrHandler = (text: string) => void;
 
 function resolveHostBinary(): string {
   if (process.env.PI_DESKTOP_HOST_BIN && existsSync(process.env.PI_DESKTOP_HOST_BIN)) {
@@ -33,9 +39,11 @@ export class HostProcess {
     { resolve: (v: any) => void; reject: (e: Error) => void }
   >();
   private handlers = new Set<HostNotificationHandler>();
+  private exitHandlers = new Set<ProcessExitHandler>();
+  private disposed = false;
   readonly binaryPath: string;
 
-  constructor(dataDir: string) {
+  constructor(dataDir: string, onStderr?: StderrHandler) {
     this.binaryPath = resolveHostBinary();
     this.child = spawn(this.binaryPath, [], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -47,11 +55,33 @@ export class HostProcess {
 
     this.child.stderr.on("data", (buf) => {
       const text = String(buf).trim();
-      if (text) console.error(`[host-core] ${text}`);
+      if (!text) return;
+      if (onStderr) onStderr(text);
+      else console.error(`[host-core] ${text}`);
+    });
+
+    this.child.on("exit", (code, signal) => {
+      this.rejectAllPending(new Error("host-core exited"));
+      for (const h of this.exitHandlers) {
+        h({ code, signal, intentional: this.disposed });
+      }
+    });
+    this.child.on("error", () => {
+      this.rejectAllPending(new Error("host-core spawn failed"));
     });
 
     const rl = createInterface({ input: this.child.stdout });
     rl.on("line", (line) => this.onLine(line));
+  }
+
+  private rejectAllPending(error: Error) {
+    for (const [, p] of this.pending) p.reject(error);
+    this.pending.clear();
+  }
+
+  onExit(handler: ProcessExitHandler): () => void {
+    this.exitHandlers.add(handler);
+    return () => this.exitHandlers.delete(handler);
   }
 
   private onLine(line: string) {
@@ -118,6 +148,8 @@ export class HostProcess {
   }
 
   async dispose(): Promise<void> {
+    this.disposed = true;
+    this.rejectAllPending(new Error("host-core disposed"));
     this.child.kill();
   }
 }

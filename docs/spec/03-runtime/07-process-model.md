@@ -43,6 +43,16 @@ If step 3–4 fails: block app with recovery message.
 | Node agent crash | abort active turns, restart sidecar, preserve DB state in Rust |
 | Electron main crash | full app exit |
 
+Supervision parameters (implemented in Electron main):
+
+- Child exit rejects all in-flight RPCs for that child immediately (no 130s timeout wait).
+- Auto-restart with exponential backoff `0.5s → 1s → 2s` (cap 4s).
+- At most **3 restarts per 2-minute window** per child; beyond that the app
+  stays degraded and emits `hostStatus { ok: false, component, fatal: true }`.
+- Renderer is notified on every transition via the `hostStatus` event:
+  `{ ok, component?: "host" | "sidecar", restarting?, restarted?, fatal?, message? }`.
+- Intentional shutdown (quit/dispose) never triggers restart.
+
 ## 5. Shutdown order
 
 1. Reject new prompts
@@ -62,8 +72,10 @@ If step 3–4 fails: block app with recovery message.
 
 ### Release
 - package Electron app
-- ship Rust host binary in resources
-- ship Node/agent runtime strategy decided in M5 (**D008**)
+- ship Rust host binary in resources (`Resources/bin/pi-desktop-host-core`)
+- agent sidecar runs the bundled `agent-runtime/sidecar.js` on the Electron
+  binary itself with `ELECTRON_RUN_AS_NODE=1` — no separate Node runtime is
+  shipped (resolves **D008**)
 
 ## 7. Acceptance
 
