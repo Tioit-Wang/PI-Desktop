@@ -189,33 +189,39 @@ function AppShell() {
         ) : (
           <>
             {!hasTranscript ? (
-              <div className="thread-scroll">
-                <div className="empty-hero">
-                  <div className="empty-hero-icon" data-testid="home-icon" aria-hidden>
-                    <IconCodexHome size={56} />
+              <div className="home-main-content">
+                <div className="home-stack">
+                  <div className="empty-hero">
+                    <div className="empty-hero-icon" data-testid="home-icon" aria-hidden>
+                      <IconCodexHome size={56} />
+                    </div>
+                    <h1>
+                      {heroProject ? (
+                        <>
+                          What should we build in{" "}
+                          <button
+                            type="button"
+                            className="project-underline"
+                            onClick={() => void openProject()}
+                            title={workspace?.path || t("project.open")}
+                          >
+                            {heroProject}
+                          </button>
+                          ?
+                        </>
+                      ) : (
+                        t("chat.emptyTitle")
+                      )}
+                    </h1>
                   </div>
-                  <h1>
-                    {heroProject ? (
-                      <>
-                        What should we build in{" "}
-                        <button
-                          type="button"
-                          className="project-underline"
-                          onClick={() => void openProject()}
-                          title={workspace?.path || t("project.open")}
-                        >
-                          {heroProject}
-                        </button>
-                        ?
-                      </>
-                    ) : (
-                      t("chat.emptyTitle")
-                    )}
-                  </h1>
+                  {showComposer && <Composer variant="home" />}
                 </div>
               </div>
             ) : (
-              <ChatTranscript messages={messages} isRunning={isRunning} />
+              <>
+                <ChatTranscript messages={messages} isRunning={isRunning} />
+                {showComposer && <Composer variant="docked" />}
+              </>
             )}
 
             {error && (
@@ -227,8 +233,6 @@ function AppShell() {
             )}
           </>
         )}
-
-        {showComposer && <Composer />}
         {contextOpen && <ContextPanel onClose={() => setContextOpen(false)} />}
       </section>
 

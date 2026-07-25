@@ -24,7 +24,7 @@ function projectName(path?: string | null, name?: string | null, fallback = "No 
   return parts[parts.length - 1] || path;
 }
 
-export function Composer() {
+export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }) {
   const { t } = useTranslation();
   const sendPrompt = useAppStore((s) => s.sendPrompt);
   const abort = useAppStore((s) => s.abort);
@@ -114,7 +114,7 @@ export function Composer() {
   };
 
   return (
-    <div className="composer-dock">
+    <div className={`composer-dock composer-dock-${variant}`}>
       <div className="composer-stack">
         <div className="composer-chips" role="group" aria-label="Workspace context">
           <button

@@ -600,3 +600,13 @@ This test plan spec is accepted when:
 ### US-UI-27 Dark destination pages
 - Force dark theme and open Projects, Pull requests, and Settings.
 - Expect black sidebar, main `#181818`, and destination cards/rows readable on elevated dark plates (not flat same-gray).
+
+### US-UI-28 Home centered composer stack
+- On empty chat home (light + dark), expect hero icon/title and composer to share one vertically centered stack (not a large empty gap with bottom-only dock).
+- Workspace chips remain directly associated with the composer plate.
+- Starting a transcript restores the bottom-docked composer with fade veil.
+
+### US-UI-29 Light composer plate legibility
+- On light theme empty home, the white composer shell must read as an elevated box (hairline stroke + elevation-prominent shadow) against `#ffffff` main.
+- Toolbar controls and placeholder remain legible (not pure white-on-white).
+

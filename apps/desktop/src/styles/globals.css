@@ -60,8 +60,8 @@
     0 0 20px rgba(0, 0, 0, 0.18); /* dark floating box needs stronger lift than light elevation */
   --ds-sidebar-width: clamp(240px, 275px, min(520px, calc(100vw - 320px)));
   --ds-toolbar-height: 46px;
-  --ds-composer-radius: 22px;
-  --ds-composer-radius-lg: 24px;
+  --ds-composer-radius: 20px; /* Codex radius-3xl-base 1.25rem */
+  --ds-composer-radius-lg: 20px;
 }
 
 :root[data-theme="light"] {
@@ -352,14 +352,38 @@ textarea:disabled {
   padding: 28px 28px 220px;
 }
 
-.empty-hero {
+/* Codex home-main-content: centered column (hero + composer as one stack) */
+.home-main-content {
+  position: relative;
   display: flex;
-  min-height: 100%;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  container-type: size;
+  container-name: home-main-content;
+}
+
+.home-stack {
+  display: flex;
+  width: min(100%, 760px);
+  flex-direction: column;
+  align-items: stretch;
+  gap: 16px;
+  padding: 24px 28px 28px;
+}
+
+.empty-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
   gap: 24px; /* Codex gap-6 */
-  padding: 40px 28px 180px;
+  min-height: 7rem; /* Codex min-h-28 */
+  padding: 0;
   text-align: center;
 }
 
@@ -411,11 +435,16 @@ textarea:disabled {
 
 .composer-dock {
   pointer-events: none;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Thread mode: floating bottom dock with fade */
+.composer-dock-docked {
   position: absolute;
   inset-inline: 0;
   bottom: 0;
-  display: flex;
-  justify-content: center;
   padding: 0 24px 16px;
   background: linear-gradient(
     to top,
@@ -423,6 +452,17 @@ textarea:disabled {
     color-mix(in oklab, var(--ds-bg-primary) 72%, transparent) 78%,
     transparent
   );
+}
+
+/* Home mode: part of centered stack — no absolute dock, no bottom gradient veil */
+.composer-dock-home {
+  position: relative;
+  padding: 0;
+  background: transparent;
+}
+
+.composer-dock-home .composer-stack {
+  width: 100%;
 }
 
 .composer-stack {
@@ -617,10 +657,10 @@ textarea:disabled {
   display: flex;
   width: 100%;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   border-radius: 10px;
-  padding: 6px 8px;
-  min-height: 32px;
+  padding: 7px 8px;
+  min-height: 34px; /* Codex nav row pitch */
   color: var(--ds-text-secondary);
   font-size: 13px;
   text-align: left;
@@ -1009,8 +1049,28 @@ textarea:disabled {
 /* LIGHT_CODEX_OVERRIDES — density/chrome tweaks on top of semantic tokens */
 :root[data-theme="light"] .composer-chips {
   background: #ffffff;
-  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
-    0 1px 2px rgba(0, 0, 0, 0.04);
+  /* Codex elevation-sidebar: stroke + soft lift */
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 14%, transparent),
+    0 3px 7.5px rgba(0, 0, 0, 0.031),
+    0 0 16px rgba(0, 0, 0, 0.02);
+}
+
+:root[data-theme="light"] .composer-shell {
+  background: #ffffff;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 14%, transparent),
+    0 3px 7.5px rgba(0, 0, 0, 0.039),
+    0 0 20px rgba(0, 0, 0, 0.051);
+}
+
+/* Light toolbar glyphs need enough ink to read on white plate */
+:root[data-theme="light"] .composer-toolbar .icon-btn,
+:root[data-theme="light"] .mode-chip,
+:root[data-theme="light"] .model-chip {
+  color: color-mix(in oklab, #1a1c1f 72%, transparent) !important;
+}
+
+:root[data-theme="light"] .composer-input::placeholder {
+  color: color-mix(in oklab, #1a1c1f 38%, transparent);
 }
 
 :root[data-theme="light"] .new-task-btn {
@@ -1066,10 +1126,10 @@ textarea:disabled {
 .sidebar-footer {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-height: 44px;
+  gap: 4px;
+  min-height: 40px;
   margin-top: auto;
-  padding: 6px 6px 10px;
+  padding: 4px 6px 8px;
   /* Codex footer has no hard separator; keep surface continuous */
   border-top: none;
 }

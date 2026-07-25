@@ -334,6 +334,16 @@ All motion tokens must respect `prefers-reduced-motion: reduce`:
 - No shimmer/skeleton animations longer than 1s loop — use simple fade-in for loading states
 - No bounce effects
 
+## 8.0 Home empty stack (Codex parity)
+
+Empty chat home uses a **centered column** (`home-main-content` / `home-stack`) matching Codex `home-main-content`:
+
+- `flex: 1; align-items: center; justify-content: center`
+- Stack order: hero (icon + `heading-xl`) → combined workspace chips → floating composer shell
+- Composer is **not** bottom-docked on empty home; thread mode keeps the bottom dock + fade veil
+- Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
+- Light plates: white shell + elevation-prominent stroke/shadow so the box reads on `#ffffff`
+
 ## 8.1 Composer workspace chips (Codex parity)
 
 The project / Local / branch controls share **one** capsule bar above the composer (not three independent pills). Internal 1px separators match Codex electron-dark chrome.
