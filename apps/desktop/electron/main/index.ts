@@ -133,6 +133,7 @@ async function createWindow() {
   let pinUntil = 0;
   let lastCgAt = 0;
   let lastCg: { x: number; y: number; width: number; height: number } | null = null;
+  let missingCgStreak = 0;
 
   const readCgBounds = (): { x: number; y: number; width: number; height: number } | null => {
     // Cache briefly — Stage Manager checks should not spawn tools every frame.
@@ -166,9 +167,13 @@ async function createWindow() {
     if (!mainWindow || boundsGuard) return;
     const electronBounds = mainWindow.getBounds();
     const cg = readCgBounds();
-    // Stage Manager may hide us from CG entirely (cg=null) while Electron still reports large bounds.
+    if (!cg) missingCgStreak += 1;
+    else missingCgStreak = 0;
+    // Tiny/offscreen CG footprint is Stage Manager shelf. Missing CG alone is not
+    // conclusive (alwaysOnTop can change window layer); require a short streak.
     const shelved =
-      !cg || cg.width < 500 || cg.height < 400 || cg.x < -40;
+      (!!cg && (cg.width < 500 || cg.height < 400 || cg.x < -40)) ||
+      (!cg && missingCgStreak >= 3);
     const electronTiny =
       electronBounds.width < 500 || electronBounds.height < 400;
     if (!force && !shelved && !electronTiny) return;
@@ -177,7 +182,8 @@ async function createWindow() {
     try {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.setMinimumSize(960, 640);
-      mainWindow.setAlwaysOnTop(true, "floating");
+      // Prefer normal layer so CG helpers and Stage Manager stay stable.
+      mainWindow.setAlwaysOnTop(false);
       mainWindow.show();
       mainWindow.focus();
       mainWindow.moveTop();
@@ -190,7 +196,13 @@ async function createWindow() {
       }
       mainWindow.setSize(CODEX_BOUNDS.width, CODEX_BOUNDS.height, false);
       mainWindow.setPosition(CODEX_BOUNDS.x, CODEX_BOUNDS.y, false);
-      pinUntil = Date.now() + (cg ? 12000 : 20000);
+      // Brief pin only when actively recovering from a shelf.
+      if (shelved || electronTiny) {
+        mainWindow.setAlwaysOnTop(true, "floating");
+        pinUntil = Date.now() + 4000;
+      } else {
+        pinUntil = 0;
+      }
       // bust CG cache after mutation
       lastCgAt = 0;
       console.log("BOUNDS_RESTORE", {
@@ -225,8 +237,11 @@ async function createWindow() {
     }
     const cg = readCgBounds();
     const electronBounds = mainWindow.getBounds();
+    if (!cg) missingCgStreak += 1;
+    else missingCgStreak = 0;
     const shelved =
-      !cg || cg.width < 500 || cg.height < 400 || cg.x < -40;
+      (!!cg && (cg.width < 500 || cg.height < 400 || cg.x < -40)) ||
+      (!cg && missingCgStreak >= 3);
     const electronTiny =
       electronBounds.width < 500 || electronBounds.height < 400;
     if (shelved || electronTiny) {
