@@ -14,7 +14,9 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
   3. **Import sessions**
   4. **About**
 - No additional settings destinations or placeholder navigation rows are shown
-- Main content pane on primary surface with large section title + elevated rounded cards of rows
+- Main content pane on primary surface with large section title + elevated
+  rounded cards of rows. Its content uses the full width available after the
+  fixed rail and pane gutters, and resizes continuously with the window.
 
 ## 2. Section contents
 
@@ -67,10 +69,14 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
    contrast against their card surface in both light and dark themes
 9. Dragging the empty top band from either side of Settings moves the native
    window without blocking Back, search, or navigation controls
+10. Resizing the window expands or contracts the content cards with the
+    available content pane; the fixed rail and pane gutters remain intact and
+    the page does not gain horizontal overflow
 
-## 5. General chrome metrics (Codex gold)
+## 5. General chrome metrics
 
-Measured against `cx-settings-try` / `cx-settings-cmdcomma` (~1200×690):
+The shell retains the Codex gold chrome while allowing the content pane to use
+the current window width:
 
 | Token | Value |
 |---|---|
@@ -78,7 +84,7 @@ Measured against `cx-settings-try` / `cx-settings-cmdcomma` (~1200×690):
 | Rail light bg | `#f4f4f4` |
 | Active nav pill | denser 6px/10px pad, ~8px radius, gray mix on rail |
 | Section title | 28px / 560, first baseline ~y70 |
-| Content max | ~720px, left-aligned in pane |
+| Content width | Full available pane width after rail and gutters |
 | Card radius | ~14px elevated stroke |
 | Toggle | **32×20** thumb 16, accent blue on (not green) |
 | Open-target pill | leading VS Code glyph |

@@ -30,3 +30,4 @@ Each ADR includes:
 | 0012 | Universal provider & model coverage | Accepted |
 | 0013 | Consolidate settings navigation into four destinations | Accepted |
 | 0014 | Adopt host-owned storage schema v2 | Accepted |
+| 0015 | Make settings content responsive to window width | Accepted |

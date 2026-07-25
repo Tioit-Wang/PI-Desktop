@@ -2999,7 +2999,7 @@ textarea:disabled {
 }
 
 .settings-content-inner {
-  width: min(100%, 720px);
+  width: 100%;
   margin: 0;
 }
 

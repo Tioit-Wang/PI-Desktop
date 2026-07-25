@@ -1,6 +1,6 @@
 # PI-Desktop Baseline Freeze
 
-- Baseline Version: `0.4.1`
+- Baseline Version: `0.4.2`
 - Date: `2026-07-26`
 - Status: `Frozen for implementation details (provider + runtime safety + M5 hardening + settings IA)`
 - Language policy: **English-first**
@@ -11,7 +11,8 @@
 > (D034+, gold source = decisions-log §D) and the M5 hardening decisions
 > (D078–D083: signing lanes, brand icon, supervision, renderer sandbox,
 > log channels, window state). `0.4.1` freezes the compact four-destination
-> settings directory from D090 / ADR 0013.
+> settings directory from D090 / ADR 0013. `0.4.2` replaces the frozen 720px
+> settings content cap with the window-responsive D092 / ADR 0015 layout.
 
 ## Frozen Decisions
 

@@ -1,6 +1,6 @@
 # Decisions Log
 
-> Baseline delta: `0.3.0` → `0.4.1`
+> Baseline delta: `0.3.0` → `0.4.2`
 > Date: `2026-07-26`
 > Status: Accepted for implementation
 
@@ -119,12 +119,13 @@ Gold source: local Codex electron captures; latest row wins where rows conflict.
 | D089 | Composer draft height | **The prompt textarea shows one visible line by default, auto-grows from wrapped content through seven visible lines, scrolls internally beyond line seven, and contracts as content is removed; the home shell is content-driven instead of keeping D061's fixed 140px minimum** | Preserve transcript space and Codex-like density while keeping multiline editing usable |
 | D088 | Scoped home sidebar sessions | **Replace the Recents aggregate with one current-project session group plus persistent path-less Temporary sessions; keep other projects in the Projects index; remove Recents pin/panel row actions; scope empty-draft reuse and explicit `+` creation by project context** | Context is more useful than chronology, avoids mixing unrelated workspaces, and makes the tool-access boundary visible without turning the home sidebar into a multi-project tree |
 
-## F. Baseline 0.4.1 product decisions
+## F. Baseline 0.4.2 product decisions
 
 | ID | Topic | Decision | Rationale |
 |---|---|---|---|
 | D090 | Compact settings directory | **Settings retains the D063 full-page shell and D070 visual metrics, but its rail contains exactly General, Configuration, Import sessions, and About in that order. Appearance moves into General; Providers moves into Configuration. Plugin management remains in the app shell's existing Plugins destination, with load/enable/disable/uninstall available there, and is not duplicated in Settings. This supersedes the broader grouped navigation and standalone Appearance/Providers/Plugins placements in D062–D065, plus D070's Account-specific rail metric.** | Remove empty, low-value, and duplicate destinations while keeping every shipped workflow reachable and making the local-first settings surface easier to scan |
 | D091 | Composer runtime configuration | **Mode and provider/model controls update the active session and are read from that session by the pi prompt path; controls without an end-to-end runtime implementation are not rendered.** | Prevent decorative effort/attachment controls and keep every visible composer action operational |
+| D092 | Responsive settings content | **The settings content fills the width available after the fixed 275px rail and pane gutters, resizing through CSS flex layout with the native window. This supersedes only D070's fixed 720px content band and the corresponding visual-metric retention in D090.** | Use wide desktop windows efficiently without adding renderer resize state or changing the compact settings directory |
 
 ## G. Still deferred
 

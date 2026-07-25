@@ -650,6 +650,8 @@ Full component contract and usage rules: [08-component-spec.md §17](08-componen
 - **Projects**: Codex index table (search / columns / expand / actions) per
   D066 — the earlier card grid (D042) is superseded
 - **Settings**: full-page Codex shell per D063/D090 (275px compact
-  four-destination rail, `#f4f4f4` light, elevated content cards, Back to app)
-  — the earlier in-shell 200px rail and broad grouped directory are superseded
+  four-destination rail, `#f4f4f4` light, elevated content cards, Back to app);
+  per D092, the content cards fill the pane width available from the current
+  window instead of retaining D070's fixed 720px cap — the earlier in-shell
+  200px rail and broad grouped directory are superseded
 - Light destination cards use white elevated plates (not flat gray fills)

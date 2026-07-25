@@ -352,6 +352,16 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Draft
 
+#### E2E-043: Settings content follows window width
+
+- **Preconditions**: App running windowed on macOS with Settings open.
+- **Steps**: 1) Open General at the default window width and record the content-card width. 2) Expand the window to 1600px wide. 3) Open Configuration and Import sessions. 4) Shrink the window to the supported 960px minimum.
+- **Expected**: The right-side content cards expand and contract with the available pane at every tested width; the 275px rail and pane gutters remain stable; controls remain visible without clipping or horizontal page scrolling.
+- **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/07-ui-design-system.md`
+- **Acceptance**: Quality (key operations feel polished)
+- **Milestone**: M5
+- **Status**: Unit-covered (`settings-responsive-layout.test.mjs`); scenario Documented
+
 #### E2E-040: Codex-style tool activity survives transcript reload
 - **Preconditions**: Provider configured; project open; a session can run a
   successful tool and a failing or aborted tool.
@@ -575,7 +585,7 @@ Each scenario is documented in this format:
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030 |
-| Quality | E2E-032, E2E-033, E2E-039 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -583,7 +593,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -914,6 +924,9 @@ This test plan spec is accepted when:
 - Expect the working theme selector without inert toggle or open-target rows.
 - Expect Permissions + General + Appearance elevated cards; Configuration,
   Import sessions, and About remain the only other destinations.
+- Resize between 960px, 1200px, and 1600px widths; the content cards fill the
+  available right pane at each size without changing the rail or introducing
+  horizontal scrolling.
 
 ### US-UI-53 Settings dark shell (D070)
 - Dark theme Settings General: black rail, elevated cards, blue on-toggles, Back returns to chat.
