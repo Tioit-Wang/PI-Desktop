@@ -299,7 +299,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                   }}
                 >
                   <span className="max-w-[190px] truncate text-[12px] leading-none">
-                    {t("chat.effortCustom")}&nbsp;{effortLabel}
+                    {modelLabel}
                   </span>
                   <IconChevronDown size={12} />
                 </button>

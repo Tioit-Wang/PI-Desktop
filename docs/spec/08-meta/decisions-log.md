@@ -70,6 +70,7 @@ This log freezes previously open questions into concrete decisions.
 | D047 | Home split grow | **Empty home uses upper/lower grow regions (hero items-end + composer justify-end), not a single optical-center stack; dark box uses Codex elevation-prominent** | Match electron `home-main-content` dual grow + identical elevation-prominent dark/light |
 | D048 | Sidebar tasks label | **Recents section uses Codex `Tasks` / `任务` (`sidebarElectron.recentChats`)** | Match electron sidebar section heading, not “Recent tasks” |
 | D049 | Home suggestion cards | **Empty home portals 4 Codex ambient cards under hero (`top-full mt-8`, auto-fit row); lower flex hosts composer only; click prefills starter prompt** | Match electron portal + dual-grow so hero Y and 4-up cards stay visible |
+| D050 | Empty composer plate height | **Home empty composer min-height ~112px (compact); model chip shows model id (effort stays in menu)** | Match Codex empty plate density; model chip chrome closer to electron model picker trigger |
 
 ## C. Still deferred (not blocking M1)
 

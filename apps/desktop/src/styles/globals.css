@@ -1287,14 +1287,16 @@ textarea:disabled {
 
 .composer-dock-home .composer-shell {
   display: flex;
-  min-height: 168px; /* empty home body height ~Codex plate */
+  /* Codex empty-home plate is compact (~110px), not a tall forced stack */
+  min-height: 112px;
   flex-direction: column;
 }
 
 .composer-dock-home .composer-input-wrap {
   flex: 1 1 auto;
-  min-height: 72px;
+  min-height: 40px;
   align-items: flex-start;
+  padding-top: 12px;
 }
 
 .composer-dock-home .composer-toolbar {

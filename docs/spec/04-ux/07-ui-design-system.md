@@ -348,6 +348,7 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Card actions prefill composer with Codex starter prompts (Explore / Build / Review / Fix)
 - Composer is **not** absolute-docked on empty home; thread mode keeps the bottom dock + fade veil
 - Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
+- Empty-home composer plate is **compact** (~112px min-height), not a tall forced stack
 - Floating plates use Codex `--elevation-prominent`: stroke `0 0 0 0.5px` + `0 3px 7.5px #0000000a` + `0 0 20px #0000000d` in **both** themes (dark does not invent a heavier box shadow)
 - Dark elevated shell reads as solid `#212121` on `#181818` (Codex elevated-primary)
 

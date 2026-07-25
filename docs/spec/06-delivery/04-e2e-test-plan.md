@@ -630,6 +630,11 @@ This test plan spec is accepted when:
 - Hero dual-grow lands near mid/lower optical band (not pinned to the top third).
 - Activating a card prefills the composer with the matching starter prompt and focuses the input.
 
+### US-UI-35 Empty composer plate density
+- Empty-home floating composer plate is compact (~112px min height), not an oversized empty stack.
+- Model chip shows the active model id; effort options remain in the model/intelligence menu.
+- Placeholder and approval chip remain legible on light and dark plates.
+
 ### US-UI-31b (superseded)
 - Superseded by US-UI-31 split-grow layout.
 
