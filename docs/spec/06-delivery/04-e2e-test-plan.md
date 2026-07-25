@@ -661,7 +661,7 @@ This test plan spec is accepted when:
 ### US-UI-37 Empty draft infinity + resize
 - Empty composer shows a left ∞ cue and visible placeholder ink (not a blank white/night hole).
 - Auto-resize never collapses empty textarea below ~28px.
-- Disabled send control is a solid gray chip on light (`#bdbdbd`), full opacity.
+- Disabled send control is a solid gray chip on light (`#8e8e90`), full opacity with white arrow.
 - Dark night plate remains solid `#212121` with readable elevation on `#181818`.
 
 ### US-UI-31b (superseded)

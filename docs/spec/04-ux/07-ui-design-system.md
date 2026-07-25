@@ -354,7 +354,7 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Night home composer plate styles are **dark-scoped only** (`#212121` elevated-primary + stronger soft lift)
 - Empty draft row keeps **min textarea height 28px** (auto-resize must not collapse to 0) so placeholder remains visible
 - Left **∞** thread mark beside empty draft; light mark near primary dark ink; light placeholder ~`#525355`
-- Disabled send is a **solid gray chip** (`#bdbdbd` light), not opacity-only fade
+- Disabled send is a **solid gray chip** (`#8e8e90` light, white arrow), not opacity-only fade
 - Floating plates use Codex `--elevation-prominent` base (stroke + soft 3px/20px lift); light empty shell fill uses a soft top **#f6→#fff** gradient so the upper plate band matches gold
 - Dark elevated shell reads as solid `#212121` on `#181818` (Codex elevated-primary); home night plate may use a slightly stronger lift so it does not flatten into main
 

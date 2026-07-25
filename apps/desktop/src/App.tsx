@@ -152,6 +152,27 @@ function AppShell() {
             });
           }
         }
+        // Seed recents density closer to Codex empty-home gold (~10-12 rows).
+        try {
+          const store = useAppStore.getState();
+          if ((store.sessions?.length ?? 0) < 10) {
+            const titles = [
+              "Review open pull requests",
+              "Tighten composer elevation",
+              "Dark theme night plate",
+              "Sidebar recents density",
+              "Settings appearance polish",
+              "Plugins empty state",
+            ];
+            for (const title of titles) {
+              if ((useAppStore.getState().sessions?.length ?? 0) >= 11) break;
+              await api.createSession({ title });
+            }
+            await useAppStore.getState().refreshSessions();
+          }
+        } catch {
+          // optional capture-only fixture
+        }
       },
     };
     return () => {
