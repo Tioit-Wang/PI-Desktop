@@ -126,51 +126,38 @@ async function createWindow() {
     return { action: "deny" };
   });
 
-  // Prefer a right-side parking spot so SBS with Codex (left) is possible.
+  // Codex-like default footprint. CG bounds are truth under Stage Manager.
   const CODEX_BOUNDS = { x: 40, y: 30, width: 1200, height: 800 } as const;
-  const PI_BOUNDS = { x: 520, y: 30, width: 1200, height: 800 } as const;
   let boundsGuard = false;
   let boundsTimer: NodeJS.Timeout | null = null;
   let pinUntil = 0;
+  let lastCgAt = 0;
+  let lastCg: { x: number; y: number; width: number; height: number } | null = null;
 
-  /** Stage Manager thumbnails still report full Electron bounds; CG is truth. */
   const readCgBounds = (): { x: number; y: number; width: number; height: number } | null => {
+    // Cache briefly — Stage Manager checks should not spawn tools every frame.
+    if (Date.now() - lastCgAt < 700) return lastCg;
     try {
-      const pid = process.pid;
-      const script = `
-import Cocoa
-let pid = ${pid}
-let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-guard let info = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else { exit(0) }
-var best: [String: Any]? = nil
-var bestArea = 0.0
-for w in info {
-  let ownerPID = w[kCGWindowOwnerPID as String] as? pid_t ?? 0
-  let layer = w[kCGWindowLayer as String] as? Int ?? -1
-  if ownerPID != pid || layer != 0 { continue }
-  let b = w[kCGWindowBounds as String] as? [String: Any] ?? [:]
-  let ww = (b["Width"] as? NSNumber)?.doubleValue ?? 0
-  let hh = (b["Height"] as? NSNumber)?.doubleValue ?? 0
-  let area = ww * hh
-  if area > bestArea { bestArea = area; best = b }
-}
-if let b = best {
-  let x = (b["X"] as? NSNumber)?.intValue ?? 0
-  let y = (b["Y"] as? NSNumber)?.intValue ?? 0
-  let w = (b["Width"] as? NSNumber)?.intValue ?? 0
-  let h = (b["Height"] as? NSNumber)?.intValue ?? 0
-  print("\\(x),\\(y),\\(w),\\(h)")
-}
-`
-      const out = execFileSync("swift", ["-e", script], {
+      const helper = "/tmp/pi-window-bounds";
+      const out = execFileSync(helper, [String(process.pid)], {
         encoding: "utf8",
-        timeout: 1500,
+        timeout: 800,
       }).trim();
-      if (!out) return null;
+      lastCgAt = Date.now();
+      if (!out) {
+        lastCg = null;
+        return null;
+      }
       const [x, y, w, h] = out.split(",").map((n: string) => Number(n));
-      if (![x, y, w, h].every((n: number) => Number.isFinite(n))) return null;
-      return { x, y, width: w, height: h };
+      if (![x, y, w, h].every((n: number) => Number.isFinite(n))) {
+        lastCg = null;
+        return null;
+      }
+      lastCg = { x, y, width: w, height: h };
+      return lastCg;
     } catch {
+      lastCgAt = Date.now();
+      lastCg = null;
       return null;
     }
   };
@@ -179,54 +166,49 @@ if let b = best {
     if (!mainWindow || boundsGuard) return;
     const electronBounds = mainWindow.getBounds();
     const cg = readCgBounds();
-    const target = CODEX_BOUNDS;
-    const footprint = cg ?? electronBounds;
-    // Only treat Stage Manager shelf / true collapse as bad.
-    // Electron often settles at content height ~695 on this display; do not thrash.
-    const collapsed =
-      footprint.width < 500 ||
-      footprint.height < 400 ||
-      footprint.x < -40 ||
-      electronBounds.width < 500 ||
-      electronBounds.height < 400;
-    const bad = force || collapsed;
-    if (!bad) return;
+    const shelved =
+      !!cg && (cg.width < 500 || cg.height < 400 || cg.x < -40);
+    const electronTiny =
+      electronBounds.width < 500 || electronBounds.height < 400;
+    if (!force && !shelved && !electronTiny) return;
+
     boundsGuard = true;
     try {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.setMinimumSize(960, 640);
-      // Keep raised while Stage Manager tries to shelve us.
       mainWindow.setAlwaysOnTop(true, "floating");
       mainWindow.show();
       mainWindow.focus();
-      mainWindow.setBounds({ ...target }, false);
-      mainWindow.setSize(target.width, target.height, false);
-      mainWindow.setPosition(target.x, target.y, false);
       mainWindow.moveTop();
-      pinUntil = Date.now() + 8000;
-      console.log(
-        "BOUNDS_RESTORE",
-        { electron: electronBounds, cg },
-        "->",
-        mainWindow.getBounds(),
-      );
+      if (shelved) {
+        mainWindow.hide();
+        mainWindow.setBounds({ ...CODEX_BOUNDS }, false);
+        mainWindow.show();
+      } else {
+        mainWindow.setBounds({ ...CODEX_BOUNDS }, false);
+      }
+      mainWindow.setSize(CODEX_BOUNDS.width, CODEX_BOUNDS.height, false);
+      mainWindow.setPosition(CODEX_BOUNDS.x, CODEX_BOUNDS.y, false);
+      pinUntil = Date.now() + 12000;
+      // bust CG cache after mutation
+      lastCgAt = 0;
+      console.log("BOUNDS_RESTORE", {
+        electron: electronBounds,
+        cg,
+        shelved,
+        afterElectron: mainWindow.getBounds(),
+        afterCg: readCgBounds(),
+      });
     } finally {
       setTimeout(() => {
-        // Stay on top briefly so Stage Manager cannot immediately shelve the window.
-        if (Date.now() > pinUntil) {
-          try {
-            mainWindow?.setAlwaysOnTop(false);
-          } catch {
-            // ignore
-          }
-        }
         boundsGuard = false;
-      }, 400);
+      }, 350);
     }
   };
+
   const scheduleBoundsCheck = () => {
     if (boundsTimer) clearTimeout(boundsTimer);
-    boundsTimer = setTimeout(() => ensureStableBounds(false), 80);
+    boundsTimer = setTimeout(() => ensureStableBounds(false), 100);
   };
 
   mainWindow.on("show", () => ensureStableBounds(false));
@@ -235,13 +217,21 @@ if let b = best {
   mainWindow.on("resize", scheduleBoundsCheck);
   mainWindow.on("move", scheduleBoundsCheck);
 
-  // Permanent Stage Manager anti-shrink using CG footprint (not only Electron bounds).
   const boundsWatchdog = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) {
       clearInterval(boundsWatchdog);
       return;
     }
-    ensureStableBounds(false);
+    const cg = readCgBounds();
+    const electronBounds = mainWindow.getBounds();
+    const shelved =
+      !!cg && (cg.width < 500 || cg.height < 400 || cg.x < -40);
+    const electronTiny =
+      electronBounds.width < 500 || electronBounds.height < 400;
+    if (shelved || electronTiny) {
+      ensureStableBounds(true);
+      return;
+    }
     if (Date.now() > pinUntil) {
       try {
         mainWindow.setAlwaysOnTop(false);
@@ -249,7 +239,7 @@ if let b = best {
         // ignore
       }
     }
-  }, 1000);
+  }, 1500);
   mainWindow.on("closed", () => clearInterval(boundsWatchdog));
 
   mainWindow.once("ready-to-show", () => {
