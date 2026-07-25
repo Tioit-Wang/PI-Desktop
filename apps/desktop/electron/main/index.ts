@@ -157,16 +157,28 @@ async function createWindow() {
   mainWindow.on("resize", scheduleBoundsCheck);
   mainWindow.on("move", scheduleBoundsCheck);
 
+  // Permanent Stage Manager anti-shrink: keep restoring while footprint is collapsed.
+  // Only clears when the user has a stable ≥ min size (not a fixed 20s window).
+  const boundsWatchdog = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      clearInterval(boundsWatchdog);
+      return;
+    }
+    const b = mainWindow.getBounds();
+    if (b.width < 960 || b.height < 640) {
+      ensureStableBounds(true);
+    }
+  }, 750);
+  mainWindow.on("closed", () => clearInterval(boundsWatchdog));
+
   mainWindow.once("ready-to-show", () => {
     ensureStableBounds(true);
     mainWindow?.show();
     mainWindow?.focus();
-    // Re-assert while Stage Manager settles (and keep a short watchdog).
-    for (const ms of [100, 250, 500, 1000, 2000, 3500, 5000, 8000]) {
+    // Burst re-assert while Stage Manager initially settles.
+    for (const ms of [100, 250, 500, 1000, 2000, 3500, 5000, 8000, 12000]) {
       setTimeout(() => ensureStableBounds(true), ms);
     }
-    const watchdog = setInterval(() => ensureStableBounds(false), 1000);
-    setTimeout(() => clearInterval(watchdog), 20000);
     if (process.env.PI_DESKTOP_CAPTURE === "1") {
       setTimeout(() => {
         void (async () => {
