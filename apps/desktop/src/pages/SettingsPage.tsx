@@ -248,6 +248,7 @@ export function SettingsPage() {
 
   return (
     <div className="settings-shell settings-shell-full">
+      <div className="settings-titlebar" aria-hidden="true" />
       <aside className="settings-nav" aria-label={t("settings.title")}>
         <div className="settings-nav-top drag">
           <button

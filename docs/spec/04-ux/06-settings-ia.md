@@ -6,6 +6,8 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 
 - Left settings rail only (sidebar surface `#f4f4f4` light / `#000` dark), **~275px** (Codex gold at 1200-wide)
 - Top of rail: traffic-light clearance, **Back to app** (`返回应用`), pill **Search settings…**
+- The 46px top band across both the rail and content pane is a native window
+  drag region; interactive controls remain explicitly non-draggable
 - Grouped navigation with icons:
   1. **Personal** — General, Appearance, Voice, Configuration, Personalization, Pets, Keyboard shortcuts, Account (+ local-first Providers, About)
   2. **Integrations** — Appshots, Plugins, Browser, Computer use (+ local-first MCP servers after Codex order)
@@ -59,6 +61,8 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 5. Provider secrets never display raw key values
 6. Row descriptions use semantic secondary text and maintain at least 4.5:1
    contrast against their card surface in both light and dark themes
+7. Dragging the empty top band from either side of Settings moves the native
+   window without blocking Back, search, or navigation controls
 
 ## 5. General chrome metrics (Codex gold)
 
