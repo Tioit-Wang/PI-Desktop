@@ -125,7 +125,24 @@ async function createWindow() {
     return { action: "deny" };
   });
 
+  const ensureStableBounds = () => {
+    if (!mainWindow) return;
+    const bounds = mainWindow.getBounds();
+    // Stage Manager / tiling can collapse the window; restore a Codex-like footprint.
+    if (bounds.width < 960 || bounds.height < 640) {
+      mainWindow.setBounds({ x: 160, y: 40, width: 1200, height: 800 }, false);
+    }
+  };
+
+  mainWindow.on("show", ensureStableBounds);
+  mainWindow.on("focus", ensureStableBounds);
+
   mainWindow.once("ready-to-show", () => {
+    ensureStableBounds();
+    // Prefer a stable initial desktop footprint even when OS remaps windows.
+    if (mainWindow && mainWindow.getBounds().width < 1100) {
+      mainWindow.setBounds({ x: 160, y: 40, width: 1200, height: 800 }, false);
+    }
     mainWindow?.show();
     mainWindow?.focus();
     if (process.env.PI_DESKTOP_CAPTURE === "1") {
