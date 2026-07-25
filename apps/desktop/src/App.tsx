@@ -125,6 +125,23 @@ function AppShell() {
     [workspace?.path, workspace?.name],
   );
 
+  useEffect(() => {
+    (window as any).__PI_DESKTOP__ = {
+      setPage: (page: string) => useAppStore.getState().setPage(page as any),
+      setSettingsTab: (tab: string) => useAppStore.getState().setSettingsTab(tab as any),
+      setThemeAttr: (theme: "light" | "dark") => {
+        document.documentElement.dataset.theme = theme;
+      },
+    };
+    return () => {
+      try {
+        delete (window as any).__PI_DESKTOP__;
+      } catch {
+        // ignore
+      }
+    };
+  }, []);
+
   if (!ready) {
     return (
       <div className="flex h-full items-center justify-center bg-bg-primary text-sm text-text-muted">

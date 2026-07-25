@@ -7,6 +7,7 @@ import {
   shell,
 } from "electron";
 import { join } from "node:path";
+import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
 import { mkdirSync } from "node:fs";
 import {
@@ -125,25 +126,102 @@ async function createWindow() {
     return { action: "deny" };
   });
 
+  // Prefer a right-side parking spot so SBS with Codex (left) is possible.
   const CODEX_BOUNDS = { x: 40, y: 30, width: 1200, height: 800 } as const;
+  const PI_BOUNDS = { x: 520, y: 30, width: 1200, height: 800 } as const;
   let boundsGuard = false;
   let boundsTimer: NodeJS.Timeout | null = null;
+  let pinUntil = 0;
+
+  /** Stage Manager thumbnails still report full Electron bounds; CG is truth. */
+  const readCgBounds = (): { x: number; y: number; width: number; height: number } | null => {
+    try {
+      const pid = process.pid;
+      const script = `
+import Cocoa
+let pid = ${pid}
+let opts: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+guard let info = CGWindowListCopyWindowInfo(opts, kCGNullWindowID) as? [[String: Any]] else { exit(0) }
+var best: [String: Any]? = nil
+var bestArea = 0.0
+for w in info {
+  let ownerPID = w[kCGWindowOwnerPID as String] as? pid_t ?? 0
+  let layer = w[kCGWindowLayer as String] as? Int ?? -1
+  if ownerPID != pid || layer != 0 { continue }
+  let b = w[kCGWindowBounds as String] as? [String: Any] ?? [:]
+  let ww = (b["Width"] as? NSNumber)?.doubleValue ?? 0
+  let hh = (b["Height"] as? NSNumber)?.doubleValue ?? 0
+  let area = ww * hh
+  if area > bestArea { bestArea = area; best = b }
+}
+if let b = best {
+  let x = (b["X"] as? NSNumber)?.intValue ?? 0
+  let y = (b["Y"] as? NSNumber)?.intValue ?? 0
+  let w = (b["Width"] as? NSNumber)?.intValue ?? 0
+  let h = (b["Height"] as? NSNumber)?.intValue ?? 0
+  print("\\(x),\\(y),\\(w),\\(h)")
+}
+`
+      const out = execFileSync("swift", ["-e", script], {
+        encoding: "utf8",
+        timeout: 1500,
+      }).trim();
+      if (!out) return null;
+      const [x, y, w, h] = out.split(",").map((n: string) => Number(n));
+      if (![x, y, w, h].every((n: number) => Number.isFinite(n))) return null;
+      return { x, y, width: w, height: h };
+    } catch {
+      return null;
+    }
+  };
+
   const ensureStableBounds = (force = false) => {
     if (!mainWindow || boundsGuard) return;
-    const bounds = mainWindow.getBounds();
-    // Stage Manager / tiling can collapse the window; restore a Codex-like footprint.
-    if (force || bounds.width < 960 || bounds.height < 640) {
-      boundsGuard = true;
-      try {
-        if (mainWindow.isMinimized()) mainWindow.restore();
-        mainWindow.setMinimumSize(960, 640);
-        mainWindow.setBounds({ ...CODEX_BOUNDS }, false);
-        mainWindow.setSize(CODEX_BOUNDS.width, CODEX_BOUNDS.height, false);
-      } finally {
-        setTimeout(() => {
-          boundsGuard = false;
-        }, 120);
-      }
+    const electronBounds = mainWindow.getBounds();
+    const cg = readCgBounds();
+    const target = Date.now() < pinUntil ? PI_BOUNDS : CODEX_BOUNDS;
+    const footprint = cg ?? electronBounds;
+    // Only treat Stage Manager shelf / true collapse as bad.
+    // Electron often settles at content height ~695 on this display; do not thrash.
+    const collapsed =
+      footprint.width < 500 ||
+      footprint.height < 400 ||
+      footprint.x < -40 ||
+      electronBounds.width < 500 ||
+      electronBounds.height < 400;
+    const bad = force || collapsed;
+    if (!bad) return;
+    boundsGuard = true;
+    try {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.setMinimumSize(960, 640);
+      // Keep raised while Stage Manager tries to shelve us.
+      mainWindow.setAlwaysOnTop(true, "floating");
+      mainWindow.show();
+      mainWindow.focus();
+      mainWindow.setBounds({ ...target }, false);
+      mainWindow.setSize(target.width, target.height, false);
+      mainWindow.setPosition(target.x, target.y, false);
+      mainWindow.moveTop();
+      pinUntil = Date.now() + 8000;
+      console.log(
+        "BOUNDS_RESTORE",
+        { electron: electronBounds, cg },
+        "->",
+        mainWindow.getBounds(),
+      );
+    } finally {
+      setTimeout(() => {
+        // Stay on top briefly so Stage Manager cannot immediately shelve the window.
+        if (Date.now() > pinUntil) {
+          try {
+            mainWindow?.setAlwaysOnTop(false);
+          } catch {
+            // ignore
+          }
+        }
+        boundsGuard = false;
+      }, 400);
     }
   };
   const scheduleBoundsCheck = () => {
@@ -157,27 +235,30 @@ async function createWindow() {
   mainWindow.on("resize", scheduleBoundsCheck);
   mainWindow.on("move", scheduleBoundsCheck);
 
-  // Permanent Stage Manager anti-shrink: keep restoring while footprint is collapsed.
-  // Only clears when the user has a stable ≥ min size (not a fixed 20s window).
+  // Permanent Stage Manager anti-shrink using CG footprint (not only Electron bounds).
   const boundsWatchdog = setInterval(() => {
     if (!mainWindow || mainWindow.isDestroyed()) {
       clearInterval(boundsWatchdog);
       return;
     }
-    const b = mainWindow.getBounds();
-    if (b.width < 960 || b.height < 640) {
-      ensureStableBounds(true);
+    ensureStableBounds(false);
+    if (Date.now() > pinUntil) {
+      try {
+        mainWindow.setAlwaysOnTop(false);
+      } catch {
+        // ignore
+      }
     }
-  }, 750);
+  }, 1000);
   mainWindow.on("closed", () => clearInterval(boundsWatchdog));
 
   mainWindow.once("ready-to-show", () => {
     ensureStableBounds(true);
     mainWindow?.show();
     mainWindow?.focus();
-    // Burst re-assert while Stage Manager initially settles.
+    // Burst re-assert only while Stage Manager initially settles / shelves us.
     for (const ms of [100, 250, 500, 1000, 2000, 3500, 5000, 8000, 12000]) {
-      setTimeout(() => ensureStableBounds(true), ms);
+      setTimeout(() => ensureStableBounds(false), ms);
     }
     if (process.env.PI_DESKTOP_CAPTURE === "1") {
       setTimeout(() => {
@@ -193,6 +274,16 @@ async function createWindow() {
             const clickNav = async (nav: string) => {
               await mainWindow!.webContents.executeJavaScript(
                 `document.querySelector('[data-nav="${nav}"]')?.dispatchEvent(new MouseEvent('click',{bubbles:true}))`,
+              );
+            };
+            const setPage = async (page: string) => {
+              await mainWindow!.webContents.executeJavaScript(
+                `window.__PI_DESKTOP__?.setPage?.(${JSON.stringify(page)})`,
+              );
+            };
+            const setTheme = async (theme: "light" | "dark") => {
+              await mainWindow!.webContents.executeJavaScript(
+                `window.__PI_DESKTOP__?.setThemeAttr?.(${JSON.stringify(theme)})`,
               );
             };
             await clickNav("new-task");
@@ -221,64 +312,47 @@ async function createWindow() {
             await mainWindow!.webContents.executeJavaScript(`
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
             `);
-            // Dark shell parity capture (temporary attribute; restore system after).
-            await mainWindow!.webContents.executeJavaScript(
-              `document.documentElement.dataset.theme = "dark"`,
-            );
-            await new Promise((r) => setTimeout(r, 200));
+            // Destination + theme captures (robust via __PI_DESKTOP__ hooks).
+            await setTheme("dark");
+            await setPage("chat");
+            await new Promise((r) => setTimeout(r, 250));
             await shot("pi-dark-home");
-            await mainWindow!.webContents.executeJavaScript(
-              `document.documentElement.dataset.theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"`,
-            );
-            await clickNav("pulls");
-            await new Promise((r) => setTimeout(r, 900));
-            await shot("pi-pulls-live");
-            await clickNav("projects");
-            await new Promise((r) => setTimeout(r, 500));
-            await shot("pi-projects-live");
-            await clickNav("scheduled");
-            await new Promise((r) => setTimeout(r, 400));
-            await shot("pi-scheduled-live");
-            await clickNav("plugins");
-            await new Promise((r) => setTimeout(r, 400));
-            await shot("pi-plugins-live");
-            // Settings page (not the profile trigger).
-            await mainWindow!.webContents.executeJavaScript(`
-              (() => {
-                const item = document.querySelector('[data-nav="settings"]');
-                if (item) item.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-                else {
-                  // Fallback: open profile then settings item
-                  document.querySelector('[data-nav="profile"]')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
-                }
-              })()
-            `);
-            await new Promise((r) => setTimeout(r, 500));
-            // Ensure settings page via footer menu Settings entry if still closed.
-            await mainWindow!.webContents.executeJavaScript(`
-              (() => {
-                const items = Array.from(document.querySelectorAll('.profile-menu-item, [data-nav="settings"]'));
-                const settingsItem = items.find((el) => (el.textContent || '').includes('Settings') || el.getAttribute('data-nav')==='settings');
-                settingsItem?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-              })()
-            `);
-            await new Promise((r) => setTimeout(r, 400));
-            await shot("pi-settings-live");
-            await clickNav("new-task");
+            await setPage("projects");
             await new Promise((r) => setTimeout(r, 300));
-            // Profile menu from footer Custom row.
+            await shot("pi-dark-projects");
+            await setPage("pulls");
+            await new Promise((r) => setTimeout(r, 300));
+            await shot("pi-dark-pulls");
+            await setPage("settings");
+            await new Promise((r) => setTimeout(r, 350));
+            await shot("pi-dark-settings");
+            await setTheme("light");
+            await setPage("pulls");
+            await new Promise((r) => setTimeout(r, 450));
+            await shot("pi-pulls-live");
+            await setPage("projects");
+            await new Promise((r) => setTimeout(r, 350));
+            await shot("pi-projects-live");
+            await setPage("scheduled");
+            await new Promise((r) => setTimeout(r, 350));
+            await shot("pi-scheduled-live");
+            await setPage("plugins");
+            await new Promise((r) => setTimeout(r, 350));
+            await shot("pi-plugins-live");
+            await setPage("settings");
+            await new Promise((r) => setTimeout(r, 350));
+            await shot("pi-settings-live");
+            await setPage("chat");
+            await new Promise((r) => setTimeout(r, 250));
             await mainWindow!.webContents.executeJavaScript(`
-              (() => {
-                const btn = document.querySelector('[data-nav="profile"], .footer-profile');
-                if (btn) btn.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-              })()
+              document.querySelector('[data-nav="profile"], .footer-profile')?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
             `);
             await new Promise((r) => setTimeout(r, 250));
             await shot("pi-profile-menu");
             await mainWindow!.webContents.executeJavaScript(`
               document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
             `);
-          } catch (e) {
+            } catch (e) {
             console.error(e);
           }
         })();
