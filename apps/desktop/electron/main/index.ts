@@ -179,7 +179,7 @@ if let b = best {
     if (!mainWindow || boundsGuard) return;
     const electronBounds = mainWindow.getBounds();
     const cg = readCgBounds();
-    const target = Date.now() < pinUntil ? PI_BOUNDS : CODEX_BOUNDS;
+    const target = CODEX_BOUNDS;
     const footprint = cg ?? electronBounds;
     // Only treat Stage Manager shelf / true collapse as bad.
     // Electron often settles at content height ~695 on this display; do not thrash.
@@ -286,6 +286,29 @@ if let b = best {
                 `window.__PI_DESKTOP__?.setThemeAttr?.(${JSON.stringify(theme)})`,
               );
             };
+            // Wait until React leaves the starting gate.
+            for (let i = 0; i < 40; i++) {
+              const state = await mainWindow!.webContents.executeJavaScript(`({
+                readyText: document.body?.innerText?.slice(0,80) || "",
+                theme: document.documentElement.dataset.theme || "",
+                hasShell: !!document.querySelector(".app-shell"),
+                hasSidebar: !!document.querySelector(".sidebar, .sidebar-rail"),
+                sidebarClass: document.querySelector(".sidebar, .sidebar-rail")?.className || "",
+                navCount: document.querySelectorAll("[data-nav]").length,
+              })`);
+              console.log("CAPTURE_STATE", i, state);
+              if (state.hasShell && state.navCount > 0) break;
+              await new Promise((r) => setTimeout(r, 250));
+            }
+            await mainWindow!.webContents.executeJavaScript(`
+              window.__PI_DESKTOP__?.setThemeAttr?.("light");
+              window.__PI_DESKTOP__?.setPage?.("chat");
+              // ensure expanded sidebar if rail-only
+              if (document.querySelector(".sidebar-rail") && !document.querySelector(".sidebar")) {
+                document.dispatchEvent(new KeyboardEvent("keydown", { key: "b", metaKey: true, bubbles: true }));
+              }
+            `);
+            await new Promise((r) => setTimeout(r, 500));
             await clickNav("new-task");
             await new Promise((r) => setTimeout(r, 400));
             await shot("pi-final");
