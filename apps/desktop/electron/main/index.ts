@@ -1069,8 +1069,12 @@ function registerIpc() {
         errorCode: ErrorCodes.PROVIDER_SECRET_MISSING,
       });
     }
-    const modelId =
-      settings.defaultModelId || provider.defaultModelId || "mimo-v2.5";
+    const modelId = settings.defaultModelId || provider.defaultModelId;
+    if (!modelId) {
+      throw Object.assign(new Error("No model selected for provider"), {
+        errorCode: ErrorCodes.MODEL_NOT_CONFIGURED,
+      });
+    }
 
     // Persist user message
     const userMessage = {

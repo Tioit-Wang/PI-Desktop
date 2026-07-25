@@ -470,6 +470,10 @@ Each scenario is documented in this format:
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030 |
 | M5 | E2E-032, E2E-033, E2E-034 (+ packaging scenarios in release runbook) |
 
+The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
+Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
+rather than the A–H criteria; their gold source is the capture suite.
+
 ---
 
 ## 9. How AI Must Update This Doc

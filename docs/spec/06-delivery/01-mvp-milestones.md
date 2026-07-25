@@ -96,10 +96,14 @@ Deliverables:
 Progress:
 - [x] packaging scaffold (electron-builder macOS arm64 `--dir`, host/sidecar resources)
 - [x] substantial settings/session/UI polish on main
-- [ ] code signing
-- [ ] custom app icon
-- [ ] full DMG + notarization
-- [ ] final isolation/logging hardening pass as needed for first package
+- [x] code signing lanes (unsigned local default; Developer ID + hardened
+  runtime + entitlements injected by `scripts/release-macos.sh`, D078)
+- [x] custom app icon (generated pi mark → `build/icon.icns`, D079)
+- [x] isolation/logging hardening (renderer sandbox D081, NDJSON log
+  channels D082, crash supervision D080, window state D083)
+- [ ] full DMG + notarization — runbook ready
+  ([06-release-runbook](06-release-runbook.md)); blocked only on Apple
+  Developer credentials (operational, not code)
 
 ### M6+ (Post-MVP)
 - Skills depth
