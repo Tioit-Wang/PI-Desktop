@@ -1,5 +1,8 @@
 # 08. Error Codes
 
+> Source of truth: `packages/shared/src/errors.ts` (`ErrorCodes`). Codes in
+> §3.6 are reserved (documented ahead of emission); everything else is live.
+
 ## 1. Goal
 
 Provide one stable error vocabulary across:
@@ -80,22 +83,45 @@ Rules:
 
 | code | retriable | meaning |
 |---|---|---|
-| `SECRET_MISSING` | no | required API key missing |
-| `SECRET_STORE_UNAVAILABLE` | maybe | OS secure storage unavailable |
-| `SETTINGS_INVALID` | no | settings payload invalid |
+| `PROVIDER_SECRET_MISSING` | no | enabled provider requires an API key |
+| `SECRET_STORE_UNAVAILABLE` | maybe | OS secure storage unavailable (reserved) |
+| `SETTINGS_INVALID` | no | settings payload invalid (reserved) |
 
 ### 3.5 Plugins
 
 | code | retriable | meaning |
 |---|---|---|
-| `PLUGIN_NOT_FOUND` | no | plugin id missing |
+| `PLUGIN_NOT_FOUND` | no | plugin id missing (reserved) |
 | `PLUGIN_INVALID` | no | manifest/package invalid |
 | `PLUGIN_LOAD_FAILED` | maybe | enable/load failed |
-| `PLUGIN_DISABLED` | no | plugin disabled |
-| `PLUGIN_PERMISSION_DENIED` | no | plugin lacks declared/granted permission |
-| `PLUGIN_COMMAND_NOT_FOUND` | no | command id missing |
-| `PLUGIN_CRASHED` | yes | plugin runtime crashed |
-| `PLUGIN_CONTRACT_MISMATCH` | no | unsupported manifest/api version |
+| `PLUGIN_DISABLED` | no | plugin disabled (reserved) |
+| `PLUGIN_PERMISSION_DENIED` | no | plugin lacks declared/granted permission (reserved) |
+| `PLUGIN_COMMAND_NOT_FOUND` | no | command id missing (reserved) |
+| `PLUGIN_CRASHED` | yes | plugin runtime crashed (reserved) |
+| `PLUGIN_CONTRACT_MISMATCH` | no | unsupported manifest/api version (reserved) |
+
+### 3.6 Reserved detail codes (not yet emitted)
+
+Finer-grained provider/tool distinctions documented for future mapping.
+Until emitted, implementations use the canonical parent code shown.
+
+| reserved code | canonical parent today | notes |
+|---|---|---|
+| `PROVIDER_BASE_URL_INVALID` | `PROVIDER_ERROR` | endpoint invalid (400) |
+| `PROVIDER_PROTOCOL_MISMATCH` | `PROVIDER_ERROR` | wrong protocol profile |
+| `PROVIDER_MODEL_NOT_FOUND` | `PROVIDER_ERROR` | unknown model id (404) |
+| `PROVIDER_TIMEOUT` | `TIMEOUT` | network/server timeout (retriable) |
+| `PROVIDER_UNSUPPORTED_CAPABILITY` | `PROVIDER_ERROR` | tools/vision unsupported |
+| `PROVIDER_DISABLED` | `MODEL_NOT_CONFIGURED` | provider disabled |
+| `WORKSPACE_PATH_DENIED` | `PATH_OUTSIDE_WORKSPACE` | ignore/denylist block |
+| `TOOL_BINARY_CONTENT` | `TOOL_FAILED` | refused binary dump |
+
+Historical aliases (never use in new code): `PROVIDER_AUTH_FAILED` →
+`PROVIDER_UNAUTHORIZED`; `PROVIDER_STREAM_INTERRUPTED` → `STREAM_FAILED`;
+`WORKSPACE_OUTSIDE_ROOT` → `PATH_OUTSIDE_WORKSPACE`; `SECRET_MISSING` →
+`PROVIDER_SECRET_MISSING`. Truncation is not an error: truncated tool output
+carries the inline marker `[truncated: output exceeded 256KB or 4000 lines]`
+(see [16-tool-result-limits](16-tool-result-limits.md)).
 
 ## 4. Mapping rules
 
@@ -118,7 +144,7 @@ UI/host timeout emits `PERMISSION_TIMEOUT` internally, tool result presented as 
 
 | class | UI behavior |
 |---|---|
-| auth/config (`SECRET_MISSING`, `MODEL_NOT_CONFIGURED`) | blocking CTA to settings |
+| auth/config (`PROVIDER_SECRET_MISSING`, `MODEL_NOT_CONFIGURED`) | blocking CTA to settings |
 | permission denials | inline tool card state |
 | retriable provider/network | show retry action |
 | internal/host unavailable | degraded banner + recovery tip |
@@ -132,8 +158,8 @@ errors.<code>.action
 
 Examples:
 
-- `errors.SECRET_MISSING`
-- `errors.SECRET_MISSING.action`
+- `errors.PROVIDER_SECRET_MISSING`
+- `errors.PROVIDER_SECRET_MISSING.action`
 - `errors.HOST_UNAVAILABLE`
 
 ## 7. Acceptance
@@ -142,29 +168,4 @@ Examples:
 2. No raw untyped string-only failures on main paths
 3. Chat hard-denies use explicit mode codes
 4. Host numeric codes map to stable string codes
-
-## Provider / model errors
-
-| code | http-ish | retryable | notes |
-|---|---|---|---|
-| `PROVIDER_AUTH_FAILED` | 401/403 | no | bad/missing credentials |
-| `PROVIDER_BASE_URL_INVALID` | 400 | no | endpoint invalid |
-| `PROVIDER_PROTOCOL_MISMATCH` | 400 | no | wrong protocol profile |
-| `PROVIDER_MODEL_NOT_FOUND` | 404 | no | unknown model id |
-| `PROVIDER_RATE_LIMITED` | 429 | yes | quota/rate |
-| `PROVIDER_TIMEOUT` | 504 | yes | network/server timeout |
-| `PROVIDER_UNSUPPORTED_CAPABILITY` | 422 | no | tools/vision/etc unsupported |
-| `PROVIDER_STREAM_INTERRUPTED` | 503 | yes | mid-stream drop |
-| `PROVIDER_SECRET_MISSING` | 400 | no | enabled provider needs secret |
-| `PROVIDER_DISABLED` | 400 | no | provider disabled |
-
-## Workspace / tool output errors
-
-| code | retryable | notes |
-|---|---|---|
-| `WORKSPACE_PATH_DENIED` | no | ignore/denylist/security block |
-| `WORKSPACE_OUTSIDE_ROOT` | no | path escapes workspace |
-| `TOOL_RESULT_TRUNCATED` | n/a | informational marker path |
-| `TOOL_BINARY_CONTENT` | no | refused binary dump |
-| `TOOL_TIMEOUT` | maybe | bash/tool deadline |
 

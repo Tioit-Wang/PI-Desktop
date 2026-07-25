@@ -20,14 +20,15 @@ Limits are host-enforced where possible.
 
 ## 3. Truncation marker format
 
+Implemented marker (host-core `truncate_output`):
+
 ```text
-...[TRUNCATED bytes=278143 limit=262144 tool=Bash]...
+[truncated: output exceeded 256KB or 4000 lines]
 ```
 
-Must include:
-- tool name
-- original size if known
-- applied limit
+The marker is appended to the truncated payload. A future richer marker may
+add tool name, original size, and applied limit; until then this exact
+string is the single truncation vocabulary across host, UI, and specs.
 
 ## 4. Model-facing vs UI-facing
 

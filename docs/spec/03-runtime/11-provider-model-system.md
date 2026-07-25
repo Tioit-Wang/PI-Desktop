@@ -237,20 +237,23 @@ type ModelDescriptor = {
 - provider unauthorized
 - catalog refresh failed (still allow manual model id)
 
-## 11. Runtime selection algorithm
+## 11. Runtime resolution algorithm
 
-When user selects model M from provider P:
+When starting a turn with `(providerId, modelId)`:
 
-1. load ProviderConfig(P)
-2. ensure secret present if required
-3. resolve protocol adapter via pi-ai
-4. merge baseUrl/headers/auth
-5. create/stream via pi runtime
-6. map provider errors into shared error codes
+1. load provider config from host
+2. if missing/disabled → fail (`MODEL_NOT_CONFIGURED`; reserved detail: `PROVIDER_DISABLED`)
+3. resolve secret via `secretRef` (never log secret; missing → `PROVIDER_SECRET_MISSING`)
+4. resolve model metadata:
+   - user-defined model override
+   - catalog cache
+   - otherwise accept raw modelId if provider allows free-form ids
+5. build runtime provider adapter request for pi-ai (merge baseUrl/headers/auth)
+6. execute stream with abort handle
+7. translate vendor errors into shared `AppError` codes (§15)
 
-If model not in catalog:
-
-- still allow if user explicitly enters model id and provider accepts unknown ids
+If the model is not in the catalog, still allow it when the user explicitly
+enters a model id and the provider accepts unknown ids.
 
 ## 12. Compatibility tiers
 
@@ -272,77 +275,40 @@ UI may show tier hints, but must not hard-block unknown models by default.
    - bundled catalog via app update channel
 4. Refresh failure must not wipe existing catalog
 
-## 14. Local model support
+## 14. Local / offline model support
 
-Supported through:
+Supported via OpenAI-compatible local servers:
 
-- Ollama native if pi supports / otherwise OpenAI-compatible proxy
-- LM Studio OpenAI-compatible endpoint
-- vLLM / TGI / LocalAI / LiteLLM endpoints
+- Ollama (native if pi supports it, otherwise OpenAI-compatible proxy)
+- LM Studio
+- vLLM / TGI / LocalAI / LiteLLM proxies
+- other local gateways
 
 Requirements:
 
 - custom base URL
-- optional no-auth
+- auth may be `none`
 - manual model id entry always available
+- catalog refresh may use `/v1/models` when available; otherwise user-defined models
 
-## 15. Validation rules
+## 15. Failure taxonomy (provider domain)
 
-- `name` required
-- `vendorKey` required
-- `protocol` required
-- `baseUrl` required for openai_compatible/custom when endpoint not implicit
-- secret required when `authKind` needs key
-- headers must not contain raw api keys (use secret store)
-- model id non-empty
+Canonical codes live in [08-error-codes](08-error-codes.md); reserved detail
+codes map to a canonical parent until emitted (§3.6 there).
 
-## 16. Acceptance criteria
-
-1. User can add OpenAI / Anthropic / Gemini natively
-2. User can add arbitrary OpenAI-compatible vendor by base URL + key
-3. User can select models from catalog search across providers
-4. User can enter a custom model id not present in catalog
-5. Catalog refresh works without destroying existing providers
-6. Missing key/model errors use stable codes
-7. No product hard-limit like “only 3 vendors / 10 models”
-
-## 17. Non-goals
-
-- Building our own full provider SDK ecosystem
-- Guaranteeing identical tool/vision quality across all vendors
-- Marketplace of providers (not needed; config is local)
-
-## 14. Failure taxonomy (provider domain)
-
-| code | meaning | user-facing guidance |
-|---|---|---|
-| `PROVIDER_AUTH_FAILED` | invalid/expired key or denied auth | re-enter secret / check account |
-| `PROVIDER_BASE_URL_INVALID` | malformed or unreachable base URL | fix endpoint |
-| `PROVIDER_PROTOCOL_MISMATCH` | wrong protocol for endpoint | switch protocol profile |
-| `PROVIDER_MODEL_NOT_FOUND` | model id unknown for provider | refresh catalog or custom id |
-| `PROVIDER_RATE_LIMITED` | 429 / quota | retry later / switch model |
-| `PROVIDER_TIMEOUT` | network or server timeout | retry / check network |
-| `PROVIDER_UNSUPPORTED_CAPABILITY` | tools/vision/reasoning unsupported | switch model or disable feature |
-| `PROVIDER_STREAM_INTERRUPTED` | stream dropped mid-turn | retry turn |
-| `PROVIDER_SECRET_MISSING` | enabled provider without secret | complete setup |
-| `PROVIDER_DISABLED` | provider exists but disabled | enable provider |
-
-All codes must map into shared `AppError` registry.
-
-## 15. Runtime resolution algorithm
-
-When starting a turn with `(providerId, modelId)`:
-
-1. load provider config from host
-2. if missing/disabled → fail `PROVIDER_DISABLED` / not found
-3. resolve secret via `secretRef` (never log secret)
-4. resolve model metadata:
-   - user-defined model override
-   - catalog cache
-   - otherwise accept raw modelId if provider allows free-form ids
-5. build runtime provider adapter request for pi-ai
-6. execute stream with abort handle
-7. translate vendor errors into AppError codes above
+| code | status | meaning | user-facing guidance |
+|---|---|---|---|
+| `PROVIDER_UNAUTHORIZED` | live | invalid/expired key or denied auth | re-enter secret / check account |
+| `PROVIDER_RATE_LIMITED` | live | 429 / quota | retry later / switch model |
+| `PROVIDER_SECRET_MISSING` | live | enabled provider without secret | complete setup |
+| `PROVIDER_ERROR` | live | other upstream provider failure | retry / inspect details |
+| `STREAM_FAILED` | live | stream dropped mid-turn | retry turn |
+| `PROVIDER_BASE_URL_INVALID` | reserved → `PROVIDER_ERROR` | malformed or unreachable base URL | fix endpoint |
+| `PROVIDER_PROTOCOL_MISMATCH` | reserved → `PROVIDER_ERROR` | wrong protocol for endpoint | switch protocol profile |
+| `PROVIDER_MODEL_NOT_FOUND` | reserved → `PROVIDER_ERROR` | model id unknown for provider | refresh catalog or custom id |
+| `PROVIDER_TIMEOUT` | reserved → `TIMEOUT` | network or server timeout | retry / check network |
+| `PROVIDER_UNSUPPORTED_CAPABILITY` | reserved → `PROVIDER_ERROR` | tools/vision/reasoning unsupported | switch model or disable feature |
+| `PROVIDER_DISABLED` | reserved → `MODEL_NOT_CONFIGURED` | provider exists but disabled | enable provider |
 
 ## 16. OpenAI-compatible first-class path
 
@@ -360,19 +326,7 @@ Optional:
 
 This is the **universal escape hatch** guaranteeing market coverage beyond native integrations.
 
-## 17. Local / offline model path
-
-Supported via OpenAI-compatible local servers:
-- Ollama
-- LM Studio
-- vLLM
-- LocalAI
-- LiteLLM proxies
-- other local gateways
-
-Auth may be `none`. Catalog refresh may use `/v1/models` when available; otherwise user-defined models.
-
-## 18. Multi-provider product rules
+## 17. Multi-provider product rules
 
 1. Multiple providers of same vendorKey are allowed (e.g. two OpenRouter accounts).
 2. Provider `name` is user-editable and unique per workspace/user profile.
@@ -382,21 +336,35 @@ Auth may be `none`. Catalog refresh may use `/v1/models` when available; otherwi
 6. Export settings never includes raw secrets.
 7. Import settings can recreate provider shells and prompt for secrets.
 
-## 19. MVP acceptance criteria
+## 18. Validation rules
+
+- `name` required
+- `vendorKey` required
+- `protocol` required
+- `baseUrl` required for openai_compatible/custom when endpoint not implicit
+- secret required when `authKind` needs key
+- headers must not contain raw api keys (use secret store)
+- model id non-empty
+
+## 19. Acceptance criteria
 
 - [ ] Add OpenAI / Anthropic / Google / OpenAI-Compatible providers from UI
 - [ ] Add arbitrary OpenAI-compatible custom provider with base URL + key
+- [ ] Select models via catalog search across providers
 - [ ] Free-form model id accepted when catalog misses it
-- [ ] Catalog refresh populates models for at least one native and one compatible provider
+- [ ] Catalog refresh populates models for at least one native and one compatible provider, without destroying existing providers
 - [ ] Connection test returns structured success/failure without secret leakage
 - [ ] Session can switch model between turns
-- [ ] Missing secret blocks run with actionable error
+- [ ] Missing key/model blocks run with stable, actionable error codes
 - [ ] At least one local provider path (Ollama or LM Studio style) documented and testable
+- [ ] No product hard-limit like “only 3 vendors / 10 models”
 
 ## 20. Non-goals (MVP)
 
-- full multi-modal attachment studio beyond model capability flags
-- automatic paid-plan discovery for every vendor portal
-- guaranteeing proprietary non-HTTP SDKs without pi-ai support
-- cloud-synced provider profiles
-
+- Building our own full provider SDK ecosystem
+- Guaranteeing identical tool/vision quality across all vendors
+- Marketplace of providers (not needed; config is local)
+- Full multi-modal attachment studio beyond model capability flags
+- Automatic paid-plan discovery for every vendor portal
+- Proprietary non-HTTP SDKs without pi-ai support
+- Cloud-synced provider profiles

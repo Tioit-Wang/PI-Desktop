@@ -115,7 +115,7 @@
 ### 4.3 Tool result truncation
 
 - Per D033: tool results exceeding 256KB or 4000 lines are truncated with explicit markers
-- Truncation marker: `--- Result truncated (showing first 4000 lines / 256KB) ---`
+- Truncation marker: `[truncated: output exceeded 256KB or 4000 lines]` (host-enforced, see [16-tool-result-limits](../03-runtime/16-tool-result-limits.md))
 - User can request "Show full result" which loads the complete result from session data
 - Truncated content is never silently omitted — always marked
 

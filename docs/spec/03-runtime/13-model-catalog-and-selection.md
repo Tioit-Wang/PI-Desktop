@@ -77,13 +77,6 @@ If refresh fails / offline:
 - allow custom model id
 - still allow providers with known model ids
 
-## 8. Acceptance
-
-1. search finds models across multiple providers
-2. custom model id path works
-3. recent models work
-4. refresh merges rather than replaces destructively
-
 ## 8. Catalog item schema
 
 ```ts
@@ -160,7 +153,8 @@ Warnings are non-blocking unless execution is impossible.
 
 - [ ] search finds models across multiple providers
 - [ ] custom model id path works without catalog hit
-- [ ] refresh updates cache and picker
+- [ ] recent models surface in the picker
+- [ ] refresh merges into cache and picker (never destructively replaces)
 - [ ] capability badges visible
 - [ ] session model change applies to next turn only
 

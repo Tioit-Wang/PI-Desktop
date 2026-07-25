@@ -68,8 +68,9 @@ Syntax: gitignore-compatible subset.
 ## 7. Diagnostics
 
 Tools should return stable errors:
-- `WORKSPACE_PATH_DENIED`
-- `WORKSPACE_OUTSIDE_ROOT`
+- `PATH_OUTSIDE_WORKSPACE` — path escapes the workspace root
+- `WORKSPACE_PATH_DENIED` — reserved detail code for ignore/denylist blocks
+  (maps to `PATH_OUTSIDE_WORKSPACE` today; see [08-error-codes §3.6](08-error-codes.md))
 
 UI can show “hidden by ignore rules” counts for Glob/Grep optionally later.
 
