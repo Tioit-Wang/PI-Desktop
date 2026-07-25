@@ -1,10 +1,10 @@
-# 25. Plugin IPC & Host Services
+# 12. Plugin IPC and Host Services
 
-## 1. 目标
+## 1. Goals
 
-把插件相关宿主服务与 UI IPC 补全，保证实现时不靠临时约定。
+Complete the plugin-related host services and UI IPC so implementation does not rely on ad-hoc conventions.
 
-## 2. 主进程服务
+## 2. Main-process services
 
 ```text
 PluginManager
@@ -21,7 +21,7 @@ PluginManager
  └─ MarketClient
 ```
 
-## 3. UI IPC（补充）
+## 3. UI IPC (additions)
 
 ### plugin domain
 - `plugin/list`
@@ -45,37 +45,37 @@ PluginManager
 - `commandPalette/execute`
 - `commandPalette/listRecent`
 
-### market domain（后置实现，先定协议）
+### market domain (implemented later, protocol defined first)
 - `market/search`
 - `market/getDetail`
 - `market/install`
 - `market/checkUpdates`
 - `market/listProviders`
 
-## 4. 事件（main → renderer）
+## 4. Events (main → renderer)
 
-- `plugin/event/changed`（installed/enabled 变更）
+- `plugin/event/changed` (installed/enabled change)
 - `plugin/event/loadError`
 - `plugin/event/permissionRequired`
 - `market/event/updateAvailable`
 
-## 5. ContributionRegistry 行为
+## 5. ContributionRegistry behavior
 
-### 注册
-- key 必须唯一
-- 插件命令统一前缀：`plugin.<pluginId>.<commandId>`
-- 插件 tool 统一前缀策略：`plugin_<pluginIdSafe>_<toolName>`（实现固定）
+### Registration
+- key must be unique
+- Plugin commands share the prefix: `plugin.<pluginId>.<commandId>`
+- Plugin tool prefix policy: `plugin_<pluginIdSafe>_<toolName>` (fixed in the implementation)
 
-### 查询
-- 命令面板只查 enabled + loaded 成功的贡献点
-- Agent 只看到已注册 tools
+### Query
+- The command palette only queries contributions that are enabled + loaded successfully
+- The Agent only sees registered tools
 
-### 注销
-- disable/unload/uninstall 时全量移除
+### Deregistration
+- Remove everything on disable/unload/uninstall
 
-## 6. RuntimeBroker 调用链
+## 6. RuntimeBroker call chain
 
-插件 API 调用：
+Plugin API call:
 
 ```text
 plugin runtime
@@ -86,21 +86,21 @@ plugin runtime
  → response
 ```
 
-## 7. PanelHost 交互
+## 7. PanelHost interaction
 
-- 打开 panel 时创建隔离视图
-- 传入 pluginId / theme tokens
-- 关闭时销毁视图与消息订阅
+- Create an isolated view when opening a panel
+- Pass in pluginId / theme tokens
+- Destroy the view and message subscriptions on close
 
-## 8. 失败隔离
+## 8. Failure isolation
 
-- 插件 API 超时：返回 TIMEOUT
-- runtime 崩溃：标记 load_error，清理贡献点
-- panel 崩溃：只关 panel，不卸插件（可提示重载）
+- Plugin API timeout: return TIMEOUT
+- runtime crash: mark load_error, clean up contributions
+- panel crash: only close the panel, do not unload the plugin (can prompt to reload)
 
-## 9. 验收
+## 9. Acceptance
 
-1. 插件列表 IPC 可用
-2. 命令面板 IPC 可执行插件命令
-3. 启停触发贡献点注册注销
-4. 市场 IPC 在 mock provider 下可跑通（后置里程碑）
+1. The plugin list IPC works
+2. The command palette IPC can execute plugin commands
+3. Start/stop triggers contribution registration/deregistration
+4. The market IPC runs end-to-end under a mock provider (later milestone)

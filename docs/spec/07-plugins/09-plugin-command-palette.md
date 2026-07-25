@@ -1,21 +1,21 @@
-# 22. Plugin Command Palette
+# 09. Plugin Command Palette
 
-## 1. 目标
+## 1. Goals
 
-提供user-installable快速命令入口，把内置能力与插件能力统一检索执行。
+Provide a fast command entry point that unifies discovery and execution of built-in and plugin capabilities in a single searchable surface.
 
-## 2. 入口
+## 2. Entry point
 
-建议快捷键：
+Suggested shortcut:
 
-- macOS：`Command + Shift + P`
-- Windows/Linux：`Ctrl + Shift + P`
+- macOS: `Command + Shift + P`
+- Windows/Linux: `Ctrl + Shift + P`
 
-也可设置：
-- 自定义快捷键
-- 启动器模式（后置）
+Also configurable:
+- Custom shortcut
+- Launcher mode (later)
 
-## 3. 命令模型
+## 3. Command model
 
 ```ts
 type PaletteCommand = {
@@ -31,28 +31,28 @@ type PaletteCommand = {
 }
 ```
 
-## 4. 命令来源
+## 4. Command sources
 
-1. 内置命令
- - 新建会话
- - 打开设置
- - 打开项目
- - 切换模式
-2. 插件 `contributes.commands`
-3. 后续：技能快捷入口 / 市场搜索入口
+1. Built-in commands
+ - New session
+ - Open settings
+ - Open project
+ - Switch mode
+2. Plugin `contributes.commands`
+3. Later: skill shortcuts / marketplace search entry
 
-## 5. 检索规则
+## 5. Search rules
 
-- 按 title / keywords / category / pluginName 匹配
-- 支持前缀与包含匹配
-- 中文关键词可用
-- 结果排序：
- 1. 最近使用
- 2. 精确前缀
- 3. 内置优先或用户权重（可配）
- 4. 字母序
+- Match by title / keywords / category / pluginName
+- Support prefix and substring matching
+- Chinese keywords are supported
+- Result ordering:
+ 1. Recently used
+ 2. Exact prefix
+ 3. Built-in priority or user weighting (configurable)
+ 4. Alphabetical
 
-## 6. 执行流
+## 6. Execution flow
 
 ```text
 open palette
@@ -61,16 +61,16 @@ open palette
  → execute
  → builtin handler
  → or plugin command bridge
- → close palette / keep open(可选)
+ → close palette / keep open (optional)
 ```
 
-若命令需要 panel：
-- 执行后打开 PluginPanelHost
+If the command needs a panel:
+- Open PluginPanelHost after execution
 
-若命令需要权限：
-- 先走权限网关
+If the command needs a permission:
+- Go through the permission gateway first
 
-## 7. UI 结构
+## 7. UI structure
 
 ```text
 -------------------------------------------------
@@ -84,33 +84,33 @@ Demo
 Tools
  ...
 -------------------------------------------------
-Enter 执行 · Esc 关闭 · Tab 预览来源
+Enter to run · Esc to close · Tab to preview source
 -------------------------------------------------
 ```
 
-每项显示：
-- 标题
-- 来源 badge（builtin/plugin）
-- 快捷提示（可选）
+Each item shows:
+- Title
+- Source badge (builtin/plugin)
+- Shortcut hint (optional)
 
-## 8. 空状态 / 错误
+## 8. Empty state / errors
 
-- 无匹配：提示“无命令，尝试安装插件”
-- 插件命令执行失败：toast + 日志
-- 插件已禁用：命令不出现
+- No match: show "No commands, try installing a plugin"
+- Plugin command execution failed: toast + log
+- Disabled plugin: its commands do not appear
 
-## 9. 与 Agent 的关系
+## 9. Relationship to the Agent
 
-命令面板不是 chat composer 替代物。 
-它负责“启动动作”，chat 负责“对话任务”。
+The command palette is not a replacement for the chat composer.
+It is responsible for "launching actions"; chat is responsible for "conversational tasks".
 
-可支持命令：
-- “把当前选中命令结果发送到会话”（后置）
+Possible command to support:
+- "Send the currently selected command result to the session" (later)
 
-## 10. 验收
+## 10. Acceptance
 
-1. 快捷键唤起
-2. 可搜索内置与插件命令
-3. 执行插件命令成功
-4. 禁用插件后命令消失
-5. 最近使用排序生效
+1. Shortcut opens it
+2. Built-in and plugin commands are searchable
+3. Executing a plugin command succeeds
+4. Commands disappear after a plugin is disabled
+5. Recently-used ordering takes effect

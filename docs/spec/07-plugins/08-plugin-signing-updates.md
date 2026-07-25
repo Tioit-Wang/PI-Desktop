@@ -1,46 +1,46 @@
-# 21. Plugin Signing & Updates
+# 08. Plugin Signing and Updates
 
-## 1. 目标
+## 1. Goals
 
-为插件分发提供完整性与来源可信保障。
+Provide integrity and provenance guarantees for plugin distribution.
 
-分层：
+Layers:
 
-1. **Checksum**：防传输损坏/篡改（先做）
-2. **Signature**：防伪造来源（后做）
-3. **Update channel**：可控升级
+1. **Checksum**: protect against transfer corruption / tampering (do first)
+2. **Signature**: protect against forged provenance (do later)
+3. **Update channel**: controlled upgrades
 
-## 2. 校验级别
+## 2. Verification levels
 
-| 级别 | 条件 | 策略 |
+| Level | Condition | Policy |
 |---|---|---|
-| L0 | 无 checksum | 仅 dev/local dir 允许 |
-| L1 | sha256 checksum | 市场下载最低要求 |
-| L2 | checksum + signature | 官方/认证插件要求（后续） |
+| L0 | No checksum | Allowed only for dev / local dir |
+| L1 | sha256 checksum | Minimum requirement for marketplace downloads |
+| L2 | checksum + signature | Required for official / verified plugins (later) |
 
-## 3. Checksum 流程
+## 3. Checksum flow
 
-下载后：
+After download:
 
 ```text
 sha256(file) == downloadInfo.shasum
 ```
 
-失败：
-- 不安装
-- 提示“完整性校验失败”
-- 记录审计
+On failure:
+- Do not install
+- Show "Integrity check failed"
+- Record an audit entry
 
-## 4. 签名方案（后续冻结实现细节）
+## 4. Signature scheme (implementation details to be frozen later)
 
-建议：
+Recommended:
 
-- 算法：`Ed25519`
-- 发布者密钥对
-- 市场或发布者公钥分发
-- 签名对象：`pluginId + version + shasum`
+- Algorithm: `Ed25519`
+- Publisher key pair
+- Public key distributed by the marketplace or the publisher
+- Signed object: `pluginId + version + shasum`
 
-示例：
+Example:
 
 ```ts
 type PluginSignature = {
@@ -56,9 +56,9 @@ type PluginSignature = {
 }
 ```
 
-验证失败即拒绝安装/更新。
+A failed verification rejects the install / update.
 
-## 5. 发布者信任
+## 5. Publisher trust
 
 ```ts
 type PublisherTrust = {
@@ -69,71 +69,71 @@ type PublisherTrust = {
 }
 ```
 
-宿主维护：
-- 内置官方公钥
-- 用户可添加自定义可信发布者（高级）
+The host maintains:
+- A built-in official public key
+- User-added custom trusted publishers (advanced)
 
-## 6. 更新通道
+## 6. Update channels
 
 ```ts
 type UpdateChannel = "stable" | "beta" | "dev"
 ```
 
-规则：
-- 默认 stable
-- beta/dev 需用户显式切换
-- 不同 channel 的版本不可盲目降级
+Rules:
+- Default is stable
+- beta/dev require an explicit user opt-in
+- Versions from different channels must not be blindly downgraded
 
-## 7. 更新策略
+## 7. Update policy
 
-### 手动更新（先做）
-- 检查更新
-- 展示 changelog
-- 用户确认后升级
+### Manual update (do first)
+- Check for updates
+- Show the changelog
+- Upgrade after user confirmation
 
-### 自动更新（后做）
-可配置：
+### Automatic update (do later)
+Configurable:
 - off
 - notify-only
 - auto-for-official
-- auto-all（不推荐默认）
+- auto-all (not recommended as the default)
 
-自动更新仍需通过校验与权限变更审查。
+Automatic updates still go through verification and permission-change review.
 
-## 8. 权限变更审查
+## 8. Permission-change review
 
-升级时若新版本新增 permissions：
+If a new version adds permissions on upgrade:
 
-1. 阻断静默升级
-2. 展示权限 diff
-3. 用户确认后继续
+1. Block the silent upgrade
+2. Show the permission diff
+3. Continue after user confirmation
 
-示例：
+Example:
 
 ```text
 + net.fetch
 + fs.write.workspace
 ```
 
-## 9. 回滚
+## 9. Rollback
 
-P2 目标：
+P2 goal:
 
-- 保留上一版本备份
-- 升级失败自动回滚
-- 用户可手动回退（同 id 旧 version）
+- Keep a backup of the previous version
+- Automatically roll back on a failed upgrade
+- Allow the user to manually revert (same id, older version)
 
-## 10. 安全事件响应
+## 10. Security incident response
 
-若发现恶意插件版本：
+If a malicious plugin version is discovered:
 
-- 市场侧可标记 yanked
-- 宿主 checkUpdates / install 时拒绝
-- 已安装用户给出风险提示与一键禁用
+- The marketplace side can mark it as yanked
+- The host rejects it during checkUpdates / install
+- Users who already installed it get a risk warning and one-click disable
 
-## 11. 验收
+## 11. Acceptance
 
-1. checksum 不匹配无法安装
-2. 新增权限升级会提示
-3. 官方插件签名策略可配置开关（开发期）
-4. 更新检查结果可展示到 UI
+1. A mismatched checksum cannot be installed
+2. An upgrade that adds permissions prompts the user
+3. The official-plugin signature policy has a configurable toggle (during development)
+4. Update-check results can be shown in the UI

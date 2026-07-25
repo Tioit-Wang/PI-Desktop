@@ -1,7 +1,7 @@
-# 安全
+# 05. Security
 
-> 目录：`docs/spec/05-security`
+> Directory: `docs/spec/05-security`
 
-| 文档 | 说明 |
+| Doc | Description |
 |---|---|
-| [01-security.md](01-security.md) | 安全基线 |
+| [01-security.md](01-security.md) | Security baseline |

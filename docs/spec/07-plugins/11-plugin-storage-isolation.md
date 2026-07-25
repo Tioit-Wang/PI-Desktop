@@ -1,10 +1,10 @@
-# 24. Plugin Storage Isolation
+# 11. Plugin Storage Isolation
 
-## 1. 目标
+## 1. Goals
 
-插件数据与宿主核心数据隔离，避免互相污染与越权读取。
+Isolate plugin data from the host's core data to avoid cross-contamination and unauthorized reads.
 
-## 2. 目录规划
+## 2. Directory layout
 
 ```text
 ~/.pi-desktop/
@@ -12,7 +12,7 @@
  ├── sessions.sqlite
  ├── plugins/
  │ ├── installed/<plugin-id>/
- │ ├── disabled/ # 可选
+ │ ├── disabled/ # optional
  │ ├── data/<plugin-id>/
  │ ├── logs/<plugin-id>.log
  │ ├── cache/download/
@@ -20,7 +20,7 @@
  └── ...
 ```
 
-## 3. registry.json（逻辑模型）
+## 3. registry.json (logical model)
 
 ```ts
 type PluginRegistry = {
@@ -43,79 +43,79 @@ type PluginRegistry = {
 }
 ```
 
-## 4. 插件私有数据
+## 4. Plugin private data
 
-`pi.plugin.getDataPath()` 指向：
+`pi.plugin.getDataPath()` points to:
 
 ```text
 ~/.pi-desktop/plugins/data/<plugin-id>/
 ```
 
-用途：
-- 缓存
-- 本地索引
-- 插件配置大文件
+Uses:
+- cache
+- local index
+- large plugin config files
 
-禁止：
-- 通过该 API 获取其他 pluginId 路径
+Prohibited:
+- Using this API to obtain another pluginId's path
 
-## 5. 设置存储
+## 5. Settings storage
 
-插件 settings 可存：
+Plugin settings can be stored in:
 
-- 宿主 settings db 的 plugin_settings 表
-- 或插件 data 目录下 settings.json
+- The plugin_settings table of the host settings db
+- Or settings.json under the plugin data directory
 
-推荐宿主统一存，便于备份与卸载清理。
+Storing centrally in the host is recommended for easier backup and uninstall cleanup.
 
 ```ts
 // plugin_settings
 // plugin_id | key | value_json | updated_at
 ```
 
-## 6. 日志隔离
+## 6. Log isolation
 
-每个插件独立日志通道：
-- 文件：`plugins/logs/<plugin-id>.log`
-- UI：可按插件过滤
+Each plugin has its own log channel:
+- File: `plugins/logs/<plugin-id>.log`
+- UI: filterable by plugin
 
-宿主核心日志不写入插件文件。
+Host core logs are not written into plugin files.
 
-## 7. 会话与密钥隔离
+## 7. Session and secret isolation
 
-插件不可直接访问：
+Plugins cannot directly access:
 - sessions.sqlite
 - secrets
 - provider key
-- 其他插件 registry 私货
+- other plugins' private registry data
 
-若未来提供“受控会话摘要 API”，必须：
-- 单独权限
-- 默认关闭
-- 可审计
+If a "controlled session summary API" is offered in the future, it must:
+- Have a separate permission
+- Be disabled by default
+- Be auditable
 
-## 8. 卸载清理策略
+## 8. Uninstall cleanup policy
 
-默认：
-- 删除 installed 代码
-- 删除 data
-- 删除 logs（或保留最近一次）
+Default:
+- Delete installed code
+- Delete data
+- Delete logs (or keep the most recent one)
 
-高级：
-- 保留 data
+Advanced:
+- Keep data
 
-## 9. 备份建议
+## 9. Backup suggestions
 
-后续导出备份可分：
-- 仅宿主配置
-- 宿主配置 + 插件列表
-- 完整（含插件 data）
+A future export/backup can be split into:
+- Host config only
+- Host config + plugin list
+- Full (including plugin data)
 
-MVP 不做完整备份协议，只预留目录边界。
+The MVP does not implement a full backup protocol; it only reserves directory boundaries.
 
-## 10. 验收
+## 10. Acceptance
 
-1. 插件只能写自己的 data 目录
-2. 卸载后 data 按策略清理
-3. registry 能恢复已安装列表
-4. 插件日志可单独查看
+1. A plugin can only write to its own data directory
+2. Data is cleaned up per policy after uninstall
+3. The registry can restore the installed list
+4. Plugin logs can be viewed separately

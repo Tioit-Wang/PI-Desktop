@@ -1,95 +1,95 @@
-# 23. Plugin Developer Experience
+# 10. Plugin Developer Experience
 
-## 1. 目标
+## 1. Goals
 
-让开发者 10 分钟内创建并加载一个本地插件。
+Let a developer create and load a local plugin within 10 minutes.
 
-## 2. 开发者路径
+## 2. Developer path
 
 ```text
-创建模板
- → 改 manifest / main / panel
- → 在 PI-Desktop Load Development Plugin
- → 命令面板验证
- → 打包 piplug
+Create template
+ → edit manifest / main / panel
+ → Load Development Plugin in PI-Desktop
+ → verify in the command palette
+ → pack piplug
 ```
 
-## 3. 模板类型
+## 3. Template types
 
-官方模板（后续提供）：
+Official templates (provided later):
 
-1. `panel-basic`：只面板 + 命令
-2. `agent-tool-basic`：注册 tool
-3. `skill-pack`：仅 skills
-4. `full-demo`：panel + tool + skill + settings
+1. `panel-basic`: panel + commands only
+2. `agent-tool-basic`: register a tool
+3. `skill-pack`: skills only
+4. `full-demo`: panel + tool + skill + settings
 
-当前仓库示例：
+Current repo example:
 - `examples/plugins/hello`
 
-## 4. SDK 规划
+## 4. SDK plan
 
-包名建议：`@pi-desktop/plugin-sdk`
+Suggested package name: `@pi-desktop/plugin-sdk`
 
-提供：
-- manifest 类型
-- 权限枚举
-- API 类型（`PiPluginHostApi`）
-- manifest 校验函数
-- 测试 helper（mock host）
+Provides:
+- manifest types
+- permission enums
+- API types (`PiPluginHostApi`)
+- manifest validation function
+- test helper (mock host)
 
-## 5. 本地开发命令（规划）
+## 5. Local development commands (planned)
 
 ```bash
-# 校验 manifest
+# validate manifest
 pnpm pi-plugin check .
 
-# 打包
+# pack
 pnpm pi-plugin pack .
 
-# 输出 dist/demo.hello-0.1.0.piplug
+# outputs dist/demo.hello-0.1.0.piplug
 ```
 
-## 6. 热重载
+## 6. Hot reload
 
-开发模式支持 watch：
+Development mode supports watch:
 
-- 变更 manifest：重新 validate + reload
-- 变更 main：reload runtime
-- 变更 renderer：panel 刷新
+- manifest changed: re-validate + reload
+- main changed: reload runtime
+- renderer changed: refresh panel
 
-失败时 UI 显示 load_error，不崩宿主。
+On failure the UI shows load_error without crashing the host.
 
-## 7. 调试
+## 7. Debugging
 
-最低要求：
-- 插件日志面板（按 pluginId 过滤）
-- 可查看注册的 commands/tools
-- 可复制错误堆栈
+Minimum requirements:
+- Plugin log panel (filter by pluginId)
+- View registered commands/tools
+- Copy error stack traces
 
-后续：
-- 独立 DevTools 给 panel
-- mock tool 调用器
+Later:
+- Dedicated DevTools for the panel
+- mock tool invoker
 
-## 8. 文档清单（开发者站点/仓库 docs）
+## 8. Documentation checklist (developer site / repo docs)
 
-- 快速开始
-- manifest 字段
-- 权限说明
-- API 手册
-- 发布手册（pack/sign）
-- 安全最佳实践
+- Quick start
+- manifest fields
+- Permission reference
+- API manual
+- Publishing manual (pack/sign)
+- Security best practices
 
-## 9. 质量门槛（发布前建议）
+## 9. Quality gate (recommended before publishing)
 
-- manifest 校验通过
-- 无未声明权限调用
-- 有 README
-- 有版本 changelog
-- 若含 tool：提供参数样例
+- manifest validation passes
+- No calls to undeclared permissions
+- Has a README
+- Has a version changelog
+- If it includes a tool: provide parameter examples
 
-## 10. 验收
+## 10. Acceptance
 
-1. 基于 hello 示例可复制出新插件
-2. 开发加载成功
-3. 修改代码后可重载
-4. pack 产物可安装
+1. A new plugin can be copied from the hello example
+2. Development load succeeds
+3. Reload works after code changes
+4. The pack artifact can be installed
