@@ -571,7 +571,7 @@ This test plan spec is accepted when:
 
 ### US-UI-20 Dark floating composer box
 - Switch to dark theme on chat home.
-- Expect main `#181818`, sidebar `#000000`, and the floating composer plate at solid elevated `#212121` with a visible 0.5px stroke + soft lift shadow so the box reads against the main surface (not flat same-gray).
+- Expect main `#181818`, sidebar `#000000`, and the floating composer plate at elevated-primary (`#212121f5` / gray-800 96%) with elevation-prominent stroke + soft lift so the box reads against the main surface.
 
 ### US-UI-21 Composer model / effort menu
 - On chat home, click the composer right control labeled Custom + effort (e.g. Custom Max / 自定义 最高).
@@ -636,7 +636,7 @@ This test plan spec is accepted when:
 
 ### US-UI-36 Hero Y + night box elevation
 - At ~1200×690 light home, hero first dark ink is near y≈300 (±12px) vs Codex gold.
-- Dark home composer plate reads as solid `#212121` with visible elevation against `#181818` (not flat same-surface).
+- Dark home composer plate reads as elevated-primary `#212121f5` with elevation-prominent against `#181818` (not flat same-surface).
 - Light workspace chips capsule is elevated gray (`#f4f4f4`), distinct from main white.
 - Model chip shows the active model id; effort options remain in the model/intelligence menu.
 - Placeholder and approval chip remain legible on light and dark plates.
@@ -651,12 +651,18 @@ This test plan spec is accepted when:
 
 ### US-UI-41 Dark hero + night box readability
 - Dark empty home hero title ink is light-on-dark (`--ds-text-primary` / near white), not hardcoded `#1a1c1f`.
-- Night composer plate is solid `#212121` on main `#181818` with visible elevation; light theme is not forced to the night plate fill.
+- Night composer plate is elevated-primary `#212121f5` on main `#181818` with elevation-prominent; light theme is not forced to the night plate fill.
 
 ### US-UI-42 Light New task ghost chrome
 - Light empty-home **New task** row has no solid gray chip fill (transparent on `#f3f3f3` sidebar); icon+label only until hover.
 
 
+
+
+### US-UI-43 Empty home plate Y + night elevated-primary
+- Open empty home at ~1200×690 light theme.
+- Composer plate top wash ≈y537, draft ≈y552, foot shadow ≈y674; plate min-height ~140px; no large pre-plate halo.
+- Switch dark theme: night plate is elevated-primary (`#212121f5` / gray-800 96%) with downward elevation (no heavier omni night shadow).
 
 ### US-UI-38 Home chips without project
 - On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).
@@ -666,7 +672,7 @@ This test plan spec is accepted when:
 - Empty composer shows a left ∞ cue and visible placeholder ink (not a blank white/night hole).
 - Auto-resize never collapses empty textarea below ~28px.
 - Disabled send control is a solid gray chip on light (`#8e8e90`), full opacity with white arrow.
-- Dark night plate remains solid `#212121` with readable elevation on `#181818`.
+- Dark night plate remains elevated-primary `#212121f5` with readable elevation-prominent on `#181818`.
 
 ### US-UI-31b (superseded)
 - Superseded by US-UI-31 split-grow layout.

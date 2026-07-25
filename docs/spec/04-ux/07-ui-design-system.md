@@ -352,12 +352,12 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Home dual-grow content width is **`min(100%, 768px)`** (true max-w-3xl at 16px), not `48rem` under the 14px root — prevents ~120px-narrow plate vs Codex gold
 - Light **New task** control is a **ghost row** (transparent fill, hover wash only), not a solid chip
 - Empty hero title uses `var(--ds-text-primary)` (light override `#1a1c1f`); never hardcode light ink for shared hero styles
-- Night home composer plate styles are **dark-scoped only** (`#212121` elevated-primary + stronger soft lift)
+- Night home composer plate styles are **dark-scoped only** (elevated-primary `#212121f5` + standard elevation-prominent)
 - Empty draft row keeps **min textarea height 28px** (auto-resize must not collapse to 0) so placeholder remains visible
 - Left **∞** thread mark beside empty draft; light mark near primary dark ink; light placeholder ~`#525355`
 - Disabled send is a **solid gray chip** (`#8e8e90` light, white arrow), not opacity-only fade
 - Floating plates use Codex `--elevation-prominent` base (stroke + soft 3px/20px lift); light empty shell fill uses a soft top **#f6→#fff** gradient so the upper plate band matches gold
-- Dark elevated shell reads as solid `#212121` on `#181818` (Codex elevated-primary); home night plate may use a slightly stronger lift so it does not flatten into main
+- Dark elevated shell reads as elevated-primary (`#212121f5` / gray-800 96%) on `#181818` with standard elevation-prominent
 
 ## 8.1 Composer workspace chips (Codex parity)
 
@@ -588,7 +588,7 @@ Status badge colors: success (green), warning (amber), error (red), info (indigo
 
 - Main surface: `#181818` (`gray-900`)
 - Sidebar / surface-under: `#000000`
-- Floating composer plate: solid `#212121` (`gray-800` / elevated-primary) with elevation-prominent stroke + soft lift; dark home plate uses a slightly stronger soft lift so the night box does not flatten into main `#181818`
+- Floating composer plate: Codex elevated-primary (`#212121f5` / `color-mix(gray-800 96%, transparent)`) with standard elevation-prominent (`0 0 0 .5px` stroke + `0 3px 7.5px #0000000a` + `0 0 20px #0000000d`); no heavier night-only lift
 - Light workspace chips capsule: elevated gray `#f4f4f4` (not pure white-on-white)
 - Combined workspace chips: elevated translucent plate over main, not flat main gray
 - Stage Manager: host re-asserts min bounds while collapsed (permanent watchdog)

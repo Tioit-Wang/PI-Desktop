@@ -38,7 +38,7 @@
   --ds-bg-hover: color-mix(in oklab, var(--gray-0) 6%, transparent);
   --ds-bg-active: color-mix(in oklab, var(--gray-0) 10%, transparent);
   /* Codex elevated-primary #212121f5 / color-mix(gray-800 96%, transparent) */
-  --ds-bg-composer: #212121;
+  --ds-bg-composer: color-mix(in oklab, var(--gray-800) 96%, transparent);
   --ds-bg-chip: color-mix(in oklab, var(--gray-0) 6%, transparent);
   --ds-text-primary: var(--gray-0);
   --ds-text-secondary: color-mix(in oklab, var(--gray-0) 70%, transparent);
@@ -96,10 +96,10 @@
   --ds-info: #0285ff;
   --ds-shadow-dialog: 0 16px 48px rgba(0, 0, 0, 0.12);
   --ds-elevation-stroke: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent);
-  /* Codex elevation-prominent (stroke + soft lift). Upper #f6 wash is on shell fill. */
+  /* Codex elevation-prominent exact (same dark/light formula). */
   --ds-shadow-composer: var(--ds-elevation-stroke),
-    0 3px 7.5px #00000010,
-    0 0 20px #00000012;
+    0 3px 7.5px #0000000a,
+    0 0 20px #0000000d;
   --ds-bg-elevated-primary: color-mix(in oklab, #ffffff 70%, transparent);
 }
 
@@ -436,8 +436,8 @@ textarea:disabled {
   width: min(100%, 768px);
   max-width: 100%;
   margin-inline: auto;
-  /* Extra bottom footing lifts plate foot ~y674 vs window bottom (gold 690) */
-  padding: 6px 12px 20px;
+  /* Bottom footing: pad 16 keeps plate foot shadow ~y674 at 1200x690 */
+  padding: 6px 12px 16px;
 }
 
 /* Codex home ambient suggestion cards (electron cards mode) */
@@ -1323,12 +1323,14 @@ textarea:disabled {
     #ffffff 48px,
     #ffffff 100%
   );
-  /* Stroke + downward soft lift (gold foot band y674–680) */
+  /*
+    Gold empty-home has a sharp plate top (no upward halo) and soft foot band ~y674.
+    Prefer stroke + downward lift over omnidirectional 0 0 20px glow.
+  */
   box-shadow:
-    0 0 0 0.5px color-mix(in oklab, #1a1c1f 12%, transparent),
-    0 1px 2px #0000000a,
-    0 4px 10px #00000010,
-    0 8px 18px #0000000c;
+    var(--ds-elevation-stroke),
+    0 3px 7.5px #0000000a,
+    0 10px 18px #0000000d;
   outline: none;
   border: 0;
 }
@@ -1342,19 +1344,19 @@ textarea:disabled {
 .composer-dock-home .composer-shell {
   display: flex;
   /*
-    Gold empty plate top ~y538 / draft ~y556 / toolbar ~y642.
-    Bottom-aligned min-height grows upward; 144px keeps top edge vs gold.
+    Gold empty plate top ~y538 / draft ~y551 / foot ~y672 (+ shadow y674).
+    Bottom-aligned min-height grows upward; 140px matches gold plate height.
   */
-  min-height: 144px;
+  min-height: 140px;
   flex-direction: column;
 }
 
 .composer-dock-home .composer-input-wrap {
   flex: 1 1 auto;
-  min-height: 80px;
+  min-height: 76px;
   align-items: flex-start;
-  /* Gold: plate top ~y537, draft ink ~y551 → ~14px inset */
-  padding: 14px 14px 0 14px;
+  /* Gold: plate top ~y538, draft ink ~y551 → ~13px inset */
+  padding: 13px 14px 0 14px;
   gap: 8px;
 }
 
@@ -1575,9 +1577,9 @@ textarea:disabled {
 }
 
 :root[data-theme="dark"] .composer-shell {
-  /* elevated-primary: solid #212121 night plate (Codex gray-800) */
-  background: #212121;
-  background-color: #212121;
+  /* Codex elevated-primary: #212121f5 / gray-800 96% (not flat solid) */
+  background: var(--ds-bg-elevated-primary);
+  background-color: #212121f5;
   box-shadow: var(--ds-shadow-composer);
   border: 0;
   outline: 0;
@@ -1590,14 +1592,14 @@ textarea:disabled {
 }
 
 :root[data-theme="dark"] .composer-dock-home .composer-shell {
-  /* Night box: solid elevated-primary plate + stronger lift vs main #181818 */
-  background: #212121;
-  background-color: #212121;
+  /* Night box: elevated-primary + downward elevation (matches Codex foot lift) */
+  background: var(--ds-bg-elevated-primary);
+  background-color: #212121f5;
   background-image: none;
   box-shadow:
-    0 0 0 0.5px color-mix(in oklab, var(--gray-0) 12%, transparent),
-    0 3px 7.5px #00000022,
-    0 0 22px #00000030;
+    var(--ds-elevation-stroke),
+    0 3px 7.5px #0000000a,
+    0 10px 18px #0000000d;
 }
 
 :root[data-theme="dark"] .composer-input::placeholder {
