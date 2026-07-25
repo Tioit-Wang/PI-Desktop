@@ -156,6 +156,26 @@ function AppShell() {
         // Seed / ensure Codex-like recent titles for capture residual (data band).
         try {
           await useAppStore.getState().refreshSessions();
+          const englishNoise = new Set([
+            "Review open pull requests",
+            "Tighten composer elevation",
+            "Dark theme night plate",
+            "Sidebar recents density",
+            "Settings appearance polish",
+            "Plugins empty state",
+            "Fix TypeScript build errors",
+            "Exploring repository structure",
+          ]);
+          for (const s of useAppStore.getState().sessions || []) {
+            if (englishNoise.has((s.title || "").trim())) {
+              try {
+                await api.deleteSession(s.id);
+              } catch {
+                // ignore
+              }
+            }
+          }
+          await useAppStore.getState().refreshSessions();
           const existing = new Set(
             (useAppStore.getState().sessions || []).map((s) => (s.title || "").trim()),
           );
@@ -171,7 +191,7 @@ function AppShell() {
           ];
           for (const title of titles) {
             if (existing.has(title)) continue;
-            if ((useAppStore.getState().sessions?.length ?? 0) >= 16) break;
+            if ((useAppStore.getState().sessions?.length ?? 0) >= 14) break;
             await api.createSession({ title });
             existing.add(title);
           }
@@ -180,6 +200,19 @@ function AppShell() {
             .getState()
             .sessions.find((s) => (s.title || "").trim() === "同步代码");
           if (preferred) {
+            try {
+              const raw = localStorage.getItem("pi.desktop.pinnedSessions");
+              const parsed = raw ? JSON.parse(raw) : [];
+              const pins = Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+              if (!pins.includes(preferred.id)) {
+                localStorage.setItem(
+                  "pi.desktop.pinnedSessions",
+                  JSON.stringify([preferred.id, ...pins].slice(0, 40)),
+                );
+              }
+            } catch {
+              // ignore
+            }
             await useAppStore.getState().selectSession(preferred.id);
           }
         } catch {

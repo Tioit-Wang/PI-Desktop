@@ -934,18 +934,18 @@ textarea:disabled {
   align-items: center;
   gap: 8px;
   border-radius: 8px;
-  /* Dark keeps soft elevated fill; light is transparent (Codex gold) */
-  background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
+  /* Codex gold: ghost New task in both themes */
+  background: transparent;
   padding: 5px 8px;
   min-height: 30px;
   color: var(--ds-text-primary);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   transition: background 120ms ease;
 }
 
 .new-task-btn:hover {
-  background: color-mix(in oklab, var(--ds-text-primary) 12%, transparent);
+  background: var(--ds-bg-hover);
 }
 
 .thread-item {
@@ -1300,9 +1300,9 @@ textarea:disabled {
 
 /* Destination pages (Projects / PRs / Scheduled / Plugins) */
 .page-frame {
-  width: min(100%, 880px);
+  width: min(100%, 980px);
   margin: 0 auto;
-  padding: 52px 32px 40px;
+  padding: 28px 28px 48px;
 }
 
 .page-header {
@@ -1310,19 +1310,20 @@ textarea:disabled {
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 18px;
 }
 
 .page-title {
   margin: 0;
-  font-size: 22px;
-  font-weight: 500;
+  color: var(--ds-text-primary);
+  font-size: 28px;
+  font-weight: 560;
   letter-spacing: -0.03em;
 }
 
 .page-subtitle {
-  margin-top: 4px;
-  color: var(--ds-text-secondary);
+  margin-top: 6px;
+  color: var(--ds-text-muted);
   font-size: 13px;
 }
 
@@ -2428,15 +2429,6 @@ textarea:disabled {
 
 
 
-
-.page-frame {
-  width: min(100%, 920px);
-}
-
-.page-title {
-  font-size: 24px;
-  font-weight: 560;
-}
 
 
 /* Destination list chrome (PRs / Scheduled / Plugins) */

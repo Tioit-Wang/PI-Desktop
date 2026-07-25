@@ -711,3 +711,9 @@ This test plan spec is accepted when:
 - Hover or select a recent task row.
 - Expect trailing pin and panel icon buttons (Codex recents chrome).
 - Pin persists locally across reloads; active row keeps actions visible.
+
+
+### US-UI-50 Destination title scale
+- Open Projects, Pull requests, Scheduled, Plugins.
+- Expect large section titles (~28px) consistent with Codex destination/index pages.
+- Dark home New task remains a ghost row (no solid selected chip) unless genuinely active.

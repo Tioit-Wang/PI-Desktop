@@ -89,6 +89,7 @@ This log freezes previously open questions into concrete decisions.
 | D066 | Home-with-project chrome + projects index | **Home shows workspace chips when project open (no ∞); home placeholder 随心输入/Ask anything; model chip Custom+effort; footer gear+help; Projects page is Codex index (search/columns/expand/actions) using setProject** | Gold cx-home-clean with project + projects-index-page parity |
 | D067 | Home suggestion glyphs + chip gap | **Suggestion icons match Codex (code/hammer/refresh/bug) with blue/purple/green/orange tones; composer chip gap 8px and denser capsule** | Card icon residual was dominant vs cx-home-clean |
 | D068 | Recents row actions + fixture titles | **Active/hover recent rows show pin + panel trailing actions; capture/fixtures prefer Chinese titled empty sessions (同步代码) over bare New task** | Gold sidebar selected row chrome; reduce selection residual |
+| D069 | Destination title scale + dark New task ghost | **Destination page titles use Codex 28px/560 weight; New task is transparent ghost in dark too; capture drops English noise fixtures and pins 同步代码** | PR/Projects title mismatch; dark New task read as selected chip |
 
 ## C. Still deferred (not blocking M1)
 
