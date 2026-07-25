@@ -15,6 +15,7 @@ export const en = {
     settings: "Settings",
     custom: "Custom",
     help: "Help",
+    openInPanel: "Open in panel",
     profileLogs: "Logs",
     profileTheme: "Theme",
     openProfileMenu: "Open profile menu",

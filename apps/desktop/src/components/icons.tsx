@@ -559,3 +559,15 @@ export function IconGear(props: IconProps) {
     </svg>
   );
 }
+
+
+/** Codex recent-row pin */
+export function IconPin(props: IconProps) {
+  return (
+    <svg {...base(props)} viewBox="0 0 24 24">
+      <path d="M12 17v4" />
+      <path d="M8.5 11.5 7 4h10l-1.5 7.5A3.5 3.5 0 0 1 12 15a3.5 3.5 0 0 1-3.5-3.5Z" />
+      <path d="M9 4h6" />
+    </svg>
+  );
+}

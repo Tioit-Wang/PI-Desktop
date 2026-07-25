@@ -88,6 +88,7 @@ This log freezes previously open questions into concrete decisions.
 | D065 | Settings general gold polish | **Permission rows include blue Learn more links + full-access risk copy; open-target pill shows VS Code glyph; Configuration uses circular-arrow icon; Integrations order Appshots→Plugins→Browser→Computer→MCP; Enter-to-send moves to Configuration** | Residual gaps vs cx-settings-try after full-page shell |
 | D066 | Home-with-project chrome + projects index | **Home shows workspace chips when project open (no ∞); home placeholder 随心输入/Ask anything; model chip Custom+effort; footer gear+help; Projects page is Codex index (search/columns/expand/actions) using setProject** | Gold cx-home-clean with project + projects-index-page parity |
 | D067 | Home suggestion glyphs + chip gap | **Suggestion icons match Codex (code/hammer/refresh/bug) with blue/purple/green/orange tones; composer chip gap 8px and denser capsule** | Card icon residual was dominant vs cx-home-clean |
+| D068 | Recents row actions + fixture titles | **Active/hover recent rows show pin + panel trailing actions; capture/fixtures prefer Chinese titled empty sessions (同步代码) over bare New task** | Gold sidebar selected row chrome; reduce selection residual |
 
 ## C. Still deferred (not blocking M1)
 

@@ -136,6 +136,7 @@ function AppShell() {
   useEffect(() => {
     (window as any).__PI_DESKTOP__ = {
       setPage: (page: string) => useAppStore.getState().setPage(page as any),
+      selectSession: (id: string) => useAppStore.getState().selectSession(id),
       setSettingsTab: (tab: string) => useAppStore.getState().setSettingsTab(tab as any),
       setThemeAttr: (theme: "light" | "dark") => {
         document.documentElement.dataset.theme = theme;
@@ -157,10 +158,15 @@ function AppShell() {
           const store = useAppStore.getState();
           if ((store.sessions?.length ?? 0) < 10) {
             const titles = [
+              "同步代码",
+              "你好",
+              "终止进程里面有一个注册机的",
+              "加一下",
+              "帮我彻底卸载比特浏览器",
+              "帮我配置一下这个项目并启动",
+              "重新设计设置页面插件板块手机端ui布局",
+              "制作台的布局重新设计，需要现代化简",
               "Review open pull requests",
-              "Tighten composer elevation",
-              "Dark theme night plate",
-              "Sidebar recents density",
               "Settings appearance polish",
               "Plugins empty state",
             ];

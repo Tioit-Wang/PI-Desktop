@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useAppStore } from "../stores/app-store";
 import {
@@ -11,6 +11,8 @@ import {
   IconCloudDown,
   IconHelp,
   IconGear,
+  IconPanel,
+  IconPin,
   IconPullRequest,
   IconSearch,
   IconSettings,
@@ -42,6 +44,28 @@ export function Sidebar({
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem("pi.desktop.pinnedSessions");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === "string") : [];
+    } catch {
+      return [];
+    }
+  });
+  const togglePin = (id: string, e: ReactMouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPinnedIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev];
+      try {
+        localStorage.setItem("pi.desktop.pinnedSessions", JSON.stringify(next.slice(0, 40)));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -242,18 +266,51 @@ export function Sidebar({
               {t("nav.noRecentTasks")}
             </div>
           ) : (
-            filtered.map((session) => (
-              <button
-                key={session.id}
-                className={`thread-item ${
-                  page === "chat" && activeSessionId === session.id ? "active" : ""
-                }`}
-                onClick={() => void selectSession(session.id)}
-                title={taskTitle(session.title)}
-              >
-                {taskTitle(session.title)}
-              </button>
-            ))
+            [...filtered]
+              .sort((a, b) => Number(pinnedIds.includes(b.id)) - Number(pinnedIds.includes(a.id)))
+              .map((session) => {
+                const active = page === "chat" && activeSessionId === session.id;
+                const pinned = pinnedIds.includes(session.id);
+                return (
+                  <div
+                    key={session.id}
+                    className={`thread-item ${active ? "active" : ""} ${pinned ? "pinned" : ""}`}
+                  >
+                    <button
+                      type="button"
+                      className="thread-item-main"
+                      onClick={() => void selectSession(session.id)}
+                      title={taskTitle(session.title)}
+                    >
+                      <span className="thread-item-title">{taskTitle(session.title)}</span>
+                    </button>
+                    <div className="thread-item-actions">
+                      <button
+                        type="button"
+                        className={`thread-action ${pinned ? "on" : ""}`}
+                        title={pinned ? t("project.unpin") : t("project.pin")}
+                        aria-label={pinned ? t("project.unpin") : t("project.pin")}
+                        onClick={(e) => togglePin(session.id, e)}
+                      >
+                        <IconPin size={13} />
+                      </button>
+                      <button
+                        type="button"
+                        className="thread-action"
+                        title={t("nav.openInPanel")}
+                        aria-label={t("nav.openInPanel")}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          void selectSession(session.id);
+                        }}
+                      >
+                        <IconPanel size={13} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
           )}
         </div>
 

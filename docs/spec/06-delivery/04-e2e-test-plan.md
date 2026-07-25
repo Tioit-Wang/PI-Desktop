@@ -705,3 +705,9 @@ This test plan spec is accepted when:
 ### US-UI-48 Home suggestion glyph parity
 - On empty home, four ambient cards show Codex glyphs in order: code brackets (blue), hammer (purple), refresh (green), bug (orange).
 - Labels remain explore / create / review / fix localization keys.
+
+
+### US-UI-49 Recents pin/panel actions
+- Hover or select a recent task row.
+- Expect trailing pin and panel icon buttons (Codex recents chrome).
+- Pin persists locally across reloads; active row keeps actions visible.

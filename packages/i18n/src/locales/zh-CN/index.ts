@@ -18,6 +18,7 @@ export const zhCN = {
     settings: "设置",
     custom: "Custom",
     help: "帮助",
+    openInPanel: "在面板中打开",
     profileLogs: "日志",
     profileTheme: "主题",
     openProfileMenu: "打开个人菜单",
