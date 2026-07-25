@@ -15,14 +15,16 @@ import {
   IconKeyboard,
   IconLink,
   IconMic,
-  IconPalette,
   IconPerson,
+  IconPet,
   IconPlug,
   IconSearch,
   IconServer,
   IconSettings,
   IconSliders,
+  IconSnapshot,
   IconSparkles,
+  IconSun,
 } from "../components/icons";
 
 type SettingsTab = ReturnType<typeof useAppStore.getState>["settingsTab"];
@@ -134,6 +136,7 @@ export function SettingsPage() {
   const [autoReview, setAutoReview] = useState(true);
   const [fullAccess, setFullAccess] = useState(true);
   const [showMenuBar, setShowMenuBar] = useState(true);
+  const [bottomPanel, setBottomPanel] = useState(false);
 
   const navGroups: NavGroup[] = useMemo(
     () => [
@@ -142,7 +145,7 @@ export function SettingsPage() {
         headingKey: "settings.groupPersonal",
         items: [
           { id: "general", labelKey: "settings.general", icon: <IconSettings size={15} /> },
-          { id: "appearance", labelKey: "settings.appearance", icon: <IconPalette size={15} /> },
+          { id: "appearance", labelKey: "settings.appearance", icon: <IconSun size={15} /> },
           { id: "voice", labelKey: "settings.voice", icon: <IconMic size={15} /> },
           { id: "agent", labelKey: "settings.configuration", icon: <IconSliders size={15} /> },
           {
@@ -150,7 +153,7 @@ export function SettingsPage() {
             labelKey: "settings.personalization",
             icon: <IconPerson size={15} />,
           },
-          { id: "providers", labelKey: "settings.providers", icon: <IconServer size={15} /> },
+          { id: "pets", labelKey: "settings.pets", icon: <IconPet size={15} /> },
           { id: "keyboard", labelKey: "settings.keyboard", icon: <IconKeyboard size={15} /> },
           {
             id: "account",
@@ -158,6 +161,7 @@ export function SettingsPage() {
             icon: <IconAt size={15} />,
             external: true,
           },
+          { id: "providers", labelKey: "settings.providers", icon: <IconServer size={15} /> },
           { id: "about", labelKey: "settings.about", icon: <IconInfo size={15} /> },
         ],
       },
@@ -165,6 +169,7 @@ export function SettingsPage() {
         key: "integrations",
         headingKey: "settings.groupIntegrations",
         items: [
+          { id: "appshots", labelKey: "settings.appshots", icon: <IconSnapshot size={15} /> },
           { id: "plugins", labelKey: "settings.plugins", icon: <IconPlug size={15} /> },
           { id: "mcp", labelKey: "settings.mcp", icon: <IconSparkles size={15} /> },
           { id: "browser", labelKey: "settings.browser", icon: <IconBrowser size={15} /> },
@@ -291,10 +296,48 @@ export function SettingsPage() {
 
               <SettingsCard title={t("settings.general")}>
                 <SettingsRow
+                  title={t("settings.defaultOpenTarget")}
+                  description={t("settings.defaultOpenTargetDesc")}
+                >
+                  <Select defaultValue="vscode" className="settings-pill-select">
+                    <option value="vscode">VS Code</option>
+                    <option value="finder">Finder</option>
+                    <option value="terminal">Terminal</option>
+                  </Select>
+                </SettingsRow>
+                <SettingsRow title={t("settings.language")} description={t("settings.languageDesc")}>
+                  <Select defaultValue="auto" className="settings-pill-select">
+                    <option value="auto">{t("settings.languageAuto")}</option>
+                    <option value="en">English</option>
+                    <option value="zh-CN">简体中文</option>
+                  </Select>
+                </SettingsRow>
+                <SettingsRow
+                  title={t("settings.showMenuBar")}
+                  description={t("settings.showMenuBarDesc")}
+                >
+                  <Toggle
+                    checked={showMenuBar}
+                    onChange={setShowMenuBar}
+                    label={t("settings.showMenuBar")}
+                  />
+                </SettingsRow>
+                <SettingsRow
+                  title={t("settings.bottomPanel")}
+                  description={t("settings.bottomPanelDesc")}
+                >
+                  <Toggle
+                    checked={bottomPanel}
+                    onChange={setBottomPanel}
+                    label={t("settings.bottomPanel")}
+                  />
+                </SettingsRow>
+                <SettingsRow
                   title={t("settings.enterToSend")}
                   description={t("settings.enterToSendDesc")}
                 >
                   <Select
+                    className="settings-pill-select"
                     value={settings.enterToSend ? "yes" : "no"}
                     onChange={async (e) => {
                       await api.setSettings({
@@ -307,31 +350,6 @@ export function SettingsPage() {
                     <option value="yes">{t("settings.yes")}</option>
                     <option value="no">{t("settings.noCmdEnter")}</option>
                   </Select>
-                </SettingsRow>
-                <SettingsRow title={t("settings.mode")} description={t("settings.modeDesc")}>
-                  <Select
-                    value={settings.defaultMode}
-                    onChange={async (e) => {
-                      await api.setSettings({
-                        ...settings,
-                        defaultMode: e.target.value as "chat" | "agent",
-                      });
-                      await refreshProviders();
-                    }}
-                  >
-                    <option value="agent">{t("settings.modeAgent")}</option>
-                    <option value="chat">{t("settings.modeChat")}</option>
-                  </Select>
-                </SettingsRow>
-                <SettingsRow
-                  title={t("settings.showMenuBar")}
-                  description={t("settings.showMenuBarDesc")}
-                >
-                  <Toggle
-                    checked={showMenuBar}
-                    onChange={setShowMenuBar}
-                    label={t("settings.showMenuBar")}
-                  />
                 </SettingsRow>
               </SettingsCard>
             </>
@@ -641,8 +659,10 @@ export function SettingsPage() {
             [
               "voice",
               "personalization",
+              "pets",
               "keyboard",
               "account",
+              "appshots",
               "mcp",
               "browser",
               "computer",

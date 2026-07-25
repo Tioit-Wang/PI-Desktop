@@ -46,6 +46,8 @@ type AppState = {
     | "hooks"
     | "connections"
     | "git"
+    | "pets"
+    | "appshots"
     | "about";
   navStack: Array<{ page: AppState["page"]; sessionId?: string }>;
   navIndex: number;

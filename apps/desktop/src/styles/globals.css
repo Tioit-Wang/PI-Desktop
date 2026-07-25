@@ -2287,6 +2287,32 @@ textarea:disabled {
   margin-bottom: 10px;
 }
 
+.settings-pill-select,
+.settings-row-control .field-select {
+  min-width: 148px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid var(--ds-border-default);
+  background: var(--ds-bg-primary);
+  padding: 0 12px;
+  color: var(--ds-text-primary);
+  font-size: 12.5px;
+}
+
+:root[data-theme="light"] .settings-pill-select,
+:root[data-theme="light"] .settings-row-control .field-select {
+  background: #f7f7f7;
+  border-color: transparent;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, #1a1c1f 10%, transparent);
+}
+
+:root[data-theme="dark"] .settings-pill-select,
+:root[data-theme="dark"] .settings-row-control .field-select {
+  background: color-mix(in oklab, var(--gray-0) 6%, transparent);
+  border-color: transparent;
+  box-shadow: 0 0 0 0.5px color-mix(in oklab, var(--gray-0) 10%, transparent);
+}
+
 
 
 .page-frame {
