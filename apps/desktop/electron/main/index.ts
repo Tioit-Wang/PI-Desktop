@@ -167,6 +167,15 @@ async function createWindow() {
             await clickNav("new-task");
             await new Promise((r) => setTimeout(r, 400));
             await shot("pi-final");
+            // Dark shell parity capture (temporary attribute; restore system after).
+            await mainWindow!.webContents.executeJavaScript(
+              `document.documentElement.dataset.theme = "dark"`,
+            );
+            await new Promise((r) => setTimeout(r, 200));
+            await shot("pi-dark-home");
+            await mainWindow!.webContents.executeJavaScript(
+              `document.documentElement.dataset.theme = window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"`,
+            );
             await clickNav("pulls");
             await new Promise((r) => setTimeout(r, 900));
             await shot("pi-pulls-live");
@@ -402,6 +411,25 @@ function registerIpc() {
   handle(IPC.invoke.projectClear, async () => {
     if (!host) throw new Error("host unavailable");
     return host.call("workspace.clear");
+  });
+
+  handle(IPC.invoke.composerPickFiles, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile", "openDirectory", "multiSelections"],
+    });
+    if (result.canceled) return { paths: [] as string[], canceled: true };
+    return { paths: result.filePaths, canceled: false };
+  });
+
+  handle(IPC.invoke.composerPickPhotos, async () => {
+    const result = await dialog.showOpenDialog({
+      properties: ["openFile", "multiSelections"],
+      filters: [
+        { name: "Images", extensions: ["png", "jpg", "jpeg", "gif", "webp", "heic", "tif", "tiff"] },
+      ],
+    });
+    if (result.canceled) return { paths: [] as string[], canceled: true };
+    return { paths: result.filePaths, canceled: false };
   });
 
   handle(IPC.invoke.pullsList, async () => {

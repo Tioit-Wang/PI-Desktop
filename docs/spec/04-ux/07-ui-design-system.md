@@ -337,6 +337,11 @@ All motion tokens must respect `prefers-reduced-motion: reduce`:
 
 The project / Local / branch controls share **one** capsule bar above the composer (not three independent pills). Internal 1px separators match Codex electron-dark chrome.
 
+## 8.2 Composer plus menu (Codex parity)
+
+The composer `+` control opens a compact elevated menu: Attach files and folders, Add photos, Capture appshot (stub until host capture), and Open project. File picks insert `@path` tokens into the draft.
+
+
 ## 9. Z-index layers
 
 | Layer | Z-index | Usage |

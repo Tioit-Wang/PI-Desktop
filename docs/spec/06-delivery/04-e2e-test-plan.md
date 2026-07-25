@@ -557,3 +557,9 @@ This test plan spec is accepted when:
 - Title is 28px / weight 400; active project name uses dotted underline (1px, offset 4px).
 - Plus control in composer toolbar is labeled "Add files and more" / 添加文件等.
 
+### US-UI-18 Composer plus context menu
+- On chat home, click the composer `+` control.
+- Menu shows Attach files and folders / Add photos / Capture appshot / Open project (localized).
+- Attach/Photos open native multi-select dialogs and insert `@path` tokens into the draft.
+- Capture appshot shows a non-blocking "not available yet" toast until host capture lands.
+

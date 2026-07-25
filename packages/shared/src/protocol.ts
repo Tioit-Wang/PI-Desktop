@@ -46,6 +46,8 @@ export const IPC = {
     commandPaletteSearch: "pi-desktop/commandPalette/search",
     commandPaletteExecute: "pi-desktop/commandPalette/execute",
     logOpenFolder: "pi-desktop/log/openFolder",
+    composerPickFiles: "pi-desktop/composer/pickFiles",
+    composerPickPhotos: "pi-desktop/composer/pickPhotos",
   },
   event: {
     agentMessage: "pi-desktop/agent/event/message",

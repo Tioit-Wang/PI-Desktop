@@ -230,6 +230,26 @@ export function IconCloudDown(props: IconProps) {
   );
 }
 
+
+export function IconImage(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="m21 15-4.5-4.5L9 18" />
+    </svg>
+  );
+}
+
+export function IconCamera(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <path d="M4 8h3l1.5-2h7L17 8h3v11H4V8Z" />
+      <circle cx="12" cy="13" r="3.2" />
+    </svg>
+  );
+}
+
 /** Codex electron home mark (P4s) — cloud ring + glyph. */
 export function IconCodexHome(props: IconProps) {
   const size = props.size ?? 56;

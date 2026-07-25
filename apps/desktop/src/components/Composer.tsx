@@ -4,9 +4,11 @@ import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import {
   IconArrowUp,
+  IconCamera,
   IconComputer,
   IconFolder,
   IconGitBranch,
+  IconImage,
   IconPlus,
   IconShield,
   IconStop,
@@ -17,7 +19,7 @@ type Effort = "low" | "mid" | "high" | "max";
 function projectName(path?: string | null, name?: string | null, fallback = "No project") {
   if (name) return name;
   if (!path) return fallback;
-  const parts = path.split(/[/\\]/).filter(Boolean);
+  const parts = path.split(/[\\/]/).filter(Boolean);
   return parts[parts.length - 1] || path;
 }
 
@@ -32,6 +34,7 @@ export function Composer() {
   const openProject = useAppStore((s) => s.openProject);
   const setToast = useAppStore((s) => s.setToast);
   const [value, setValue] = useState("");
+  const [plusOpen, setPlusOpen] = useState(false);
   const [mode, setMode] = useState<"chat" | "agent">(settings?.defaultMode ?? "chat");
   const [effort, setEffort] = useState<Effort>(() => {
     const saved = localStorage.getItem("pi.desktop.effort");
@@ -40,6 +43,7 @@ export function Composer() {
       : "max";
   });
   const ref = useRef<HTMLTextAreaElement>(null);
+  const plusRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMode(settings?.defaultMode ?? "chat");
@@ -56,6 +60,22 @@ export function Composer() {
     el.style.height = `${Math.min(el.scrollHeight, 180)}px`;
   }, [value]);
 
+  useEffect(() => {
+    if (!plusOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!plusRef.current?.contains(e.target as Node)) setPlusOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPlusOpen(false);
+    };
+    window.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [plusOpen]);
+
   const provider = providers.find((p) => p.id === settings?.defaultProviderId);
   const modelLabel = settings?.defaultModelId || provider?.defaultModelId || "Model";
   const enterToSend = settings?.enterToSend ?? true;
@@ -69,6 +89,14 @@ export function Composer() {
         : effort === "high"
           ? t("chat.effortHigh")
           : t("chat.effortMax");
+
+  const appendPaths = (paths: string[]) => {
+    if (!paths.length) return;
+    const block = paths.map((p) => `@${p}`).join(" ");
+    setValue((prev) => (prev.trim() ? `${prev.trimEnd()} ${block}` : block));
+    setToast(t("chat.filesAttached", { count: paths.length }));
+    ref.current?.focus();
+  };
 
   const submit = async () => {
     const content = value.trim();
@@ -123,7 +151,9 @@ export function Composer() {
         <div className="composer-shell">
           <div className="composer-input-wrap">
             <div className="composer-thread-mark" aria-hidden>
-              <span className="infinity-mark" title="Thread">∞</span>
+              <span className="infinity-mark" title="Thread">
+                ∞
+              </span>
             </div>
             <textarea
               ref={ref}
@@ -143,14 +173,77 @@ export function Composer() {
 
           <div className="composer-toolbar">
             <div className="composer-left">
-              <button
-                className="icon-btn"
-                title={t("chat.addFiles")}
-                aria-label={t("chat.addFiles")}
-                onClick={() => void openProject()}
-              >
-                <IconPlus size={15} />
-              </button>
+              <div className="composer-plus" ref={plusRef}>
+                <button
+                  className={`icon-btn ${plusOpen ? "active" : ""}`}
+                  title={t("chat.addFiles")}
+                  aria-label={t("chat.addFiles")}
+                  aria-expanded={plusOpen}
+                  aria-haspopup="menu"
+                  onClick={() => setPlusOpen((v) => !v)}
+                >
+                  <IconPlus size={15} />
+                </button>
+                {plusOpen && (
+                  <div className="composer-plus-menu" role="menu">
+                    <button
+                      className="composer-plus-item"
+                      role="menuitem"
+                      onClick={async () => {
+                        setPlusOpen(false);
+                        try {
+                          const res = await api.pickFiles();
+                          if (!res.canceled) appendPaths(res.paths);
+                        } catch (e) {
+                          setToast(e instanceof Error ? e.message : String(e));
+                        }
+                      }}
+                    >
+                      <IconFolder size={15} />
+                      <span>{t("chat.attachFiles")}</span>
+                    </button>
+                    <button
+                      className="composer-plus-item"
+                      role="menuitem"
+                      onClick={async () => {
+                        setPlusOpen(false);
+                        try {
+                          const res = await api.pickPhotos();
+                          if (!res.canceled) appendPaths(res.paths);
+                        } catch (e) {
+                          setToast(e instanceof Error ? e.message : String(e));
+                        }
+                      }}
+                    >
+                      <IconImage size={15} />
+                      <span>{t("chat.addPhotos")}</span>
+                    </button>
+                    <button
+                      className="composer-plus-item"
+                      role="menuitem"
+                      onClick={() => {
+                        setPlusOpen(false);
+                        setToast(t("chat.appshotSoon"));
+                      }}
+                    >
+                      <IconCamera size={15} />
+                      <span>{t("chat.captureAppshot")}</span>
+                    </button>
+                    <div className="composer-plus-sep" />
+                    <button
+                      className="composer-plus-item"
+                      role="menuitem"
+                      onClick={() => {
+                        setPlusOpen(false);
+                        void openProject();
+                      }}
+                    >
+                      <IconComputer size={15} />
+                      <span>{t("project.open")}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
               <button
                 className="icon-btn mode-chip"
                 title={t("settings.mode")}

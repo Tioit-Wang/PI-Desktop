@@ -83,6 +83,10 @@ export const api = {
     invoke<{ workspace: ProjectWorkspace | null; canceled?: boolean }>(
       IPC.invoke.projectOpen,
     ),
+  pickFiles: () =>
+    invoke<{ paths: string[]; canceled?: boolean }>(IPC.invoke.composerPickFiles),
+  pickPhotos: () =>
+    invoke<{ paths: string[]; canceled?: boolean }>(IPC.invoke.composerPickPhotos),
   clearProject: () => invoke(IPC.invoke.projectClear),
   setProject: (path: string) =>
     invoke<{ workspace: ProjectWorkspace | null }>(IPC.invoke.projectSet, path),
