@@ -113,8 +113,8 @@ export function PullRequestsPage() {
             <div className="page-empty-icon">
               <IconPullRequest size={20} />
             </div>
-            <div className="text-[15px] font-medium">{t("pulls.emptyTitle")}</div>
-            <div className="mt-2 max-w-md text-[13px] text-text-secondary">
+            <div className="text-base-plus font-medium">{t("pulls.emptyTitle")}</div>
+            <div className="mt-2 max-w-md text-md text-text-secondary">
               {t("pulls.emptyBody")}
             </div>
             <Button className="mt-5" variant="primary" onClick={() => void openProject()}>
@@ -126,8 +126,8 @@ export function PullRequestsPage() {
             <div className="page-empty-icon">
               <IconPullRequest size={20} />
             </div>
-            <div className="text-[15px] font-medium">{t("pulls.emptyTitle")}</div>
-            <div className="mt-2 max-w-md text-[13px] text-text-secondary">
+            <div className="text-base-plus font-medium">{t("pulls.emptyTitle")}</div>
+            <div className="mt-2 max-w-md text-md text-text-secondary">
               {error && error !== "NO_WORKSPACE"
                 ? error
                 : t("pulls.emptyBodyWithProject", { project: workspace.name })}
@@ -142,7 +142,7 @@ export function PullRequestsPage() {
                 </div>
                 <div className="dest-row-body">
                   <div className="dest-row-title">
-                    <span className="font-mono text-[12px] font-normal text-text-muted">
+                    <span className="font-mono text-sm font-normal text-text-muted">
                       #{pr.number}
                     </span>
                     <span className="min-w-0 truncate">{pr.title}</span>

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { useAppStore } from "../stores/app-store";
+import { isDefaultSessionTitle, useAppStore } from "../stores/app-store";
 import {
   IconAt,
   IconChevronLeft,
@@ -97,32 +97,15 @@ export function Sidebar({
 
   const taskTitle = (title?: string | null) => {
     const value = (title || "").trim();
-    if (
-      !value ||
-      value.toLowerCase() === "new chat" ||
-      value.toLowerCase() === "new task" ||
-      value === "新建任务"
-    ) {
-      return t("chat.untitledTask");
-    }
-    return value;
+    return isDefaultSessionTitle(value) ? t("chat.untitledTask") : value;
   };
 
   const filtered = useMemo(() => {
-    const isDefaultTitle = (title?: string | null) => {
-      const value = (title || "").trim();
-      return (
-        !value ||
-        value.toLowerCase() === "new task" ||
-        value.toLowerCase() === "new chat" ||
-        value === "新建任务"
-      );
-    };
     // Keep one empty draft max (active preferred), hide the rest like Codex Recents.
     let keptEmpty = false;
     const cleaned: typeof sessions = [];
     for (const s of sessions) {
-      if (!isDefaultTitle(s.title)) {
+      if (!isDefaultSessionTitle(s.title)) {
         cleaned.push(s);
         continue;
       }
@@ -184,7 +167,7 @@ export function Sidebar({
         <div className="traffic-nav no-drag">
           <button
             className="title-nav-btn"
-            title="Back"
+            title={t("nav.back")}
             disabled={!canBack}
             onClick={() => navBack()}
           >
@@ -192,7 +175,7 @@ export function Sidebar({
           </button>
           <button
             className="title-nav-btn"
-            title="Forward"
+            title={t("nav.forward")}
             disabled={!canForward}
             onClick={() => navForward()}
           >
@@ -274,7 +257,7 @@ export function Sidebar({
 
         <div className="sidebar-recents min-h-0 flex-1 overflow-auto px-0.5">
           {filtered.length === 0 ? (
-            <div className="px-2 py-3 text-[12.5px] text-text-muted">
+            <div className="px-2 py-3 text-sm-plus text-text-muted">
               {t("nav.noRecentTasks")}
             </div>
           ) : (

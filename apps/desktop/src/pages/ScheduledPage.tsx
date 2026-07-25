@@ -52,7 +52,7 @@ export function ScheduledPage() {
         </div>
 
         <div className="dest-create space-y-3">
-          <div className="text-[13.5px] font-medium">{t("scheduled.create")}</div>
+          <div className="text-md-plus font-medium">{t("scheduled.create")}</div>
           <Field label={t("nav.newTask")}>
             <Input
               value={title}
@@ -65,7 +65,7 @@ export function ScheduledPage() {
               rows={3}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              placeholder="e.g. Summarize git status and open issues every morning"
+              placeholder={t("scheduled.promptPlaceholder")}
             />
           </Field>
           <div className="flex flex-wrap items-end gap-3">
@@ -115,8 +115,8 @@ export function ScheduledPage() {
             <div className="page-empty-icon">
               <IconClock size={20} />
             </div>
-            <div className="text-[15px] font-medium">{t("scheduled.emptyTitle")}</div>
-            <div className="mt-2 max-w-md text-[13px] text-text-secondary">
+            <div className="text-base-plus font-medium">{t("scheduled.emptyTitle")}</div>
+            <div className="mt-2 max-w-md text-md text-text-secondary">
               {t("scheduled.emptyBody")}
             </div>
           </Panel>

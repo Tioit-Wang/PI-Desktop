@@ -44,6 +44,8 @@ type AppState = {
   activeSessionId?: string;
   messages: UiMessage[];
   isRunning: boolean;
+  /** Run state per session id — sessions run independent agents. */
+  runningSessions: Record<string, boolean>;
   providers: ProviderPublic[];
   workspace?: ProjectWorkspace | null;
   onboarding?: OnboardingState;
@@ -106,6 +108,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   sessions: [],
   messages: [],
   isRunning: false,
+  runningSessions: {},
   providers: [],
   plugins: [],
   permission: null,
@@ -188,11 +191,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     const detail = await api.getSession(id);
     const record = opts?.record !== false;
     if (!record) {
-      set({
+      set((s) => ({
         activeSessionId: id,
         messages: detail.session?.messages ?? [],
         page: "chat",
-      });
+        isRunning: s.runningSessions[id] ?? false,
+      }));
       return;
     }
     const entry = { page: "chat" as const, sessionId: id };
@@ -205,6 +209,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         activeSessionId: id,
         messages: detail.session?.messages ?? [],
         page: "chat" as const,
+        isRunning: s.runningSessions[id] ?? false,
         navStack: nextStack,
         navIndex: nextStack.length - 1,
       };
@@ -257,7 +262,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       sessionId = get().activeSessionId;
     }
     if (!sessionId) throw new Error("No active session");
-    set({ isRunning: true, error: null, errorCode: null });
+    const startedIn = sessionId;
+    set((s) => ({
+      isRunning: true,
+      error: null,
+      errorCode: null,
+      runningSessions: { ...s.runningSessions, [startedIn]: true },
+    }));
     try {
       const current = get().sessions.find((s) => s.id === sessionId);
       if (isDefaultSessionTitle(current?.title)) {
@@ -272,11 +283,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       await api.prompt({ sessionId, content });
     } catch (e) {
-      set({
-        isRunning: false,
+      set((s) => ({
+        // The user may have switched sessions while the request was in
+        // flight; only reset the spinner if the failed session is visible.
+        isRunning: s.activeSessionId === startedIn ? false : s.isRunning,
+        runningSessions: { ...s.runningSessions, [startedIn]: false },
         error: e instanceof Error ? e.message : String(e),
         errorCode: (e as { code?: string })?.code ?? null,
-      });
+      }));
     }
   },
 
@@ -284,7 +298,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const sessionId = get().activeSessionId;
     if (!sessionId) return;
     await api.abort(sessionId);
-    set({ isRunning: false });
+    set((s) => ({
+      isRunning: false,
+      runningSessions: { ...s.runningSessions, [sessionId]: false },
+    }));
   },
 
   openProject: async () => {
@@ -324,6 +341,21 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   handleAgentEvent: (envelope) => {
     const event = envelope.event;
+    // Per-session run state: agents run independently per session, so track
+    // running/finished for every envelope, visible session or not.
+    if (event.type === "agent_start" || event.type === "turn_start") {
+      set((s) => ({
+        runningSessions: { ...s.runningSessions, [envelope.sessionId]: true },
+      }));
+    } else if (
+      event.type === "agent_end" ||
+      event.type === "turn_end" ||
+      event.type === "error"
+    ) {
+      set((s) => ({
+        runningSessions: { ...s.runningSessions, [envelope.sessionId]: false },
+      }));
+    }
     if (envelope.sessionId !== get().activeSessionId) {
       // Cross-session events must not bleed into the visible transcript.
       // Only global concerns pass: permission prompts (dialog is global)
@@ -354,11 +386,19 @@ export const useAppStore = create<AppState>((set, get) => ({
         });
         break;
       case "message_update":
-        set((s) => ({
-          messages: s.messages.map((m) =>
-            m.id === event.message.id ? event.message : m,
-          ),
-        }));
+        // Append when missing: switching back to a mid-stream session reloads
+        // the persisted transcript, which doesn't yet contain the message
+        // that is still streaming.
+        set((s) => {
+          const exists = s.messages.some((m) => m.id === event.message.id);
+          return {
+            messages: exists
+              ? s.messages.map((m) =>
+                  m.id === event.message.id ? event.message : m,
+                )
+              : [...s.messages, event.message],
+          };
+        });
         break;
       case "message_end":
         set((s) => {
@@ -475,11 +515,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   resolvePermission: async (decision) => {
     const permission = get().permission;
     if (!permission) return;
-    await api.resolvePermission({
-      requestId: permission.requestId,
-      decision,
-    });
-    set({ permission: null });
+    try {
+      await api.resolvePermission({
+        requestId: permission.requestId,
+        decision,
+      });
+    } finally {
+      // Even if the host already auto-denied (timeout → NOT_FOUND), the
+      // dialog must close.
+      set({ permission: null });
+    }
   },
   setToast: (message) => set({ toast: message }),
 

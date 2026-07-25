@@ -106,7 +106,7 @@ function Toggle({
 
 
 const LEARN_MORE_SANDBOX =
-  "https://developers.openai.com/codex/concepts/sandboxing/auto-review";
+  "https://github.com/vastsa/PI-Desktop/blob/main/docs/spec/05-security/01-security.md";
 
 function LearnMoreLink({ label }: { label: string }) {
   return (
@@ -475,7 +475,7 @@ export function SettingsPage() {
                   onBlur={async () => {
                     await refreshProviders();
                   }}
-                  className="font-mono text-[12.5px]"
+                  className="font-mono text-sm-plus"
                   placeholder="model-id"
                 />
               </SettingsRow>
@@ -512,14 +512,14 @@ export function SettingsPage() {
                     <Input
                       value={baseUrl}
                       onChange={(e) => setBaseUrl(e.target.value)}
-                      className="font-mono text-[12.5px]"
+                      className="font-mono text-sm-plus"
                     />
                   </Field>
                   <Field label={t("settings.modelId")}>
                     <Input
                       value={modelId}
                       onChange={(e) => setModelId(e.target.value)}
-                      className="font-mono text-[12.5px]"
+                      className="font-mono text-sm-plus"
                     />
                   </Field>
                   <Field label={t("settings.apiKey")}>
@@ -528,7 +528,7 @@ export function SettingsPage() {
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
                       placeholder="sk-…"
-                      className="font-mono text-[12.5px]"
+                      className="font-mono text-sm-plus"
                     />
                   </Field>
                 </div>
@@ -582,8 +582,8 @@ export function SettingsPage() {
                     providers.map((p) => (
                       <div key={p.id} className="settings-list-row">
                         <div className="min-w-0">
-                          <div className="truncate text-[13.5px] font-medium">{p.name}</div>
-                          <div className="truncate font-mono text-[11.5px] text-text-muted">
+                          <div className="truncate text-md-plus font-medium">{p.name}</div>
+                          <div className="truncate font-mono text-xs-plus text-text-muted">
                             {p.baseUrl || "—"} · {p.defaultModelId || t("settings.noModel")}
                           </div>
                         </div>
@@ -657,8 +657,8 @@ export function SettingsPage() {
                     plugins.map((plugin) => (
                       <div key={plugin.id} className="settings-list-row">
                         <div className="min-w-0">
-                          <div className="truncate text-[13.5px] font-medium">{plugin.name}</div>
-                          <div className="truncate text-[12px] text-text-muted">
+                          <div className="truncate text-md-plus font-medium">{plugin.name}</div>
+                          <div className="truncate text-sm text-text-muted">
                             {plugin.id} · {plugin.version || "dev"}
                           </div>
                         </div>
@@ -703,7 +703,7 @@ export function SettingsPage() {
                   <div className="font-medium">
                     {version?.name || "PI-Desktop"} {version?.version}
                   </div>
-                  <div className="font-mono text-[11.5px] text-text-muted">
+                  <div className="font-mono text-xs-plus text-text-muted">
                     protocol {version?.protocolVersion} · host {version?.hostVersion}
                   </div>
                 </div>

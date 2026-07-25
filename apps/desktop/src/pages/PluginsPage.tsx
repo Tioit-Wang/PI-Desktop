@@ -52,8 +52,8 @@ export function PluginsPage() {
             <div className="page-empty-icon">
               <IconAt size={20} />
             </div>
-            <div className="text-[15px] font-medium">{t("plugins.empty")}</div>
-            <div className="mt-2 max-w-md text-[13px] text-text-secondary">
+            <div className="text-base-plus font-medium">{t("plugins.empty")}</div>
+            <div className="mt-2 max-w-md text-md text-text-secondary">
               {t("plugins.emptyBody")}
             </div>
             <Button

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../lib/api";
 import { useAppStore } from "../stores/app-store";
 import type { CommandItem } from "@pi-desktop/shared";
@@ -10,6 +11,7 @@ export function CommandPalette({
   open: boolean;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [commands, setCommands] = useState<CommandItem[]>([]);
   const [active, setActive] = useState(0);
@@ -40,13 +42,63 @@ export function CommandPalette({
   if (!open) return null;
 
   const run = async (command: CommandItem) => {
+    const store = useAppStore.getState();
     try {
-      if (command.id === "builtin.newChat") await newSession();
-      else if (command.id === "builtin.openSettings") {
-        setSettingsTab("providers");
-        setPage("settings");
-      } else if (command.id === "builtin.openProject") await openProject();
-      else await api.executeCommand(command.id);
+      switch (command.id) {
+        case "builtin.newChat":
+        case "builtin.session.new":
+          await newSession();
+          break;
+        case "builtin.session.delete": {
+          const id = store.activeSessionId;
+          if (id) {
+            await api.deleteSession(id);
+            await store.refreshSessions();
+            await store.newSession();
+          }
+          break;
+        }
+        case "builtin.agent.abort":
+          await store.abort();
+          break;
+        case "builtin.mode.agent":
+        case "builtin.mode.chat": {
+          const mode = command.id.endsWith("agent") ? "agent" : "chat";
+          if (store.settings) {
+            const next = { ...store.settings, defaultMode: mode as "agent" | "chat" };
+            await api.setSettings(next);
+            useAppStore.setState({ settings: next });
+          }
+          break;
+        }
+        case "builtin.openProject":
+        case "builtin.project.open":
+          await openProject();
+          break;
+        case "builtin.project.clear":
+          await store.clearProject();
+          break;
+        case "builtin.openSettings":
+        case "builtin.settings.open":
+          setPage("settings");
+          break;
+        case "builtin.settings.providers":
+          setSettingsTab("providers");
+          setPage("settings");
+          break;
+        case "builtin.plugins.open":
+          setPage("plugins");
+          break;
+        case "builtin.plugins.loadDev":
+          await api.loadDevPlugin();
+          await store.refreshPlugins();
+          break;
+        case "builtin.logs.open":
+          await api.openLogs();
+          break;
+        default:
+          await api.executeCommand(command.id);
+      }
       onClose();
     } catch (e) {
       setToast(e instanceof Error ? e.message : String(e));
@@ -60,8 +112,8 @@ export function CommandPalette({
         onClick={(e) => e.stopPropagation()}
       >
         <input
-          className="w-full border-b border-border-subtle bg-transparent px-4 py-3 text-[14px] outline-none"
-          placeholder="Search commands…"
+          className="w-full border-b border-border-subtle bg-transparent px-4 py-3 text-base outline-none"
+          placeholder={t("palette.placeholder")}
           value={query}
           autoFocus
           onChange={(e) => setQuery(e.target.value)}
@@ -83,21 +135,21 @@ export function CommandPalette({
         />
         <div className="max-h-[360px] overflow-auto p-2">
           {commands.length === 0 ? (
-            <div className="px-2 py-6 text-center text-[13px] text-text-muted">
-              No commands
+            <div className="px-2 py-6 text-center text-md text-text-muted">
+              {t("palette.empty")}
             </div>
           ) : (
             commands.map((command, index) => (
               <button
                 key={command.id}
-                className={`flex w-full items-center justify-between rounded-[10px] px-3 py-2 text-left text-[13.5px] ${
+                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-md-plus ${
                   index === active ? "bg-bg-active text-text-primary" : "text-text-secondary hover:bg-bg-hover"
                 }`}
                 onMouseEnter={() => setActive(index)}
                 onClick={() => void run(command)}
               >
                 <span>{command.title}</span>
-                <span className="text-[11px] text-text-muted">{command.category}</span>
+                <span className="text-xs text-text-muted">{command.category}</span>
               </button>
             ))
           )}

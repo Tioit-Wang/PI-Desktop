@@ -5,6 +5,7 @@ import { ContextPanel } from "./components/ContextPanel";
 import { ChatTranscript } from "./components/ChatTranscript";
 import { Composer } from "./components/Composer";
 import { HomeSuggestions } from "./components/HomeSuggestions";
+import { OnboardingChecklist } from "./components/OnboardingChecklist";
 import { PermissionDialog } from "./components/PermissionDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -44,6 +45,11 @@ class ErrorBoundary extends Component<
   }
 }
 
+function i18nHasError(t: (k: string) => string, code: string) {
+  const key = `errors.${code}`;
+  return t(key) !== key;
+}
+
 function projectName(path?: string | null, name?: string | null) {
   if (name) return name;
   if (!path) return null;
@@ -58,6 +64,7 @@ function AppShell() {
   const page = useAppStore((s) => s.page);
   const messages = useAppStore((s) => s.messages);
   const error = useAppStore((s) => s.error);
+  const errorCode = useAppStore((s) => s.errorCode);
   const toast = useAppStore((s) => s.toast);
   const setToast = useAppStore((s) => s.setToast);
   const handleAgentEvent = useAppStore((s) => s.handleAgentEvent);
@@ -123,6 +130,10 @@ function AppShell() {
         e.preventDefault();
         setPaletteOpen(true);
       }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "p") {
+        e.preventDefault();
+        setPaletteOpen(true);
+      }
       if ((e.metaKey || e.ctrlKey) && e.key === ".") {
         e.preventDefault();
         void abort();
@@ -163,6 +174,9 @@ function AppShell() {
       },
       clearProject: () => useAppStore.getState().clearProject(),
       ensureVisualFixtures: async () => {
+        // Destructive fixture seeding is capture-rig only; the rig sets
+        // __PI_CAPTURE__ before invoking (see electron/main capture suite).
+        if (!(window as any).__PI_CAPTURE__) return;
         // Optical hero title length: short folder basenames under-ink vs Codex gold.
         const ws = useAppStore.getState().workspace;
         if (ws?.path) {
@@ -356,6 +370,7 @@ function AppShell() {
                     {/* Codex portals ambient cards under hero (top-full mt-8), not in lower flex flow */}
                     <div className="home-suggestions-portal">
                       <HomeSuggestions />
+                      <OnboardingChecklist />
                     </div>
                   </div>
                 </div>
@@ -376,8 +391,25 @@ function AppShell() {
 
             {error && (
               <div className="absolute inset-x-0 bottom-[150px] z-10 flex justify-center px-4">
-                <div className="max-w-[820px] rounded-md-plus border border-error/30 bg-bg-secondary px-3 py-2 text-md text-error">
-                  {error}
+                <div className="flex max-w-[820px] items-center gap-3 rounded-md-plus border border-error/30 bg-bg-secondary px-3 py-2 text-md text-error">
+                  <span>
+                    {errorCode && i18nHasError(t, errorCode)
+                      ? t(`errors.${errorCode}`)
+                      : error}
+                  </span>
+                  {(errorCode === "MODEL_NOT_CONFIGURED" ||
+                    errorCode === "PROVIDER_SECRET_MISSING") && (
+                    <button
+                      type="button"
+                      className="flex-none rounded-md border border-border-strong px-2 py-1 text-sm-plus text-text-primary hover:bg-bg-hover"
+                      onClick={() => {
+                        useAppStore.getState().setSettingsTab("providers");
+                        useAppStore.getState().setPage("settings");
+                      }}
+                    >
+                      {t("errors.action.openSettings")}
+                    </button>
+                  )}
                 </div>
               </div>
             )}

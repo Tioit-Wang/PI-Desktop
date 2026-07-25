@@ -9,6 +9,7 @@ import {
   IconFolder,
   IconPlus,
   IconSearch,
+  IconStar,
 } from "../components/icons";
 import {
   loadRecentProjects,
@@ -233,7 +234,10 @@ export function ProjectsPage() {
                             setRecents(setProjectPinned(project.path, !project.pinned))
                           }
                         >
-                          {project.pinned ? "★" : "☆"}
+                          <IconStar
+                            size={14}
+                            fill={project.pinned ? "currentColor" : "none"}
+                          />
                         </button>
                         <div className="projects-menu-wrap">
                           <button

@@ -17,7 +17,7 @@ import {
 
 type Effort = "low" | "mid" | "high" | "max";
 
-function projectName(path?: string | null, name?: string | null, fallback = "No project") {
+function projectName(path?: string | null, name?: string | null, fallback = "") {
   if (name) return name;
   if (!path) return fallback;
   const parts = path.split(/[\\/]/).filter(Boolean);
@@ -103,7 +103,8 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   }, [plusOpen, modelOpen]);
 
   const provider = providers.find((p) => p.id === settings?.defaultProviderId);
-  const modelLabel = settings?.defaultModelId || provider?.defaultModelId || "Model";
+  const modelLabel =
+    settings?.defaultModelId || provider?.defaultModelId || t("chat.model");
   const enterToSend = settings?.enterToSend ?? true;
   const branch = workspace?.branch || "main";
 
@@ -136,7 +137,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
       <div className="composer-stack">
         {/* Codex home-with-project gold shows workspace capsule; bare empty home hides it */}
         {(variant === "docked" || !!workspace?.path) && (
-          <div className="composer-chips" role="group" aria-label="Workspace context">
+          <div className="composer-chips" role="group" aria-label={t("chat.workspaceContext")}>
             <button
               className="chip"
               onClick={() => void openProject()}
@@ -152,7 +153,9 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
               className="chip"
               onClick={() =>
                 setToast(
-                  workspace?.path ? `Local workspace: ${workspace.path}` : t("project.open"),
+                  workspace?.path
+                    ? t("chat.localWorkspace", { path: workspace.path })
+                    : t("project.open"),
                 )
               }
             >
@@ -167,7 +170,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                 setToast(
                   workspace?.branch
                     ? `${t("chat.branch")}: ${workspace.branch}`
-                    : "No git branch detected",
+                    : t("chat.noBranch"),
                 )
               }
             >
@@ -290,7 +293,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                 }}
               >
                 <IconShield size={14} />
-                <span className="text-[12px]">
+                <span className="text-sm">
                   {mode === "chat" ? t("chat.requestApproval") : t("chat.agent")}
                 </span>
               </button>
@@ -300,7 +303,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
               <div className="composer-model" ref={modelRef}>
                 <button
                   className={`icon-btn model-chip ${modelOpen ? "active" : ""}`}
-                  title={`${provider?.name || "Provider"} · ${modelLabel}`}
+                  title={`${provider?.name || t("chat.provider")} · ${modelLabel}`}
                   aria-haspopup="menu"
                   aria-expanded={modelOpen}
                   onClick={() => setModelOpen((v) => !v)}
@@ -310,7 +313,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                     useAppStore.getState().setPage("settings");
                   }}
                 >
-                  <span className="max-w-[190px] truncate text-[12px] leading-none">
+                  <span className="max-w-[190px] truncate text-sm leading-none">
                     {variant === "home"
                       ? `${t("chat.effortCustom")} ${effortLabel}`
                       : modelLabel}
@@ -320,11 +323,11 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                 {modelOpen && (
                   <div className="composer-model-menu" role="menu">
                     <div className="composer-model-heading">
-                      <div className="truncate text-[12.5px] font-medium text-text-primary">
+                      <div className="truncate text-sm-plus font-medium text-text-primary">
                         {modelLabel}
                       </div>
-                      <div className="truncate text-[11.5px] text-text-muted">
-                        {provider?.name || "Provider"}
+                      <div className="truncate text-xs-plus text-text-muted">
+                        {provider?.name || t("chat.provider")}
                       </div>
                     </div>
                     <div className="composer-plus-sep" />

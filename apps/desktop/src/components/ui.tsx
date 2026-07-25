@@ -51,9 +51,9 @@ export function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <div className="text-[12px] text-text-secondary">{label}</div>
+      <div className="text-sm text-text-secondary">{label}</div>
       {children}
-      {hint ? <div className="text-[11px] text-text-muted">{hint}</div> : null}
+      {hint ? <div className="text-xs text-text-muted">{hint}</div> : null}
     </label>
   );
 }

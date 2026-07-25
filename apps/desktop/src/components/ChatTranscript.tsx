@@ -136,7 +136,7 @@ function ToolRow({ message }: { message: UiMessage }) {
         <span className="tool-row-caret" aria-hidden>
           <IconChevronRight size={12} />
         </span>
-        <span className="tool-row-name">{message.toolName || "tool"}</span>
+        <span className="tool-row-name">{message.toolName || t("chat.tool")}</span>
         {summary ? <span className="tool-row-summary">{summary}</span> : null}
         {status === "running" ? (
           <span className="tool-spinner" aria-label={t("chat.running")} />
@@ -173,6 +173,48 @@ function WorkingIndicator() {
   );
 }
 
+/* Typewriter reveal for streaming assistant messages: incoming chunks
+ * accumulate in message.content (the buffer); we surface it a few characters
+ * per frame, speeding up with backlog so the display never trails far behind.
+ * Messages that arrive already complete (history loads) render in full. */
+function useTypewriter(message: UiMessage) {
+  const target = message.content || "";
+  const animate = message.role === "assistant";
+  const everStreamedRef = useRef(message.status === "streaming");
+  if (message.status === "streaming") everStreamedRef.current = true;
+  const [visibleLen, setVisibleLen] = useState(() =>
+    animate && everStreamedRef.current ? 0 : target.length,
+  );
+  const targetRef = useRef(target);
+  targetRef.current = target;
+  const statusRef = useRef(message.status);
+  statusRef.current = message.status;
+
+  useEffect(() => {
+    if (!animate || !everStreamedRef.current) {
+      setVisibleLen(target.length);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setVisibleLen((len) => {
+        const full = targetRef.current;
+        if (len >= full.length) {
+          // Caught up and the stream ended — stop ticking until new content.
+          if (statusRef.current !== "streaming") window.clearInterval(id);
+          return Math.min(len, full.length);
+        }
+        const backlog = full.length - len;
+        const step = Math.max(1, Math.round(backlog / 24));
+        return Math.min(full.length, len + step);
+      });
+    }, 16);
+    return () => window.clearInterval(id);
+  }, [animate, target]);
+
+  if (!animate || !everStreamedRef.current) return target;
+  return target.slice(0, visibleLen);
+}
+
 const MessageRow = memo(function MessageRow({
   message,
   isRunning,
@@ -183,11 +225,12 @@ const MessageRow = memo(function MessageRow({
   const { t } = useTranslation();
   const isUser = message.role === "user";
   const copyLabel = t("chat.copy");
+  const displayed = useTypewriter(message);
   return (
     <div
       className={`message-row ${isUser ? "user" : message.role}`}
       role="article"
-      aria-label={isUser ? "User message" : "Assistant message"}
+      aria-label={isUser ? t("chat.userMessage") : t("chat.assistantMessage")}
     >
       <div className="message-col">
         <div className="message-bubble">
@@ -196,7 +239,7 @@ const MessageRow = memo(function MessageRow({
           ) : (
             <div className="prose-chat">
               <ReactMarkdown components={markdownComponents}>
-                {message.content || (isRunning ? "…" : "")}
+                {displayed || (isRunning ? "…" : "")}
               </ReactMarkdown>
             </div>
           )}
@@ -220,6 +263,7 @@ export function ChatTranscript({
 }) {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const pinnedRef = useRef(true);
   const [showJump, setShowJump] = useState(false);
 
@@ -243,6 +287,18 @@ export function ChatTranscript({
     if (pinnedRef.current) scrollToBottom();
   }, [messages, isRunning, scrollToBottom]);
 
+  // The typewriter reveal grows message height without changing `messages`,
+  // so follow content resizes too while pinned to the bottom.
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      if (pinnedRef.current) scrollToBottom();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [scrollToBottom]);
+
   const visible = messages.filter((message) => {
     if (message.role === "assistant" && !(message.content || "").trim()) return false;
     return true;
@@ -257,7 +313,7 @@ export function ChatTranscript({
         role="log"
         aria-live="polite"
       >
-        <div className="thread-content">
+        <div className="thread-content" ref={contentRef}>
           {visible.map((message) =>
             message.role === "tool" ? (
               <ToolRow key={message.id} message={message} />

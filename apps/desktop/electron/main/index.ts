@@ -387,7 +387,7 @@ async function createWindow() {
             await new Promise((r) => setTimeout(r, 400));
             try {
               await mainWindow!.webContents.executeJavaScript(
-                `void window.__PI_DESKTOP__?.ensureVisualFixtures?.()`,
+                `window.__PI_CAPTURE__ = 1; void window.__PI_DESKTOP__?.ensureVisualFixtures?.()`,
               );
             } catch {
               // fixtures optional
@@ -803,6 +803,13 @@ function registerIpc() {
   handle(IPC.invoke.sessionDelete, async (id: string) => {
     if (!host) throw new Error("host unavailable");
     const res = await host.call("session.delete", { id });
+    // Drop the session's pi-agent so a later session with the same id (or a
+    // stale runtime) can't answer with this session's context.
+    if (sidecar) {
+      await sidecar
+        .call("agent.disposeSession", { sessionId: id })
+        .catch(() => undefined);
+    }
     logger.app("info", "session deleted", { sessionId: id });
     return res;
   });
@@ -1256,24 +1263,18 @@ function registerIpc() {
   handle(IPC.invoke.commandPaletteSearch, async (query: string) => {
     const q = (query || "").toLowerCase();
     const builtin = [
-      {
-        id: "builtin.newChat",
-        title: "New task",
-        category: "Session",
-        source: "builtin" as const,
-      },
-      {
-        id: "builtin.openSettings",
-        title: "Open settings",
-        category: "App",
-        source: "builtin" as const,
-      },
-      {
-        id: "builtin.openProject",
-        title: "Open project",
-        category: "Project",
-        source: "builtin" as const,
-      },
+      { id: "builtin.session.new", title: "New task", category: "Session", keywords: ["new", "chat", "task"], source: "builtin" as const },
+      { id: "builtin.session.delete", title: "Delete current task", category: "Session", keywords: ["delete", "remove", "session"], source: "builtin" as const },
+      { id: "builtin.agent.abort", title: "Abort current run", category: "Session", keywords: ["stop", "abort", "cancel"], source: "builtin" as const },
+      { id: "builtin.mode.agent", title: "Switch to Agent mode", category: "Session", keywords: ["mode", "agent"], source: "builtin" as const },
+      { id: "builtin.mode.chat", title: "Switch to Chat mode (read-only)", category: "Session", keywords: ["mode", "chat", "read-only"], source: "builtin" as const },
+      { id: "builtin.project.open", title: "Open project", category: "Project", keywords: ["open", "folder", "workspace"], source: "builtin" as const },
+      { id: "builtin.project.clear", title: "Clear project", category: "Project", keywords: ["clear", "close", "workspace"], source: "builtin" as const },
+      { id: "builtin.settings.open", title: "Open settings", category: "App", keywords: ["settings", "preferences"], source: "builtin" as const },
+      { id: "builtin.settings.providers", title: "Open provider settings", category: "Settings", keywords: ["provider", "model", "key"], source: "builtin" as const },
+      { id: "builtin.plugins.open", title: "Open plugins", category: "Plugins", keywords: ["plugins", "extensions"], source: "builtin" as const },
+      { id: "builtin.plugins.loadDev", title: "Load development plugin", category: "Plugins", keywords: ["load", "dev", "plugin"], source: "builtin" as const },
+      { id: "builtin.logs.open", title: "Open logs folder", category: "Diagnostics", keywords: ["logs", "diagnostics"], source: "builtin" as const },
     ];
     const pluginCmds = plugins.getCommands().map((c) => ({
       id: c.id,
