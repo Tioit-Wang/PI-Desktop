@@ -550,7 +550,10 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 ### 11.3 Layout
 
 - Height: min 80px, max 320px (auto-grow with content)
-- Background: bg-secondary
+- Background: one solid semantic composer surface; no internal gradient,
+  background image, or decorative wash
+- Elevation: 20px radius with a hairline stroke and restrained soft shadow;
+  the docked transcript fade is outside the composer shell
 - Border: border-default top
 - Padding: px-4 py-3 inner textarea
 - Font: font-mono text-sm for agent mode; font-sans text-sm for chat mode

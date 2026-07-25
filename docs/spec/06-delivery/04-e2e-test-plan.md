@@ -654,7 +654,10 @@ This test plan spec is accepted when:
 - Starting a transcript restores the bottom-docked composer with fade veil.
 
 ### US-UI-29 Light composer plate legibility
-- On light theme empty home, the white composer shell must read as an elevated box (hairline stroke + elevation-prominent shadow) against `#ffffff` main.
+- On light theme empty home, the white composer shell uses one uniform solid
+  fill with no internal gradient or background image.
+- The shell still reads as an elevated box through a hairline stroke and
+  restrained soft shadow against the `#ffffff` main surface.
 - Toolbar controls and placeholder remain legible (not pure white-on-white).
 
 ### US-UI-30 Composer placeholder copy
@@ -708,8 +711,10 @@ This test plan spec is accepted when:
 
 ### US-UI-43 Empty home plate Y + night elevated-primary
 - Open empty home at ~1200×690 light theme.
-- Composer plate top wash ≈y537, draft ≈y552, foot shadow ≈y674; plate min-height ~140px; no large pre-plate halo.
-- Switch dark theme: night plate is elevated-primary (`#212121f5` / gray-800 96%) with downward elevation (no heavier omni night shadow).
+- Composer plate top edge ≈y537, draft ≈y552, and plate min-height ~140px;
+  the surface is uniformly solid with no decorative wash.
+- Switch dark theme: night plate is elevated-primary (`#212121f5` / gray-800
+  96%) with the same restrained elevation and no internal gradient.
 
 
 ### US-UI-44 Settings Codex groups + rows

@@ -381,7 +381,10 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Empty draft row keeps **min textarea height 28px** (auto-resize must not collapse to 0) so placeholder remains visible
 - Left **∞** thread mark beside empty draft; light mark near primary dark ink; light placeholder ~`#525355`
 - Disabled send is a **solid gray chip** (`#8e8e90` light, white arrow), not opacity-only fade
-- Floating plates use Codex `--elevation-prominent` base (stroke + soft 3px/20px lift); light empty shell fill uses a soft top **#f6→#fff** gradient so the upper plate band matches gold
+- Floating composer plates use one solid semantic surface with no internal
+  gradient: `--ds-bg-composer` in light and elevated-primary in dark. A
+  hairline stroke plus the restrained `--elevation-prominent` shadow provides
+  separation; the docked transcript fade remains outside the input surface.
 - Dark elevated shell reads as elevated-primary (`#212121f5` / gray-800 96%) on `#181818` with standard elevation-prominent
 
 ## 8.1 Composer workspace chips (Codex parity)
