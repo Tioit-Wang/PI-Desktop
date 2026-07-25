@@ -1,15 +1,15 @@
-# 18. Plugin Lifecycle
+# 05. Plugin Lifecycle
 
-## 1. 目标
+## 1. Goals
 
-定义插件从发现到卸载的完整状态机，保证：
+Define the complete state machine from discovery to uninstall, guaranteeing:
 
-- 行为可预测
-- 失败可恢复
-- 启停可审计
-- 与命令面板 / AgentTool 注册一致
+- Predictable behavior
+- Recoverable failures
+- Auditable start/stop
+- Consistency with command palette / AgentTool registration
 
-## 2. 状态机
+## 2. State machine
 
 ```text
 discovered
@@ -24,77 +24,79 @@ discovered
  → invalid
 ```
 
-### 状态说明
+### State descriptions
 
-| 状态 | 含义 |
+| State | Meaning |
 |---|---|
-| discovered | 扫描到插件目录或安装包 |
-| validated | manifest / 文件完整性通过 |
-| installed | 已写入 installed 目录并登记 |
-| enabled | 用户启用，允许加载 |
-| loaded | runtime 已加载，贡献点已注册 |
-| running | 已有活跃 panel / 后台逻辑 |
-| disabled | 已安装但用户关闭 |
-| load_error | 启用后加载失败 |
-| install_error | 安装失败 |
-| invalid | 校验失败，不可用 |
+| discovered | Plugin directory or package scanned |
+| validated | manifest / file integrity passed |
+| installed | Written to the installed directory and registered |
+| enabled | Enabled by the user, allowed to load |
+| loaded | Runtime loaded, contribution points registered |
+| running | Has an active panel / background logic |
+| disabled | Installed but turned off by the user |
+| load_error | Load failed after enabling |
+| install_error | Install failed |
+| invalid | Validation failed, unusable |
 
-## 3. 生命周期钩子
+## 3. Lifecycle hooks
 
-按顺序触发：
+**Implemented today:** the MVP runtime (`apps/desktop/electron/main/plugin-runtime.ts`) invokes only `onLoad` (when a plugin is loaded on load/enable); unloading tears down the plugin's registered commands and tools. The other hooks below are declared in the API but not yet fired.
 
-1. `onInstall`（仅安装成功后一次）
+**Planned:** once the full lifecycle lands, hooks fire in this order:
+
+1. `onInstall` (once, only after a successful install)
 2. `onEnable`
 3. `onLoad`
-4. 运行期事件
+4. runtime events
 5. `onUnload`
 6. `onDisable`
 7. `onUninstall`
 
-### 调用约束
-- 钩子必须可超时（默认 5s，可配）
-- 钩子异常不得导致宿主崩溃
-- `onLoad` 失败则进入 `load_error` 并自动回滚已注册贡献点
+### Invocation constraints
+- Hooks must be able to time out (default 5s, configurable)
+- A hook exception must not crash the host
+- If `onLoad` fails, enter `load_error` and automatically roll back the contribution points already registered
 
-## 4. 启用 / 禁用语义
+## 4. Enable / disable semantics
 
 ### enable
-- 状态改为 enabled
-- 尝试 load
-- 成功：注册 commands / tools / skills
-- 失败：保留 enabled=false 或 enabled=true + load_error（实现时固定一种；推荐 **失败则保持 disabled 并提示**）
+- Set state to enabled
+- Attempt load
+- Success: register commands / tools / skills
+- Failure: automatically fall back to disabled and surface the error to the user. This is frozen by D017 (enable→load failure auto-disables the plugin).
 
 ### disable
-- 注销 commands / tools
-- 关闭 panel
-- 调用 `onUnload` / `onDisable`
-- 持久化为 disabled
+- Unregister commands / tools
+- Close panel
+- Call `onUnload` / `onDisable`
+- Persist as disabled
 
-## 5. 启动恢复
+## 5. Startup recovery
 
-应用启动时：
+On app startup:
 
-1. 扫描 installed 插件
-2. 读取启用状态
-3. 仅加载 enabled 插件
-4. 单个插件失败跳过，不影响其他插件与主应用
+1. Scan installed plugins
+2. Read the enabled state
+3. Load only enabled plugins
+4. Skip a single failed plugin without affecting other plugins or the main app
 
-## 6. 开发者模式
+## 6. Developer mode
 
-`dev-loaded` 插件：
+`dev-loaded` plugins:
 
-- 不复制到 installed
-- 直接引用本地路径
-- 可 watch 热重载
-- 重载流程：`unload → validate → load`
+- Not copied to `installed`
+- Reference the local path directly
+- Can watch and hot reload
+- Reload flow: `unload → validate → load`
 
-热重载时：
-- 尽量保留插件 settings
-- 不保证 panel 内内存状态保留
+On hot reload:
+- Preserve plugin settings as much as possible
+- Panel in-memory state is not guaranteed to be preserved
 
-## 7. 贡献点注册/注销事务
+## 7. Contribution-point register/unregister transaction
 
-对每个插件 load 过程应近似事务：
+Each plugin's load process should be approximately transactional:
 
 ```text
 begin
@@ -104,16 +106,16 @@ begin
 commit
 ```
 
-中途失败：
+On mid-way failure:
 ```text
 rollback all registrations from this plugin
 ```
 
-避免“命令在、工具不在”的半加载状态。
+Avoid a half-loaded state where "the command exists but the tool does not".
 
-## 8. 审计事件
+## 8. Audit events
 
-至少记录：
+Record at least:
 
 - plugin.install
 - plugin.uninstall
@@ -124,21 +126,21 @@ rollback all registrations from this plugin
 - plugin.unload
 - plugin.crash
 
-字段：
+Fields:
 - pluginId
 - version
-- source (`installed`|`dev`|`marketplace`)
+- source (`installed` | `dev` | `marketplace`)
 - ts
 - errorCode?
 
-## 9. 卸载策略
+## 9. Uninstall strategy
 
-卸载前：
+Before uninstall:
 1. disable + unload
-2. 调用 `onUninstall`
-3. 删除 installed 文件
-4. 清理插件私有 data（可询问用户是否保留）
+2. Call `onUninstall`
+3. Delete installed files
+4. Clean up plugin-private data (may ask the user whether to keep it)
 
-默认建议：
-- 卸载时清理 settings/data
-- 提供“保留数据”高级选项（可后置）
+Default recommendation:
+- Clean up settings/data on uninstall (D016: uninstall deletes plugin data by default)
+- Provide a "keep data" advanced option (can be deferred)

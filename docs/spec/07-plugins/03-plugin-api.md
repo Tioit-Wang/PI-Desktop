@@ -1,22 +1,22 @@
-# 16. Plugin API
+# 03. Plugin API
 
-## 1. 设计原则
+## 1. Design principles
 
-1. 小而稳
-2. 权限驱动
-3. 异步优先
-4. 可审计
-5. 不暴露宿主内部对象
+1. Small and stable
+2. Permission-driven
+3. Async-first
+4. Auditable
+5. Do not expose host internal objects
 
-## 2. 运行时注入对象
+## 2. Runtime-injected object
 
-插件 runtime 中可访问全局：
+Inside the plugin runtime, a global is available:
 
 ```ts
 declare const pi: PiPluginHostApi;
 ```
 
-## 3. API 总表（MVP）
+## 3. API overview (MVP)
 
 ### app
 ```ts
@@ -30,7 +30,7 @@ pi.plugin.getId(): string
 pi.plugin.getManifest(): PluginManifestV1
 pi.plugin.getSettings<T=Record<string, unknown>>(): Promise<T>
 pi.plugin.setSettings(partial: Record<string, unknown>): Promise<void>
-pi.plugin.getDataPath(): Promise<string> // 插件私有目录
+pi.plugin.getDataPath(): Promise<string> // plugin-private directory
 ```
 
 ### commands
@@ -91,7 +91,7 @@ pi.clipboard.writeText(text: string): Promise<void>
 pi.shell.openExternal(url: string): Promise<void>
 ```
 
-### net（默认高风险，可后置）
+### net (high risk by default, can be deferred)
 ```ts
 pi.net.fetch(input: {
  url: string
@@ -102,7 +102,7 @@ pi.net.fetch(input: {
 }): Promise<{ status: number; headers: Record<string, string>; bodyText: string }>
 ```
 
-## 4. 错误模型
+## 4. Error model
 
 ```ts
 type PluginApiError = {
@@ -117,51 +117,51 @@ type PluginApiError = {
 }
 ```
 
-所有 API 失败抛出带 code 的 error。
+All API failures throw an error carrying a `code`.
 
-## 5. 事件（宿主 -> 插件）
+## 5. Events (host -> plugin)
 
 ```ts
 pi.events.on(event, handler)
 pi.events.off(event, handler)
 ```
 
-MVP 事件：
+MVP events:
 - `workspace:changed`
 - `session:activated`
 - `plugin:settingsChanged`
 - `app:themeChanged`
 
-## 6. 面板桥接 API
+## 6. Panel bridge API
 
-Panel UI 不直接拿完整 `pi`，而是：
+The Panel UI does not get the full `pi` directly; instead:
 
 ```ts
 window.pluginBridge.invoke(channel, payload?)
 window.pluginBridge.on(event, handler)
 ```
 
-由插件自己的 preload/main 转发到插件 runtime。
+The plugin's own preload/main forwards to the plugin runtime.
 
-## 7. 调用审计
+## 7. Call auditing
 
-任何以下调用必须记审计日志：
+Any of the following calls must be logged for audit:
 
 - fs.writeText
-- agent.registerTool 后的 execute
+- execute after agent.registerTool
 - net.fetch
 - shell.openExternal
-- clipboard.read/write（可采样）
+- clipboard.read/write (may be sampled)
 
-日志字段：
+Log fields:
 - pluginId
 - api
 - ts
 - sessionId?
 - ok / errorCode
 
-## 8. 版本策略
+## 8. Versioning strategy
 
-- API surface 以 `apiVersion` 管理
+- The API surface is managed by `apiVersion`
 - MVP `apiVersion = 1`
-- 废弃 API 至少保留一个主版本周期
+- A deprecated API is retained for at least one major version cycle

@@ -1,16 +1,16 @@
-# 19. Plugin Packaging
+# 06. Plugin Packaging
 
-## 1. 目标
+## 1. Goals
 
-定义插件如何被打包、分发、安装，确保跨机器可复现。
+Define how plugins are packaged, distributed, and installed, ensuring reproducibility across machines.
 
-## 2. 包格式
+## 2. Package formats
 
-### 2.1 目录包（开发/本地）
-直接目录，包含 `manifest.json`。
+### 2.1 Directory package (development/local)
+A plain directory containing `manifest.json`.
 
-### 2.2 分发包（推荐）
-扩展名：`.piplug`（本质 zip）
+### 2.2 Distribution package (recommended)
+Extension: `.piplug` (essentially a zip)
 
 ```text
 demo.hello-0.1.0.piplug
@@ -19,20 +19,20 @@ demo.hello-0.1.0.piplug
  ├─ main.js
  ├─ renderer/...
  ├─ skills/...
- └─ checksums.json # 可选，包内清单
+ └─ checksums.json # optional, in-package manifest
 ```
 
-> 实现期也可先支持 `.zip`，但产品层统一识别 `.piplug`。
+> During implementation, `.zip` may be supported first, but at the product level everything is identified as `.piplug`.
 
-## 3. 包内约束
+## 3. In-package constraints
 
-1. 根目录必须有 `manifest.json`
-2. 不允许包含绝对路径符号链接
-3. 不允许路径穿越（`../`）
-4. 单包解压后默认大小上限（建议 50MB，可配）
-5. 文件数上限（建议 2000，可配）
+1. The root must contain `manifest.json`
+2. Absolute-path symlinks are not allowed
+3. Path traversal (`../`) is not allowed
+4. Default max size after extraction for a single package (recommended 50MB, configurable)
+5. Max file count (recommended 2000, configurable)
 
-## 4. checksums.json（可选但推荐）
+## 4. checksums.json (optional but recommended)
 
 ```json
 {
@@ -44,9 +44,9 @@ demo.hello-0.1.0.piplug
 }
 ```
 
-宿主安装时可校验。
+The host can verify at install time.
 
-## 5. 安装流程
+## 5. Install flow
 
 ```text
 select package/dir
@@ -59,51 +59,51 @@ select package/dir
  → optional auto enable
 ```
 
-失败则清理 temp，不留下半安装目录。
+On failure, clean up temp and leave no half-installed directory.
 
-## 6. 版本与覆盖
+## 6. Versioning and overwrite
 
-- 同 id 新版本安装：升级
-- 升级前备份旧版到 `cache/backup/<id>/<version>`
-- 升级失败可回滚（P2）
+- Installing a new version with the same id: upgrade
+- Back up the old version to `cache/backup/<id>/<version>` before upgrade
+- Rollback on upgrade failure (P2)
 
-语义：
-- `install`：id 不存在
-- `upgrade`：id 存在且 version 更新
-- `reinstall`：同版本强制重装
+Semantics:
+- `install`: id does not exist
+- `upgrade`: id exists and version is newer
+- `reinstall`: force reinstall of the same version
 
-## 7. 卸载与清理
+## 7. Uninstall and cleanup
 
-删除：
+Delete:
 - `plugins/installed/<id>`
-- registry 项
+- registry entry
 
-可选删除：
+Optionally delete:
 - `plugins/data/<id>`
-- 插件日志
+- plugin logs
 
-## 8. 开发包
+## 8. Development packages
 
-开发加载不走 piplug 打包，直接：
+Development loading does not go through `.piplug` packaging; instead:
 
 ```text
-Load Development Plugin → 选择目录 → validate → register(source=dev)
+Load Development Plugin → choose directory → validate → register(source=dev)
 ```
 
-## 9. 构建建议（开发者）
+## 9. Build recommendations (developers)
 
-最小规范：
+Minimal spec:
 
-- 源码可 TypeScript
-- 分发前编译为可直接加载的 js/html/css
-- 不依赖宿主去现场 `npm install`（MVP 不支持安装期拉依赖）
+- Source can be TypeScript
+- Compile to directly loadable js/html/css before distribution
+- Do not rely on the host to run `npm install` on the spot (MVP does not support pulling dependencies at install time)
 
-若插件需要第三方库：
-- 自行打包进插件目录（bundle）
+If a plugin needs third-party libraries:
+- Bundle them into the plugin directory yourself
 
-## 10. 验收
+## 10. Acceptance
 
-1. 可从目录安装
-2. 可从 `.piplug`/`.zip` 安装（实现阶段按里程碑）
-3. 坏包安装失败且无残留
-4. 升级后 id 不变、新 version 生效
+1. Can install from a directory
+2. Can install from `.piplug` / `.zip` (per milestone during implementation)
+3. A bad package fails to install and leaves no residue
+4. After upgrade, the id stays the same and the new version takes effect

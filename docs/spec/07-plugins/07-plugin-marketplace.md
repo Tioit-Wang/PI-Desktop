@@ -1,40 +1,40 @@
-# 20. Plugin Marketplace
+# 07. Plugin Marketplace
 
-## 1. 定位
+## 1. Positioning
 
-插件市场是 **分发层**，不是运行时核心。
+The plugin marketplace is a **distribution layer**, not a runtime core.
 
-原则：
+Principle:
 
-> 先本地插件系统可用，再接入市场。
+> Get the local plugin system working first, then integrate the marketplace.
 
-市场负责：
-- 发现
-- 检索
-- 展示元数据
-- 下载
-- 更新检查
+The marketplace is responsible for:
+- Discovery
+- Search
+- Displaying metadata
+- Download
+- Update checking
 
-宿主负责：
-- 校验
-- 授权
-- 安装
-- 运行
-- 安全隔离
+The host is responsible for:
+- Validation
+- Authorization
+- Install
+- Run
+- Security isolation
 
-## 2. 阶段策略
+## 2. Phase strategy
 
-### Phase A（现在只定 spec）
-- 协议与数据模型
-- 本地 mock market provider
+### Phase A (spec only for now)
+- Protocol and data model
+- Local mock market provider
 
 ### Phase B
-- 远程市场只读浏览 + 下载安装
+- Remote marketplace read-only browsing + download install
 
 ### Phase C
-- 自动更新、评分、发布者认证、签名强制
+- Auto-update, ratings, publisher certification, mandatory signing
 
-## 3. Market Provider 抽象
+## 3. Market Provider abstraction
 
 ```ts
 interface MarketProvider {
@@ -46,12 +46,12 @@ interface MarketProvider {
 }
 ```
 
-支持多 provider：
-- `official`（官方）
-- `custom`（企业私有源）
-- `local-mock`（开发）
+Supports multiple providers:
+- `official`
+- `custom` (enterprise private source)
+- `local-mock` (development)
 
-## 4. 数据模型
+## 4. Data model
 
 ### MarketPluginSummary
 ```ts
@@ -96,13 +96,13 @@ type MarketDownloadInfo = {
  url: string
  sizeBytes: number
  shasum: string // sha256
- signature?: string // 后续强制
+ signature?: string // mandatory later
  signatureAlg?: "ed25519"
  publishedAt: string
 }
 ```
 
-## 5. 安装链路（市场）
+## 5. Install path (marketplace)
 
 ```text
 browse/search
@@ -115,20 +115,20 @@ browse/search
  → enable?
 ```
 
-任何校验失败：中止并保留缓存可选清理。
+On any validation failure: abort and optionally clean up the cache.
 
-## 6. 更新链路
+## 6. Update path
 
-1. 启动后或定时 `checkUpdates`
-2. 对比 installed version 与 latest
-3. UI 显示可更新列表
-4. 用户确认后下载升级
+1. `checkUpdates` after startup or on a schedule
+2. Compare installed version with latest
+3. UI shows the list of available updates
+4. Download and upgrade after user confirmation
 
-策略：
-- MVP 后第一版：手动更新
-- 后续：可选自动更新（仅低风险插件或官方插件）
+Strategy:
+- First version after MVP: manual update
+- Later: optional auto-update (low-risk plugins or official plugins only)
 
-## 7. 市场 UI 信息架构
+## 7. Marketplace UI information architecture
 
 ```text
 Plugins
@@ -140,28 +140,28 @@ Plugins
 └─ Updates
 ```
 
-Detail 页必须显示：
-- 权限
-- 作者
-- 版本
-- 更新时间
-- 风险说明
-- 安装按钮
+The Detail page must show:
+- Permissions
+- Author
+- Version
+- Update time
+- Risk description
+- Install button
 
-## 8. 信任模型
+## 8. Trust model
 
-| 级别 | 含义 |
+| Level | Meaning |
 |---|---|
-| verified | 官方或认证发布者 |
-| community | 社区插件 |
-| unknown | 自定义源/未认证 |
+| verified | Official or certified publisher |
+| community | Community plugin |
+| unknown | Custom source / uncertified |
 
-UI 必须可见信任级别。 
-不能把 community 伪装成 verified。
+The UI must make the trust level visible.
+Community must not be disguised as verified.
 
-## 9. 私有源（企业向后）
+## 9. Private sources (enterprise-facing)
 
-支持配置：
+Supports configuration:
 
 ```json
 {
@@ -179,9 +179,9 @@ UI 必须可见信任级别。
 }
 ```
 
-## 10. 远程 API 草案（HTTP）
+## 10. Remote API draft (HTTP)
 
-> 非最终实现绑定，仅协议草案。
+> Draft (post-MVP). Not a final implementation binding; protocol draft only.
 
 - `GET /v1/plugins?query=&category=&page=`
 - `GET /v1/plugins/:id`
@@ -189,20 +189,20 @@ UI 必须可见信任级别。
 - `GET /v1/plugins/:id/download?version=`
 - `POST /v1/updates/check`
 
-所有下载元数据必须包含 `shasum`。
+All download metadata must include `shasum`.
 
-## 11. 明确不做（市场第一版）
+## 11. Explicitly not doing (marketplace v1)
 
-- 应用内付费结算
-- 插件远程代码热补丁
-- 静默自动安装
-- 无校验下载执行
-- 评论社交系统（可后置）
+- In-app paid checkout
+- Remote plugin code hot patching
+- Silent auto-install
+- Unverified download-and-execute
+- Comment/social system (can be deferred)
 
-## 12. 验收（市场只读+安装）
+## 12. Acceptance (marketplace read-only + install)
 
-1. 可浏览插件列表
-2. 可查看权限与版本
-3. 可下载并安装
-4. 校验失败不可安装
-5. 安装后出现在 Installed
+1. Can browse the plugin list
+2. Can view permissions and versions
+3. Can download and install
+4. Cannot install if validation fails
+5. Appears in Installed after install

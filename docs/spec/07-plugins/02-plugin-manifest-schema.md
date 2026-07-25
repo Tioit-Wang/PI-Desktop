@@ -1,16 +1,16 @@
-# 15. Plugin Manifest Schema
+# 02. Plugin Manifest Schema
 
-## 1. 目的
+## 1. Purpose
 
-冻结插件清单字段，保证：
+Freeze the plugin manifest fields to guarantee:
 
-- 宿主可校验
-- 开发者可依赖
-- 后续版本可迁移
+- The host can validate
+- Developers can depend on it
+- Future versions can migrate
 
-Schema Version：`1`
+Schema Version: `1`
 
-## 2. 根对象
+## 2. Root object
 
 ```ts
 type PluginManifestV1 = {
@@ -42,7 +42,7 @@ type PluginManifestV1 = {
 };
 ```
 
-## 3. UI 配置
+## 3. UI config
 
 ```ts
 type PluginUiConfig = {
@@ -100,7 +100,7 @@ type PluginThemeContrib = {
 };
 ```
 
-## 5. permissions 枚举
+## 5. permissions enum
 
 ```ts
 type PluginPermission =
@@ -116,32 +116,32 @@ type PluginPermission =
  | "shell.openExternal";
 ```
 
-未知 permission = 校验失败。
+Unknown permission = validation failure.
 
-## 6. activationEvents（可选）
+## 6. activationEvents (optional)
 
-示例：
+Examples:
 
 - `onStartup`
 - `onCommand:demo.hello.say`
 - `onAgentMode`
 - `onWorkspaceOpen`
 
-MVP 可只实现：
+MVP may implement only:
 - `onStartup`
 - `onCommand:*`
 
-## 7. 校验规则
+## 7. Validation rules
 
-1. `schemaVersion` 必须为 `1`
-2. `id`/`name`/`version` 必填
-3. 有 `ui.panel` 时默认需要 `ui.panel` 权限（可隐式补齐或强制声明，实现时二选一并固定）
-4. 有 `agentTools` 时必须声明 `agent.tool.register`
-5. 路径字段不得使用绝对路径或 `..`
-6. `main` / `ui.panel` / skills 路径必须存在
-7. tool `name` 仅允许 `[a-zA-Z][a-zA-Z0-9_]*`
+1. `schemaVersion` must be `1`
+2. `id` / `name` / `version` are required
+3. Whether a manifest that declares `ui.panel` needs the `ui.panel` permission implicitly (auto-filled) or by explicit declaration is an **open question** (tracked in [08-meta/open-questions.md](../08-meta/open-questions.md))
+4. If `agentTools` are present, `agent.tool.register` must be declared
+5. Path fields must not use absolute paths or `..`
+6. `main` / `ui.panel` / skills paths must exist
+7. tool `name` allows only `[a-zA-Z][a-zA-Z0-9_]*`
 
-## 8. 示例：最小插件
+## 8. Example: minimal plugin
 
 ```json
 {
@@ -166,7 +166,7 @@ MVP 可只实现：
 }
 ```
 
-## 9. 示例：Agent Tool 插件
+## 9. Example: Agent Tool plugin
 
 ```json
 {
@@ -195,8 +195,8 @@ MVP 可只实现：
 }
 ```
 
-## 10. 兼容策略
+## 10. Compatibility strategy
 
-- 未来 `schemaVersion: 2` 需迁移器
-- 宿主应拒绝过高主版本
-- 对未知可选字段可忽略，对未知必需权限必须失败
+- A future `schemaVersion: 2` needs a migrator
+- The host should reject a too-high major version
+- Unknown optional fields may be ignored; unknown required permissions must fail

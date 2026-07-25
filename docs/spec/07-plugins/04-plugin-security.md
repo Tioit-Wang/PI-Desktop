@@ -1,102 +1,101 @@
-# 17. Plugin Security
+# 04. Plugin Security
 
-## 1. 威胁模型
+## 1. Threat model
 
-插件可能来自：
-- 用户自己开发
-- 同事分享
-- 后续市场第三方
+Plugins may come from:
+- The user's own development
+- Shared by colleagues
+- Third parties in a future marketplace
 
-主要风险：
-1. 恶意读写文件
-2. 恶意执行命令
-3. 窃取 API Key / 会话内容
-4. 劫持 agent tool
-5. 通过 UI 钓鱼
+Main risks:
+1. Malicious file read/write
+2. Malicious command execution
+3. Stealing API keys / session content
+4. Hijacking agent tools
+5. Phishing via the UI
 
-## 2. 默认拒绝原则
+## 2. Default-deny principle
 
-- 未声明权限 = 不可用
-- 未启用插件 = 不加载代码
-- 未确认高风险动作 = 不执行
-- 未在白名单的 Host API = 不存在
+- Undeclared permission = unavailable
+- Disabled plugin = code not loaded
+- Unconfirmed high-risk action = not executed
+- Host API not on the allowlist = does not exist
 
-## 3. 隔离策略
+## 3. Isolation strategy
 
-### 必须
-1. 插件 UI 与宿主 UI DOM 隔离
-2. 插件不可直接 require 宿主模块
-3. secret store 不对插件开放
-4. 插件私有数据目录与宿主核心库分离
+### Must
+1. Plugin UI is isolated from the host UI DOM
+2. Plugins cannot directly require host modules
+3. The secret store is not open to plugins
+4. The plugin-private data directory is separate from the host core library
 
-### 目标
-1. 插件 main 跑在独立进程
-2. 崩溃隔离
-3. 资源限制（后续：CPU/内存/超时）
+### Goals
+1. Plugin main runs in a separate process
+2. Crash isolation
+3. Resource limits (later: CPU/memory/timeout)
 
-## 4. 权限授予 UX
+## 4. Permission-grant UX
 
-安装/加载时展示：
+At install/load time, show:
 
-- 权限列表
-- 风险说明
-- 开发者信息
-- 来源路径
+- Permission list
+- Risk description
+- Developer info
+- Source path
 
-用户动作：
-- 接受并启用
-- 取消
+User actions:
+- Accept and enable
+- Cancel
 
-高风险 API 首次调用可再确认。
+First use of a high-risk API may re-confirm.
 
-## 5. 数据隔离
+## 5. Data isolation
 
-插件可访问：
-- 自己的 settings
-- 自己的 data path
+Plugins can access:
+- Their own settings
+- Their own data path
 
-插件不可访问：
-- 其他插件 data
-- 宿主 secrets
-- 宿主完整会话数据库（除非未来有受控 API）
+Plugins cannot access:
+- Other plugins' data
+- Host secrets
+- The host's full session database (unless a controlled API exists in the future)
 
-## 6. 路径安全
+## 6. Path safety
 
-对 `fs.*`：
-- 仅工作区相对路径
+For `fs.*`:
+- Workspace-relative paths only
 - normalize + root boundary
-- 拒绝绝对路径与逃逸
+- Reject absolute paths and escapes
 
-## 7. Agent 安全
+## 7. Agent security
 
-- 插件 tool 名称添加命名空间，避免冲突 
- 例：`plugin.demo.echo_text` 或强制前缀策略（实现时固定）
-- tool 执行超时
-- tool 可被用户一键禁用
-- prompt 注入 API 默认高风险且需显式权限
+- Plugin tool names are namespaced to avoid collisions using the frozen forced prefix `plugin_<pluginIdSafe>_<toolName>` (D015)
+- tool execution timeout
+- tools can be disabled by the user in one click
+- the prompt-injection API is high-risk by default and requires an explicit permission
 
-## 8. 网络与外链
+## 8. Network and external links
 
-- `net.fetch` 默认不给
-- `openExternal` 建议确认
-- 禁止插件静默下载执行二进制（MVP 直接不做）
+- `net.fetch` is not granted by default
+- `openExternal` should confirm
+- Plugins are forbidden from silently downloading and executing binaries (not done at all in MVP)
 
-## 9. 审计与应急
+## 9. Auditing and emergency response
 
-用户应能：
-- 查看插件权限
-- 查看插件错误日志
-- 一键禁用
-- 一键卸载
+Users should be able to:
+- View plugin permissions
+- View plugin error logs
+- Disable in one click
+- Uninstall in one click
 
-宿主应能：
-- 在插件异常时自动 disable
-- 保证主应用可启动
+The host should be able to:
+- Auto-disable a plugin on anomaly
+- Guarantee the main app can start
 
-## 10. 安全验收
+## 10. Security acceptance
 
-1. 无 `fs.write.workspace` 权限时写文件失败
-2. 禁用插件后 tool 不再可见
-3. 插件无法读取 API Key
-4. 插件面板不能调用宿主任意 IPC
-5. 插件抛未捕获异常不导致 app 退出
+1. Writing a file fails without the `fs.write.workspace` permission
+2. After disabling a plugin, its tools are no longer visible
+3. A plugin cannot read API keys
+4. A plugin panel cannot call arbitrary host IPC
+5. An uncaught exception from a plugin does not cause the app to exit
