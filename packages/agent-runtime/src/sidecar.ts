@@ -6,6 +6,7 @@
 import { createInterface } from "node:readline";
 import { randomUUID } from "node:crypto";
 import { ParentHostProxy } from "./parent-host-proxy.js";
+import { classifyAgentError } from "./agent-errors.js";
 import { DesktopAgentRuntime } from "./runtime.js";
 import {
   normalizeSupportedThinkingLevels,
@@ -148,26 +149,16 @@ async function handle(method: string, params: any): Promise<unknown> {
         runtimes.set(sessionId, runtime);
       }
       void runtime.prompt(content).catch((err) => {
-        const message = err instanceof Error ? err.message : String(err);
-        let code = "PROVIDER_ERROR";
-        let retriable = true;
-        if (/\b401\b|\b403\b|unauthorized|invalid[_ ]api[_ ]key/i.test(message)) {
-          code = "PROVIDER_UNAUTHORIZED";
-          retriable = false;
-        } else if (/\b429\b|rate.?limit|quota/i.test(message)) {
-          code = "PROVIDER_RATE_LIMITED";
-        } else if (/abort/i.test(message)) {
-          code = "TURN_ABORTED";
-          retriable = false;
-        } else if (/stream/i.test(message)) {
-          code = "STREAM_FAILED";
-        }
+        // Rejected-prompt path (pre-flight/transport failures). Streamed
+        // provider errors surface via stopReason "error" and are classified
+        // and emitted by the runtime itself.
         notify("agent.event", {
           sessionId,
+          turnId,
           ts: Date.now(),
           event: {
             type: "error",
-            error: { code, message, retriable },
+            error: classifyAgentError(err),
           },
         });
       });

@@ -27,6 +27,7 @@ import type {
   UiMessage,
 } from "@pi-desktop/shared";
 import type { HostClient } from "./host-client.js";
+import { classifyAgentError } from "./agent-errors.js";
 import { clampThinkingLevel } from "./thinking-level.js";
 
 
@@ -553,6 +554,14 @@ export class DesktopAgentRuntime {
       case "message_end": {
         if (this.currentAssistant && event.message.role === "assistant") {
           const content = assistantContent((event.message as any).content);
+          // pi-agent-core encodes stream failures in the final message
+          // (stopReason "error"/"aborted" + errorMessage) and resolves the
+          // prompt normally, so this is where provider/model errors surface.
+          const stopReason = (event.message as any).stopReason as
+            | string
+            | undefined;
+          const failed = stopReason === "error";
+          const aborted = stopReason === "aborted";
           const nextText = content.hasText
             ? content.text
             : this.currentAssistant.content;
@@ -568,13 +577,21 @@ export class DesktopAgentRuntime {
               : content.hasThinking
                 ? { thinking: undefined }
                 : {}),
-            status: "complete",
+            status: failed ? "error" : aborted ? "aborted" : "complete",
             modelId: this.provider.modelId,
             providerId: this.provider.id,
             ...(usage ? { usage } : {}),
           };
           this.emit({ type: "message_end", message: this.currentAssistant });
           this.currentAssistant = undefined;
+          if (failed) {
+            const errorMessage =
+              typeof (event.message as any).errorMessage === "string" &&
+              (event.message as any).errorMessage
+                ? ((event.message as any).errorMessage as string)
+                : "provider stream failed";
+            this.emit({ type: "error", error: classifyAgentError(errorMessage) });
+          }
         }
         break;
       }
@@ -615,6 +632,15 @@ export class DesktopAgentRuntime {
     }
   }
 
+  /** Resolve a bubble left in "streaming" when the run dies without a
+   * message_end (rejected prompt), so the transcript never sticks mid-stream. */
+  private finalizeCurrentAssistant(status: "error" | "aborted") {
+    if (!this.currentAssistant) return;
+    this.currentAssistant = { ...this.currentAssistant, status };
+    this.emit({ type: "message_end", message: this.currentAssistant });
+    this.currentAssistant = undefined;
+  }
+
   async prompt(content: string): Promise<{ turnId: string }> {
     if (this.disposed) throw new Error("runtime disposed");
     this.turnId = randomUUID();
@@ -622,8 +648,15 @@ export class DesktopAgentRuntime {
       type: "status",
       status: this.getStatus(),
     });
-    await this.agent.prompt(content);
-    await this.agent.waitForIdle();
+    try {
+      await this.agent.prompt(content);
+      await this.agent.waitForIdle();
+    } catch (err) {
+      this.finalizeCurrentAssistant(
+        classifyAgentError(err).code === "TURN_ABORTED" ? "aborted" : "error",
+      );
+      throw err;
+    }
     return { turnId: this.turnId };
   }
 
