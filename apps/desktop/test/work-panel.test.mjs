@@ -40,6 +40,21 @@ test("work panel docks as an app-shell column, not a main-pane overlay", () => {
   );
 });
 
+test("work panel welcome stays centered without clipping short windows", () => {
+  assert.match(panelSource, /<WelcomePane onPick=\{setTab\} \/>/);
+  assert.match(
+    globalStyles,
+    /\.work-welcome \{[^}]*justify-content:\s*safe center;[^}]*overflow:\s*auto;/s,
+  );
+});
+
+test("work panel resizing preserves a readable main pane", () => {
+  assert.match(panelSource, /const MAIN_PANE_MIN_WIDTH = 360;/);
+  assert.match(panelSource, /window\.innerWidth - sidebarWidth - MAIN_PANE_MIN_WIDTH/);
+  assert.match(panelSource, /\.sidebar, \.sidebar-rail/);
+  assert.match(globalStyles, /\.main-pane \{[^}]*min-width:\s*360px;/s);
+});
+
 test("terminal pane survives tab switches by hiding instead of unmounting", () => {
   assert.match(panelSource, /tab !== "terminal" && "is-hidden"/);
   assert.match(panelSource, /<TerminalTab active=\{tab === "terminal"\} \/>/);

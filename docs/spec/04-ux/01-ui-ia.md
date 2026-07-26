@@ -46,12 +46,14 @@ destination, chat as the home surface, tools and permissions inline.
 - **Titlebar**: hiddenInset traffic lights; back/forward controls traverse
   destination history; work-panel toggle on the right.
 - **Work panel**: docked right column (not an overlay) toggled from the
-  titlebar or Cmd/Ctrl+J. Four tabs — Review (working-tree diff), Terminal
-  (interactive PTY), Browser (embedded preview), Files (workspace browser).
-  Width is drag-resizable (320px–min(720px, 60vw)); open state, active tab,
-  and width persist across launches. Replaces the former context-panel
-  overlay; workspace/model/status info lives in the composer chips and
-  Settings instead.
+  titlebar or Cmd/Ctrl+J. Opening lands on a welcome chooser; the right-edge
+  rail switches among Review (working-tree diff), Terminal (interactive PTY),
+  Browser (embedded preview), and Files (workspace browser). Width is
+  drag-resizable from 320px to
+  `min(720px, 60vw, viewport − visible sidebar − 360px)`, preserving a
+  readable 360px Main pane. Open state and width persist across launches.
+  Replaces the former context-panel overlay; workspace/model/status info lives
+  in the composer chips and Settings instead.
 - **Composer**: workspace-agnostic floating pill anchored to the chat
   destination — scrollable centered stack on the empty home (D111),
   bottom-docked in a transcript, with no project / Local / branch rail (D095).

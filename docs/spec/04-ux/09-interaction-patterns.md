@@ -295,16 +295,23 @@ Agent calls high-risk tool
 - Selection rules must not disable `focus-visible` feedback or native window
   drag regions.
 
-## 8. Drag / drop (reserved)
+## 8. Drag / drop
 
 ### 8.1 MVP status
 
-**Not implemented in MVP.** Reserved for future milestones:
+Work-panel width resizing is implemented in MVP:
+
+- The left-edge separator follows the pointer during the drag.
+- The width clamps to
+  `320px–min(720px, 60vw, viewport − visible sidebar − 360px)`.
+- Pointer release persists the committed width; window resize re-clamps it.
+- The MainChat surface never shrinks below 360px in the supported shell.
+
+The following gestures remain reserved for future milestones:
 
 - Drag project/session items to assign manual order
 - File drag into the composer has no attachment behavior until the pi prompt
   contract supports persisted file payloads
-- Drag panels to resize widths
 
 ### 8.2 Spec reservation
 

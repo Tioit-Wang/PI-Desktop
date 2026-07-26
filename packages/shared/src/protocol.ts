@@ -70,6 +70,7 @@ export const IPC = {
     fsList: "pi-desktop/fs/list",
     fsRead: "pi-desktop/fs/read",
     fsReveal: "pi-desktop/fs/reveal",
+    windowResizeBy: "pi-desktop/window/resizeBy",
   },
   event: {
     agentMessage: "pi-desktop/agent/event/message",

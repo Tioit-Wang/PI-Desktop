@@ -389,6 +389,14 @@ export const zhCN = {
       browser: "浏览器",
       files: "文件",
     },
+    welcome: {
+      title: "需要什么工具？",
+      subtitle: "选择一个工具开始，之后可以随时在右侧菜单切换。",
+      review: "查看工作区未提交的代码变更",
+      terminal: "在项目目录中运行命令",
+      browser: "预览本地服务或任意网页",
+      files: "浏览项目文件并快速预览",
+    },
     review: {
       noWorkspace: "打开一个项目后可查看变更",
       clean: "工作区没有未提交的变更",

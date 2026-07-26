@@ -451,7 +451,7 @@ textarea:disabled {
 .main-pane {
   position: relative;
   display: flex;
-  min-width: 0;
+  min-width: 360px;
   flex: 1;
   flex-direction: column;
   background: var(--ds-bg-primary);
@@ -4469,13 +4469,21 @@ textarea:disabled {
 .work-panel {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex: 0 0 auto;
   min-width: 320px;
   height: 100%;
   min-height: 0;
   background: var(--ds-bg-primary);
   border-left: 1px solid var(--ds-border-subtle);
+}
+
+.work-panel-main {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
 }
 
 .work-panel-resize {
@@ -4499,40 +4507,142 @@ textarea:disabled {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 0 10px 0 12px;
+  padding: 0 10px 0 14px;
   border-bottom: 1px solid var(--ds-border-subtle);
   -webkit-app-region: drag;
 }
 
-.work-panel-tabs {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  padding: 2px;
-  border-radius: var(--radius-sm);
-  background: color-mix(in oklab, var(--ds-text-primary) 4%, transparent);
+.work-panel-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--ds-text-primary);
 }
 
-.work-panel-tab {
-  display: inline-flex;
+/* Vertical function menu on the panel's outer edge. */
+.work-panel-rail {
+  display: flex;
+  flex: 0 0 auto;
+  width: 58px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  padding: 10px 5px;
+  border-left: 1px solid var(--ds-border-subtle);
+  background: color-mix(in oklab, var(--ds-text-primary) 2%, transparent);
+}
+
+.work-panel-rail-btn {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border-radius: var(--radius-2xs);
-  font-size: var(--text-sm);
+  gap: 3px;
+  padding: 8px 2px 7px;
+  border-radius: var(--radius-xs);
+  font-size: var(--text-2xs);
   font-weight: var(--font-weight-medium);
   color: var(--ds-text-muted);
   transition: background 120ms ease, color 120ms ease;
 }
 
-.work-panel-tab:hover {
+.work-panel-rail-btn:hover {
+  color: var(--ds-text-primary);
+  background: var(--ds-bg-hover);
+}
+
+.work-panel-rail-btn.active {
+  color: var(--ds-accent);
+  background: color-mix(in oklab, var(--ds-accent) 10%, transparent);
+}
+
+/* Work panel — first-open welcome page */
+
+.work-welcome {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: safe center;
+  overflow: auto;
+  padding: 28px 20px 20px;
+}
+
+.work-welcome-title {
+  font-size: var(--text-lg);
+  font-weight: var(--font-weight-semibold);
   color: var(--ds-text-primary);
 }
 
-.work-panel-tab.active {
+.work-welcome-subtitle {
+  margin-top: 6px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--ds-text-muted);
+}
+
+.work-welcome-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.work-welcome-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 12px 12px 14px;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: var(--radius-sm);
+  text-align: left;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.work-welcome-item:hover {
+  background: var(--ds-bg-hover);
+  border-color: color-mix(in oklab, var(--ds-accent) 35%, var(--ds-border-subtle));
+}
+
+.work-welcome-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+  background: color-mix(in oklab, var(--ds-accent) 10%, transparent);
+  color: var(--ds-accent);
+}
+
+.work-welcome-text {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.work-welcome-name {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-medium);
   color: var(--ds-text-primary);
-  background: var(--ds-bg-primary);
-  box-shadow: 0 0 0 1px var(--ds-border-subtle);
+}
+
+.work-welcome-desc {
+  font-size: var(--text-sm);
+  line-height: var(--leading-body);
+  color: var(--ds-text-muted);
+}
+
+.work-welcome-go {
+  display: inline-flex;
+  flex: 0 0 auto;
+  color: var(--ds-text-muted);
 }
 
 .work-panel-body {

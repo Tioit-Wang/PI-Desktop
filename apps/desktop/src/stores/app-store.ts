@@ -56,12 +56,36 @@ export type ToastOptions = {
   duration?: number;
 };
 
-export type WorkPanelTab = "review" | "terminal" | "browser" | "files";
+export type WorkPanelTab = "welcome" | "review" | "terminal" | "browser" | "files";
 
 const WORK_PANEL_STORAGE_KEY = "pi.desktop.workPanel";
-const WORK_PANEL_TABS: WorkPanelTab[] = ["review", "terminal", "browser", "files"];
 export const WORK_PANEL_MIN_WIDTH = 320;
 export const WORK_PANEL_DEFAULT_WIDTH = 420;
+
+// Opening the panel grows the OS window outward so the chat column keeps its
+// width; closing shrinks it back by whatever the expansion actually achieved
+// (0 when maximized/fullscreen — the panel then overlays existing space).
+let panelWindowGrowth: number | null = null;
+
+function expandWindowForPanel(width: number) {
+  panelWindowGrowth = null;
+  api.windowResizeBy(width).then(
+    (r) => {
+      panelWindowGrowth = r.applied;
+    },
+    () => {
+      panelWindowGrowth = 0;
+    },
+  );
+}
+
+function shrinkWindowForPanel(width: number) {
+  // After a restart the growth is unknown, but the persisted window bounds
+  // already include it — shrinking by the panel width restores the chat size.
+  const growth = panelWindowGrowth ?? width;
+  panelWindowGrowth = null;
+  if (growth !== 0) void api.windowResizeBy(-growth).catch(() => {});
+}
 
 function loadWorkPanelPreferences(): {
   open: boolean;
@@ -70,7 +94,8 @@ function loadWorkPanelPreferences(): {
 } {
   const fallback = {
     open: false,
-    tab: "review" as WorkPanelTab,
+    // First ever open lands on the welcome page so the user picks a tool.
+    tab: "welcome" as WorkPanelTab,
     width: WORK_PANEL_DEFAULT_WIDTH,
   };
   try {
@@ -80,9 +105,8 @@ function loadWorkPanelPreferences(): {
     const width = Number(parsed.width);
     return {
       open: parsed.open === true,
-      tab: WORK_PANEL_TABS.includes(parsed.tab as WorkPanelTab)
-        ? (parsed.tab as WorkPanelTab)
-        : fallback.tab,
+      // Every fresh app start lands on the tool list, not the last tool.
+      tab: fallback.tab,
       width: Number.isFinite(width)
         ? Math.max(WORK_PANEL_MIN_WIDTH, Math.min(720, width))
         : fallback.width,
@@ -1350,22 +1374,42 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ toasts: state.toasts.filter((item) => item.id !== id) })),
 
   toggleWorkPanel: () => {
-    set((state) => ({ workPanelOpen: !state.workPanelOpen }));
+    const opening = !get().workPanelOpen;
+    // Opening always lands on the tool list; the user picks from there.
+    set(opening ? { workPanelOpen: true, workPanelTab: "welcome" } : { workPanelOpen: false });
     saveWorkPanelPreferences(get());
+    if (opening) expandWindowForPanel(get().workPanelWidth);
+    else shrinkWindowForPanel(get().workPanelWidth);
   },
   setWorkPanelOpen: (open) => {
-    set({ workPanelOpen: open });
+    if (get().workPanelOpen === open) return;
+    set(open ? { workPanelOpen: true, workPanelTab: "welcome" } : { workPanelOpen: false });
     saveWorkPanelPreferences(get());
+    if (open) expandWindowForPanel(get().workPanelWidth);
+    else shrinkWindowForPanel(get().workPanelWidth);
   },
   setWorkPanelTab: (tab) => {
+    const wasOpen = get().workPanelOpen;
     set({ workPanelTab: tab, workPanelOpen: true });
     saveWorkPanelPreferences(get());
+    if (!wasOpen) expandWindowForPanel(get().workPanelWidth);
   },
   setWorkPanelWidth: (width) => {
+    const prev = get().workPanelWidth;
     set({
       workPanelWidth: Math.max(WORK_PANEL_MIN_WIDTH, Math.min(720, width)),
     });
     saveWorkPanelPreferences(get());
+    // Committed drag-resize also extends the window instead of the chat.
+    const next = get().workPanelWidth;
+    if (get().workPanelOpen && next !== prev) {
+      api.windowResizeBy(next - prev).then(
+        (r) => {
+          if (panelWindowGrowth !== null) panelWindowGrowth += r.applied;
+        },
+        () => {},
+      );
+    }
   },
 
   prefillComposer: (text) => set({ composerPrefill: text }),

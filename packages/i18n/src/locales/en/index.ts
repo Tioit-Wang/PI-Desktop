@@ -388,6 +388,15 @@ export const en = {
       browser: "Browser",
       files: "Files",
     },
+    welcome: {
+      title: "What do you need?",
+      subtitle:
+        "Pick a tool to get started — you can switch anytime from the menu on the right.",
+      review: "See uncommitted changes in your workspace",
+      terminal: "Run commands in the project directory",
+      browser: "Preview a local server or any web page",
+      files: "Browse and preview project files",
+    },
     review: {
       noWorkspace: "Open a project to see changes",
       clean: "No uncommitted changes in the workspace",

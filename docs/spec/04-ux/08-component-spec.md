@@ -300,13 +300,15 @@ preview), and Files (workspace browser). Codex-parity surface.
 
 ```text
 +--------------------------------------+
-| [审阅|终端|浏览器|文件]        [×]   |  header 46px, drag region
+| Active tool / Tools            [×]   |  header 46px, drag region
 +--------------------------------------+
-| Active tab body                      |
+| Active tab body                 | R  |
 |  Review: file cards + unified diff   |
 |  Terminal: xterm host                |
 |  Browser: URL bar + preview surface  |
-|  Files: tree + file viewer           |
+|  Files: tree + file viewer       | A  |
+|                                  | I  |
+|                                  | L  |
 +--------------------------------------+
 ^ 6px resize handle on the left edge
 ```
@@ -316,17 +318,19 @@ preview), and Files (workspace browser). Codex-parity surface.
 | State | Behavior |
 |---|---|
 | Closed (default) | Not rendered; titlebar toggle inactive |
-| Open | Docked flex column right of the main pane; width 320–min(720, 60vw) |
-| Resizing | Live width follows pointer; committed (and persisted) on release |
+| Open | Docked flex row right of the main pane; opens on the welcome chooser; width 320–`min(720, 60vw, viewport − visible sidebar − 360px)` |
+| Welcome | Title, subtitle, and four tool choices form one vertically centered column while spare height exists; short heights safely top-align and scroll without clipping |
+| Resizing | Live width follows pointer while preserving a 360px MainChat; committed (and persisted) on release |
 | No workspace | Each tab renders its own "open a project" empty state |
-| Narrow window | Width re-clamps on window resize |
+| Narrow window | Width re-clamps on window resize; the 320px panel minimum wins only when the supported shell itself cannot satisfy both minima |
 
 ### 5.4 Interactions
 
 - Toggle: titlebar panel button or Cmd/Ctrl+J; close button in the header.
-- Tab switch: segmented control; selecting a tab also opens the panel when
-  driven programmatically. Terminal stays mounted across switches so the PTY
-  and scrollback survive; other tabs mount on demand.
+- Tab switch: right-edge vertical rail; selecting a tool also opens the panel
+  when driven programmatically. Every explicit panel open returns to the
+  welcome chooser. Terminal stays mounted across switches so the PTY and
+  scrollback survive; other tabs mount on demand.
 - Resize: pointer drag on the left-edge handle.
 - Persistence: `{open, tab, width}` in localStorage `pi.desktop.workPanel`.
 

@@ -228,6 +228,8 @@ export const api = {
     invoke<{ entries: FsEntry[] }>(IPC.invoke.fsList, { path: path ?? "" }),
   fsRead: (path: string) => invoke<FsReadResult>(IPC.invoke.fsRead, { path }),
   fsReveal: (path: string) => invoke(IPC.invoke.fsReveal, { path }),
+  windowResizeBy: (deltaWidth: number) =>
+    invoke<{ applied: number }>(IPC.invoke.windowResizeBy, { deltaWidth }),
   onTerminalData: (listener: (event: TerminalDataEvent) => void) => {
     if (!window.piDesktop?.on) return () => undefined;
     return window.piDesktop.on(IPC.event.terminalData, (payload) =>

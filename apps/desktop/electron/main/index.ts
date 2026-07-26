@@ -5,6 +5,7 @@ import {
   ipcMain,
   nativeImage,
   nativeTheme,
+  screen,
   shell,
 } from "electron";
 import { join } from "node:path";
@@ -589,16 +590,20 @@ async function createWindow() {
             const composerProbe = await mainWindow!.webContents.executeJavaScript(`(() => { const ta=document.querySelector("textarea.composer-input"); if(!ta) return null; const r=ta.getBoundingClientRect(); return {value:ta.value, ph:ta.placeholder, h:ta.offsetHeight, y:Math.round(r.y), mark:document.querySelector(".composer-thread-mark")?.textContent||""}; })()`);
             console.log("COMPOSER_PROBE", composerProbe);
             await shot("pi-final");
-            // Work panel scenes: docked column with its four tabs (D097–D100).
+            // Work panel scenes: welcome tool list, then the four tools via
+            // the vertical rail (D097–D100).
             const clickPanelToggle = () =>
               mainWindow!.webContents.executeJavaScript(
                 `document.querySelector('.main-titlebar-right .title-nav-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))`,
               );
             const clickPanelTab = (index: number) =>
               mainWindow!.webContents.executeJavaScript(
-                `document.querySelectorAll('.work-panel-tab')[${index}]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))`,
+                `document.querySelectorAll('.work-panel-rail-btn')[${index}]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))`,
               );
             await clickPanelToggle();
+            await new Promise((r) => setTimeout(r, 500));
+            await shot("pi-panel-welcome");
+            await clickPanelTab(0);
             await new Promise((r) => setTimeout(r, 500));
             await shot("pi-panel-review");
             await clickPanelTab(1);
@@ -1738,6 +1743,38 @@ function registerIpc() {
     shell.showItemInFolder(target);
     return { ok: true };
   });
+
+  // Grow/shrink the window horizontally, keeping the left edge anchored so
+  // the chat column keeps its width when the work panel opens. Returns the
+  // delta actually applied (0 when maximized/fullscreen or out of room).
+  handle(
+    IPC.invoke.windowResizeBy,
+    async (input: { deltaWidth?: number } = {}) => {
+      const delta = Math.trunc(Number(input.deltaWidth ?? 0));
+      if (
+        !mainWindow ||
+        mainWindow.isDestroyed() ||
+        !Number.isFinite(delta) ||
+        delta === 0 ||
+        mainWindow.isFullScreen() ||
+        mainWindow.isMaximized()
+      ) {
+        return { applied: 0 };
+      }
+      const bounds = mainWindow.getBounds();
+      const workArea = screen.getDisplayMatching(bounds).workArea;
+      const [minWidth] = mainWindow.getMinimumSize();
+      let width = Math.max(minWidth || 960, bounds.width + delta);
+      let x = bounds.x;
+      const workRight = workArea.x + workArea.width;
+      if (x + width > workRight) {
+        x = Math.max(workArea.x, workRight - width);
+        width = Math.min(width, workRight - x);
+      }
+      mainWindow.setBounds({ x, y: bounds.y, width, height: bounds.height }, false);
+      return { applied: width - bounds.width };
+    },
+  );
 
 
   handle(IPC.invoke.pullsList, async () => {

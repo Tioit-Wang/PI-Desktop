@@ -521,19 +521,22 @@ Codex parity decisions (D034/D070) supersede any older value here.
 | Titlebar row height | 46px | Codex toolbar rhythm (D034); traffic lights {x:16,y:16} |
 | Sidebar width (collapsed) | 48px | Icon-only rail |
 | Sidebar width (expanded) | ~275px | Codex sidebar width (D034/D070) |
-| Context panel width (collapsed) | 0px | Hidden by default |
-| Context panel width (expanded) | 280px | Project/status panel |
+| Main pane minimum readable width | 360px | Reserved while the docked work panel is open (D112) |
+| Work panel width (closed) | 0px | Hidden by default |
+| Work panel width (open) | `320px–min(720px, 60vw, viewport − visible sidebar − 360px)` | Live drag clamp preserves MainChat readability (D097/D112) |
 | Composer shell minimum | ~80px | One-line draft + toolbar padding |
 | Composer draft height | 1–7 text lines | Auto-grow; internal scroll beyond line 7 |
 | Chat message max width | 720px assistant / 560px user plate | Prevent eye-span over-stretch; user turns stay compact |
-| Window min width | 800px | Below this, hide context panel |
-| Window min height | 600px | Below this, compress sidebar |
+| Window min width | 960px | Enforced by Electron |
+| Window min height | 640px | Enforced by Electron |
 
 ### 10.1 Responsive collapse
 
-- Width < 800px: context panel auto-collapses
-- Width < 640px: sidebar auto-collapses to icon rail
-- Width < 480px: not supported — enforce minimum window size in Electron
+- Work-panel width re-clamps whenever the native window or visible sidebar
+  width changes.
+- At the supported 960px minimum with the expanded sidebar, the 320px panel
+  minimum and 360px Main pane reserve both remain satisfiable.
+- Width < 960px or height < 640px is unsupported and prevented by Electron.
 
 ## 11. Component foundations
 

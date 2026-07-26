@@ -819,14 +819,19 @@ Each scenario is documented in this format:
 
 - **Preconditions**: App running with any workspace state.
 - **Steps**: 1) Toggle the panel via the titlebar button and via Cmd/Ctrl+J.
-  2) Switch across all four tabs. 3) Drag the left-edge handle below 320px and
-  beyond 60vw. 4) Shrink the window under the current panel width. 5) Relaunch
-  the app.
+  2) Verify the welcome chooser, then switch across all four tools using the
+  right rail. 3) Drag the left-edge handle below 320px and beyond every upper
+  bound at 960px, 1200px, and 1600px window widths. 4) Shrink the window under
+  the current panel width and test a short window height. 5) Relaunch the app.
 - **Expected**: The panel docks as a third shell column (main pane shrinks —
-  no overlay), tabs switch without losing terminal state, width clamps to
-  320–min(720px, 60vw) and re-clamps on window resize, and `{open, tab,
-  width}` are restored after relaunch. The former context-panel overlay no
-  longer exists; the titlebar button reflects open state.
+  no overlay), every open lands on the welcome chooser, and the chooser is
+  vertically centered with spare height while safely top-aligning and
+  scrolling at short heights. Tools switch without losing terminal state.
+  Width clamps to
+  `320px–min(720px, 60vw, viewport − visible sidebar − 360px)`, re-clamps on
+  window resize, and never squeezes MainChat below 360px in the supported
+  shell. `{open, width}` are restored after relaunch. The former context-panel
+  overlay no longer exists; the titlebar button reflects open state.
 - **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`
 - **Acceptance**: F (persistence), Quality
 - **Milestone**: M5
