@@ -369,6 +369,9 @@ export const zhCN = {
     },
     terminal: {
       noWorkspace: "打开一个项目后可使用终端",
+      exited: "会话已结束",
+      restart: "重新启动",
+      startFailed: "终端会话启动失败",
     },
     browser: {
       empty: "输入地址以预览本地服务",

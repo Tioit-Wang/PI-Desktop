@@ -17,6 +17,7 @@
 | Node runtime | Node.js | `>= 22.19` | pi requirement |
 | DB | SQLite | via Rust and/or node adapter | sessions/settings |
 | Packaging | electron-builder | stable | macOS first |
+| Terminal | node-pty (main) + @xterm/xterm (renderer) | stable, N-API | work panel PTY (ADR 0019); allowBuilds + asarUnpack + install-app-deps |
 | Package manager | pnpm | 10.x | JS monorepo |
 | Lint/test | style-token checker (`scripts/check-style-tokens.mjs`) + vitest + cargo test; general JS linter still open (biome vs oxlint) | stable | dual stack quality |
 | Schema (TS) | typebox | frozen (D011) | shared contracts |

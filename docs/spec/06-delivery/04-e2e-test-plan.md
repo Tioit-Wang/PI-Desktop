@@ -835,6 +835,24 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`git-diff-parse.test.mjs`); full UI scenario Draft
 
+#### E2E-058: Interactive terminal session lifecycle
+
+- **Preconditions**: A workspace is open; work panel visible.
+- **Steps**: 1) Open the terminal tab and run `pwd` and `ls`. 2) Switch to
+  another tab and back. 3) Close and reopen the panel. 4) Drag-resize the
+  panel and toggle light/dark theme. 5) Run `exit`. 6) Restart via the
+  overlay button. 7) Quit the app and check for orphan shells.
+- **Expected**: The shell starts in the workspace directory as a login
+  shell with 256-color TERM; output/scrollback survive tab switches and
+  panel close (same PTY reattached); resize refits columns without garbling;
+  theme switch recolors the terminal; `exit` shows the ended-session
+  overlay whose restart starts a fresh shell; app quit kills all PTYs; with
+  no workspace the tab shows its empty state and no PTY spawns.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md` §13a, ADR 0019
+- **Acceptance**: D (workspace), Quality
+- **Milestone**: M5
+- **Status**: Draft (manual)
+
 ---
 
 ## 8. Traceability Matrix
@@ -844,13 +862,13 @@ Each scenario is documented in this format:
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
 | B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055 |
 | C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055 |
-| D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057 |
+| D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057, E2E-058 |
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040, E2E-049 |
 | F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030, E2E-049 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -858,7 +876,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)

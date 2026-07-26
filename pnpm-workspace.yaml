@@ -5,6 +5,7 @@ allowBuilds:
   electron: true
   esbuild: true
   '@google/genai': true
+  node-pty: true
   protobufjs: true
   electron-winstaller: true
 minimumReleaseAgeExclude:

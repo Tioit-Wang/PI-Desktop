@@ -368,6 +368,9 @@ export const en = {
     },
     terminal: {
       noWorkspace: "Open a project to start a terminal",
+      exited: "Session ended",
+      restart: "Restart",
+      startFailed: "Failed to start the terminal session",
     },
     browser: {
       empty: "Enter a URL to preview a local server",

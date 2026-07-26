@@ -35,6 +35,7 @@ import { AgentSidecar } from "./agent-sidecar";
 import { PluginRuntime } from "./plugin-runtime";
 import { Logger } from "./logger";
 import { collectWorkspaceDiff } from "./git-diff";
+import { PtyManager } from "./terminal";
 import {
   convertSession,
   scanAllSources,
@@ -47,6 +48,12 @@ let host: HostProcess | null = null;
 let sidecar: AgentSidecar | null = null;
 let quitting = false;
 const plugins = new PluginRuntime();
+const ptys = new PtyManager({
+  onData: (termId, data) =>
+    sendToRenderer(IPC.event.terminalData, { termId, data }),
+  onExit: (termId, exitCode) =>
+    sendToRenderer(IPC.event.terminalExit, { termId, exitCode }),
+});
 let scannedImportSessions = new Map<string, ExternalSessionSummary>();
 
 const IMPORT_SOURCES = new Set<ExternalSource>([
@@ -1428,6 +1435,51 @@ function registerIpc() {
     return collectWorkspaceDiff(cwd);
   });
 
+  handle(
+    IPC.invoke.terminalCreate,
+    async (input: { cwd?: string; cols?: number; rows?: number } = {}) => {
+      if (!host) throw new Error("host unavailable");
+      const res = (await host.call("workspace.get")) as {
+        workspace: { path: string } | null;
+      };
+      // The workspace root is the only allowed cwd: the renderer's value is
+      // advisory and never trusted with arbitrary paths.
+      const cwd = res.workspace?.path;
+      if (!cwd || (input.cwd && input.cwd !== cwd)) {
+        throw Object.assign(new Error("workspace required"), {
+          errorCode: ErrorCodes.INVALID_ARGUMENT,
+        });
+      }
+      const created = await ptys.create({
+        cwd,
+        cols: input.cols,
+        rows: input.rows,
+      });
+      logger.app("info", "terminal session attached", {
+        data: { termId: created.termId },
+      });
+      return created;
+    },
+  );
+
+  handle(IPC.invoke.terminalWrite, async (input: { termId: string; data: string }) => {
+    ptys.write(String(input?.termId ?? ""), String(input?.data ?? ""));
+    return { ok: true };
+  });
+
+  handle(
+    IPC.invoke.terminalResize,
+    async (input: { termId: string; cols: number; rows: number }) => {
+      ptys.resize(String(input?.termId ?? ""), Number(input?.cols), Number(input?.rows));
+      return { ok: true };
+    },
+  );
+
+  handle(IPC.invoke.terminalDispose, async (input: { termId: string }) => {
+    ptys.dispose(String(input?.termId ?? ""));
+    return { ok: true };
+  });
+
   handle(IPC.invoke.pullsList, async () => {
     if (!host) throw new Error("host unavailable");
     const res = (await host.call("workspace.get")) as {
@@ -1874,6 +1926,7 @@ app.on("window-all-closed", () => {
 app.on("before-quit", () => {
   quitting = true;
   logger.app("info", "app shutdown");
+  ptys.disposeAll();
   void host?.dispose();
   void sidecar?.dispose();
 });
