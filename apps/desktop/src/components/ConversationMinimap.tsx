@@ -27,6 +27,8 @@ const MAGNIFY_BOOST = 1.3;
 /* Cursor must be this close to a dash for the popover to pick it. */
 const POPOVER_SNAP = 24;
 const POPOVER_HEIGHT = 132;
+/* Hide the rail until content actually overflows one viewport. */
+const OVERFLOW_EPSILON_PX = 1;
 
 export function ConversationMinimap({
   scrollRef,
@@ -40,6 +42,7 @@ export function ConversationMinimap({
   const [hovered, setHovered] = useState<{ marker: Marker; top: number } | null>(
     null,
   );
+  const [overflows, setOverflows] = useState(false);
   const railRef = useRef<HTMLElement>(null);
   const markerEls = useRef(new Map<string, HTMLButtonElement>());
   const moveRaf = useRef(0);
@@ -81,6 +84,20 @@ export function ConversationMinimap({
     setActiveId(current.id);
   }, [scrollRef, getOffsets]);
 
+  const updateOverflow = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) {
+      setOverflows(false);
+      return;
+    }
+    // One-page content has no scroll range; the rail is only useful when overflowing.
+    setOverflows(el.scrollHeight - el.clientHeight > OVERFLOW_EPSILON_PX);
+  }, [scrollRef]);
+
+  useEffect(() => {
+    updateOverflow();
+  }, [messages, updateOverflow]);
+
   useEffect(() => {
     updateActive();
   }, [messages, updateActive]);
@@ -91,7 +108,10 @@ export function ConversationMinimap({
     let raf = 0;
     const schedule = () => {
       cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(updateActive);
+      raf = requestAnimationFrame(() => {
+        updateActive();
+        updateOverflow();
+      });
     };
     el.addEventListener("scroll", schedule, { passive: true });
     // Streaming (typewriter) grows messages without changing `messages`.
@@ -101,12 +121,15 @@ export function ConversationMinimap({
         ? new ResizeObserver(schedule)
         : null;
     if (ro && content) ro.observe(content);
+    // Viewport resizes can create or remove overflow without content changes.
+    window.addEventListener("resize", schedule);
     return () => {
       el.removeEventListener("scroll", schedule);
       ro?.disconnect();
       cancelAnimationFrame(raf);
+      window.removeEventListener("resize", schedule);
     };
-  }, [scrollRef, updateActive]);
+  }, [scrollRef, updateActive, updateOverflow]);
 
   const jumpTo = useCallback(
     (id: string) => {
@@ -174,7 +197,7 @@ export function ConversationMinimap({
 
   useEffect(() => () => cancelAnimationFrame(moveRaf.current), []);
 
-  if (markers.length < 2) return null;
+  if (markers.length < 2 || !overflows) return null;
 
   const roleLabel = (role: Marker["role"]) =>
     role === "user" ? t("chat.userMessage") : t("chat.assistantMessage");

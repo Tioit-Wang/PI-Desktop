@@ -91,3 +91,21 @@ test("regenerate rewrites the current turn instead of appending", async () => {
   assert.match(mainSource, /truncateBefore/);
   assert.match(protocolSource, /sessionReplaceMessages/);
 });
+
+test("conversation minimap hides until content overflows one viewport", async () => {
+  const minimapSource = await readFile(
+    new URL("../src/components/ConversationMinimap.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(minimapSource, /OVERFLOW_EPSILON_PX/);
+  assert.match(
+    minimapSource,
+    /scrollHeight - el\.clientHeight > OVERFLOW_EPSILON_PX/,
+  );
+  assert.match(
+    minimapSource,
+    /if \(markers\.length < 2 \|\| !overflows\) return null;/,
+  );
+  assert.match(minimapSource, /window\.addEventListener\("resize", schedule\)/);
+  assert.match(minimapSource, /updateOverflow/);
+});

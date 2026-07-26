@@ -391,18 +391,22 @@ Each scenario is documented in this format:
 #### E2E-041: Conversation minimap navigates long transcripts
 
 - **Preconditions**: A session contains enough user and assistant messages to
-  scroll beyond one viewport, including tool activity between messages.
-- **Steps**: 1) Open the session. 2) Scroll through the transcript and observe
-  the active minimap marker. 3) Hover a marker and inspect its preview. 4) Use
-  keyboard focus to reach another marker. 5) Activate a marker. 6) Open a
-  session with fewer than two visible user or assistant messages.
+  scroll beyond one viewport, including tool activity between messages; a second
+  session has at least two eligible messages that still fit in one viewport.
+- **Steps**: 1) Open the long session. 2) Scroll through the transcript and
+  observe the active minimap marker. 3) Hover a marker and inspect its preview.
+  4) Use keyboard focus to reach another marker. 5) Activate a marker. 6) Open a
+  session with fewer than two visible user or assistant messages. 7) Open the
+  multi-message session that still fits one viewport. 8) Resize the long session
+  window taller until content no longer overflows, then shorter again.
 - **Expected**: The rail contains one marker per visible user or assistant
   message and no marker for tool-only rows; the marker near the upper-third
   reading anchor exposes `aria-current`; hover and focus show the same
   localized sender and bounded plaintext preview; nearby markers magnify
   horizontally without shifting the stack; activation smoothly scrolls to the
   corresponding message; the rail is absent when fewer than two eligible
-  messages exist.
+  messages exist **or** when content does not overflow one viewport; the rail
+  reappears once overflow returns after a resize.
 - **Specs linked**: `04-ux/08-component-spec.md`
 - **Acceptance**: C (chat stream), Quality (keyboard and long-thread navigation)
 - **Milestone**: M3

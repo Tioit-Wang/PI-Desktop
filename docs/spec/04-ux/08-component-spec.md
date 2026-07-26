@@ -456,6 +456,8 @@ responses, lightweight tool activity rows, and permission cards for a session.
   transcript viewport
 - Scroll the transcript: update the active minimap marker against an anchor
   near the upper third of the viewport
+- Show the minimap rail only while the transcript overflows one page; if
+  content fits the viewport, hide the rail even when two or more markers exist
 
 ### 7.5 Accessibility
 
@@ -475,7 +477,9 @@ responses, lightweight tool activity rows, and permission cards for a session.
 - No message search within transcript
 - No message branching/rewind
 - The minimap renders only when at least two visible user or assistant messages
-  exist; tool-only rows do not create markers
+  exist **and** the transcript content overflows one viewport (scrollHeight >
+  clientHeight); tool-only rows do not create markers and a one-page transcript
+  never shows the rail
 - Marker previews are capped at 280 source characters and are display-only
 
 ---
