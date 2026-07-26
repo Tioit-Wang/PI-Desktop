@@ -2980,6 +2980,58 @@ textarea:disabled {
   color: var(--ds-text-primary);
 }
 
+/* Keyboard highlight mirrors hover; both can coexist with .active. */
+.composer-plus-item.kb-active {
+  background: var(--ds-bg-hover);
+}
+
+.composer-plus-item.active.kb-active {
+  background: var(--ds-bg-active);
+}
+
+.composer-model-check {
+  flex: 0 0 auto;
+  color: var(--ds-accent) !important;
+}
+
+.composer-model-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 30px;
+  margin: 6px 4px;
+  padding: 0 9px;
+  border-radius: var(--radius-md);
+  background: var(--ds-bg-inset);
+  color: var(--ds-text-muted);
+}
+
+.composer-model-search svg {
+  flex: 0 0 auto;
+}
+
+.composer-model-search input {
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  outline: none;
+  color: var(--ds-text-primary);
+  font-size: var(--text-sm);
+}
+
+.composer-model-search input::placeholder {
+  color: var(--ds-text-muted);
+}
+
+.composer-model-empty {
+  padding: 16px 10px;
+  color: var(--ds-text-muted);
+  font-size: var(--text-sm);
+  text-align: center;
+}
+
 .profile-menu {
   position: absolute;
   left: 8px;

@@ -113,6 +113,8 @@ export const zhCN = {
     model: "模型",
     provider: "提供方",
     noModel: "请先在设置中配置模型。",
+    searchModels: "搜索模型",
+    noModelResults: "没有匹配的模型",
     agent: "代理",
     requestApproval: "请求批准",
     effortCustom: "自定义",

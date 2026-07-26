@@ -110,6 +110,8 @@ export const en = {
     model: "Model",
     provider: "Provider",
     noModel: "Configure a model in Settings before chatting.",
+    searchModels: "Search models",
+    noModelResults: "No matching models",
     agent: "Agent",
     requestApproval: "Request approval",
     effortCustom: "Custom",

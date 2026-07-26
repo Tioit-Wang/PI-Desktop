@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderPublic, ThinkingLevel } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
@@ -9,6 +10,8 @@ import {
   IconShield,
   IconStop,
   IconChevronDown,
+  IconCheck,
+  IconSearch,
 } from "./icons";
 
 const COMPOSER_MIN_HEIGHT_PX = 28;
@@ -108,8 +111,12 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   const clearComposerPrefill = useAppStore((s) => s.clearComposerPrefill);
   const [value, setValue] = useState("");
   const [modelOpen, setModelOpen] = useState(false);
+  const [modelQuery, setModelQuery] = useState("");
+  const [modelHighlight, setModelHighlight] = useState(-1);
   const ref = useRef<HTMLTextAreaElement>(null);
   const modelRef = useRef<HTMLDivElement>(null);
+  const modelSearchRef = useRef<HTMLInputElement>(null);
+  const modelListRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!composerPrefill) return;
@@ -179,6 +186,13 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
     }
   }, [modelOpen, providers, loadProviderModels]);
 
+  // Each open starts from a clean filter with the keyboard ready to type.
+  useEffect(() => {
+    if (!modelOpen) return;
+    setModelQuery("");
+    requestAnimationFrame(() => modelSearchRef.current?.focus());
+  }, [modelOpen]);
+
   const activeSession = sessions.find((session) => session.id === activeSessionId);
   const mode = activeSession?.mode ?? settings?.defaultMode ?? "agent";
   const provider = providers.find(
@@ -233,6 +247,115 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
     !!modelId &&
     (provider.hasSecret || provider.authKind === "none");
   const enterToSend = settings?.enterToSend ?? true;
+
+  const modelGroups = providers
+    .filter(
+      (candidate) =>
+        candidate.enabled && (candidate.hasSecret || candidate.authKind === "none"),
+    )
+    .map((candidate) => {
+      const discovered = providerModels[candidate.id];
+      const models =
+        discovered && discovered.length > 0
+          ? discovered
+          : candidate.defaultModelId
+            ? [
+                {
+                  modelId: candidate.defaultModelId,
+                  displayName: candidate.defaultModelId,
+                },
+              ]
+            : [];
+      return { provider: candidate, models };
+    })
+    .filter((group) => group.models.length > 0);
+  const totalModelCount = modelGroups.reduce(
+    (count, group) => count + group.models.length,
+    0,
+  );
+  const showModelSearch = totalModelCount > 5;
+  const modelQueryNeedle = modelQuery.trim().toLowerCase();
+  const filteredModelGroups = modelQueryNeedle
+    ? modelGroups
+        .map((group) => ({
+          ...group,
+          models: group.models.filter(
+            (model) =>
+              model.modelId.toLowerCase().includes(modelQueryNeedle) ||
+              (model.displayName ?? "")
+                .toLowerCase()
+                .includes(modelQueryNeedle) ||
+              group.provider.name.toLowerCase().includes(modelQueryNeedle),
+          ),
+        }))
+        .filter((group) => group.models.length > 0)
+    : modelGroups;
+  const flatModels = filteredModelGroups.flatMap((group) =>
+    group.models.map((model) => ({ provider: group.provider, model })),
+  );
+  // Stable identity for the filtered list so highlight effects don't rerun on
+  // every render just because flatMap allocates a fresh array.
+  const flatModelsKey = flatModels
+    .map((entry) => `${entry.provider.id}:${entry.model.modelId}`)
+    .join("|");
+  const activeFlatIndex = flatModels.findIndex(
+    (entry) => entry.provider.id === provider?.id && entry.model.modelId === modelId,
+  );
+
+  // While filtering, keep the first hit primed for Enter; otherwise park the
+  // highlight on the configured model so the list opens scrolled to it.
+  useEffect(() => {
+    if (!modelOpen) return;
+    setModelHighlight(modelQueryNeedle ? (flatModels.length ? 0 : -1) : activeFlatIndex);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modelOpen, modelQueryNeedle, flatModelsKey, activeFlatIndex]);
+
+  useEffect(() => {
+    if (!modelOpen || modelHighlight < 0) return;
+    modelListRef.current
+      ?.querySelector(`[data-model-index="${modelHighlight}"]`)
+      ?.scrollIntoView({ block: "nearest" });
+  }, [modelOpen, modelHighlight]);
+
+  const selectModel = async (candidate: ProviderPublic, nextModelId: string) => {
+    try {
+      await configureActiveSession({
+        mode,
+        providerId: candidate.id,
+        modelId: nextModelId,
+        thinkingLevel: thinkingLevelForProvider(candidate, thinkingLevel),
+      });
+      setModelOpen(false);
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), {
+        variant: "error",
+      });
+    }
+  };
+
+  const onModelMenuKeyDown = (e: ReactKeyboardEvent) => {
+    if (!modelOpen) return;
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      e.preventDefault();
+      if (!flatModels.length) return;
+      const delta = e.key === "ArrowDown" ? 1 : -1;
+      setModelHighlight((current) => {
+        const base = current < 0 ? (delta > 0 ? -1 : flatModels.length) : current;
+        return (base + delta + flatModels.length) % flatModels.length;
+      });
+    } else if (e.key === "Enter") {
+      // Buttons inside the menu (thinking levels, settings) keep their own
+      // Enter behavior; only the search box and the chip route to selection.
+      const target = e.target as HTMLElement;
+      if (target.tagName === "BUTTON" && !target.classList.contains("model-chip"))
+        return;
+      const entry = flatModels[modelHighlight];
+      if (entry) {
+        e.preventDefault();
+        void selectModel(entry.provider, entry.model.modelId);
+      }
+    }
+  };
   const enableThinkingOverride = async () => {
     if (!provider || !modelId || !canEnableThinkingOverride) return;
     try {
@@ -323,7 +446,11 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
             </div>
 
             <div className="composer-right">
-              <div className="composer-model" ref={modelRef}>
+              <div
+                className="composer-model"
+                ref={modelRef}
+                onKeyDown={onModelMenuKeyDown}
+              >
                 <button
                   className={`icon-btn model-chip ${modelOpen ? "active" : ""}`}
                   title={`${provider?.name || t("chat.provider")} · ${modelLabel}`}
@@ -420,85 +547,83 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                       )}
                     </div>
                     <div className="composer-plus-sep" />
-                    <div className="composer-model-list">
-                      {providers
-                        .filter(
-                          (candidate) =>
-                            candidate.enabled &&
-                            (candidate.hasSecret ||
-                              candidate.authKind === "none"),
-                        )
-                        .map((candidate) => {
-                          const discovered = providerModels[candidate.id];
-                          const models =
-                            discovered && discovered.length > 0
-                              ? discovered
-                              : candidate.defaultModelId
-                                ? [
-                                    {
-                                      modelId: candidate.defaultModelId,
-                                      displayName: candidate.defaultModelId,
-                                    },
-                                  ]
-                                : [];
-                          if (models.length === 0) return null;
-                          return (
-                            <div
-                              key={candidate.id}
-                              className="composer-model-group"
-                              role="group"
-                              aria-label={candidate.name}
-                            >
-                              <div className="composer-model-group-label">
-                                {candidate.name}
-                              </div>
-                              {models.map((model) => {
-                                const active =
-                                  provider?.id === candidate.id &&
-                                  modelId === model.modelId;
-                                return (
-                                  <button
-                                    key={model.modelId}
-                                    className={`composer-plus-item ${active ? "active" : ""}`}
-                                    role="menuitemradio"
-                                    aria-checked={active}
-                                    onClick={async () => {
-                                      try {
-                                        await configureActiveSession({
-                                          mode,
-                                          providerId: candidate.id,
-                                          modelId: model.modelId,
-                                          thinkingLevel: thinkingLevelForProvider(
-                                            candidate,
-                                            thinkingLevel,
-                                          ),
-                                        });
-                                        setModelOpen(false);
-                                      } catch (e) {
-                                        showToast(
-                                          e instanceof Error
-                                            ? e.message
-                                            : String(e),
-                                          { variant: "error" },
-                                        );
-                                      }
-                                    }}
-                                  >
-                                    <span className="truncate">
-                                      {model.displayName || model.modelId}
-                                    </span>
-                                    {model.displayName &&
-                                    model.displayName !== model.modelId ? (
-                                      <span className="ml-auto max-w-[180px] truncate font-mono text-text-secondary">
-                                        {model.modelId}
-                                      </span>
-                                    ) : null}
-                                  </button>
-                                );
-                              })}
+                    {showModelSearch ? (
+                      <div className="composer-model-search">
+                        <IconSearch size={13} />
+                        <input
+                          ref={modelSearchRef}
+                          type="text"
+                          value={modelQuery}
+                          placeholder={t("chat.searchModels")}
+                          spellCheck={false}
+                          onChange={(e) => setModelQuery(e.target.value)}
+                        />
+                      </div>
+                    ) : null}
+                    <div className="composer-model-list" ref={modelListRef}>
+                      {(() => {
+                        let flatIndex = 0;
+                        return filteredModelGroups.map((group) => (
+                          <div
+                            key={group.provider.id}
+                            className="composer-model-group"
+                            role="group"
+                            aria-label={group.provider.name}
+                          >
+                            <div className="composer-model-group-label">
+                              {group.provider.name}
                             </div>
-                          );
-                        })}
+                            {group.models.map((model) => {
+                              const index = flatIndex++;
+                              const active =
+                                provider?.id === group.provider.id &&
+                                modelId === model.modelId;
+                              const hasAlias =
+                                !!model.displayName &&
+                                model.displayName !== model.modelId;
+                              return (
+                                <button
+                                  key={model.modelId}
+                                  data-model-index={index}
+                                  className={`composer-plus-item ${active ? "active" : ""} ${
+                                    modelHighlight === index ? "kb-active" : ""
+                                  }`}
+                                  role="menuitemradio"
+                                  aria-checked={active}
+                                  onMouseMove={() => setModelHighlight(index)}
+                                  onClick={() =>
+                                    void selectModel(group.provider, model.modelId)
+                                  }
+                                >
+                                  <span className="truncate">
+                                    {model.displayName || model.modelId}
+                                  </span>
+                                  {hasAlias ? (
+                                    <span className="ml-auto max-w-[170px] truncate font-mono text-text-secondary">
+                                      {model.modelId}
+                                    </span>
+                                  ) : null}
+                                  {active ? (
+                                    <IconCheck
+                                      size={14}
+                                      className={
+                                        hasAlias
+                                          ? "composer-model-check"
+                                          : "composer-model-check ml-auto"
+                                      }
+                                    />
+                                  ) : null}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        ));
+                      })()}
+                      {flatModels.length === 0 ? (
+                        <div className="composer-model-empty">
+                          {t("chat.noModelResults")}
+                        </div>
+                      ) : null}
                     </div>
                     <div className="composer-plus-sep" />
                     <button
