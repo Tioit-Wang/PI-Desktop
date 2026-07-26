@@ -14,6 +14,7 @@ import type {
   FsReadResult,
   HostHealth,
   HostStatusEvent,
+  ModelInfo,
   OnboardingState,
   PluginSummary,
   ProjectRecord,
@@ -124,6 +125,19 @@ export const api = {
     ),
   deleteProvider: (id: string) => invoke(IPC.invoke.providersDelete, id),
   testProvider: (id: string) => invoke(IPC.invoke.providersTest, id),
+  /** Discover models from the provider's own endpoint. Saved providers pass
+   * providerId (stored secret is reused); the dialog may pass raw config. */
+  listProviderModels: (input: {
+    providerId?: string;
+    baseUrl?: string;
+    apiKey?: string;
+    apiStyle?: string;
+  }) =>
+    invoke<{
+      models: ModelInfo[];
+      source: "remote" | "fallback";
+      error?: string;
+    }>(IPC.invoke.providersListModels, input),
   getProject: () =>
     invoke<{ workspace: ProjectWorkspace | null }>(IPC.invoke.projectGet),
   listProjects: () =>

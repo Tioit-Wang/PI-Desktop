@@ -38,6 +38,7 @@ import { Logger } from "./logger";
 import { collectWorkspaceDiff } from "./git-diff";
 import { PtyManager } from "./terminal";
 import { BrowserPane, resolveLocalFile } from "./browser-view";
+import { discoverProviderModels } from "./model-discovery";
 import { listDir, readWorkspaceFile, resolveWithinRoot } from "./fs-panel";
 import {
   convertSession,
@@ -1041,6 +1042,21 @@ function persistAgentEvent(envelope: AgentEventEnvelope) {
       createdAt: new Date(envelope.ts).toISOString(),
     });
   }
+  if (event.type === "error") {
+    // Async provider failures must close the durable turn / scheduled run the
+    // same way agent_end does; otherwise they stay 'running' in the DB.
+    logger.app("error", "agent turn failed", {
+      sessionId: envelope.sessionId,
+      code: event.error.code,
+      data: { message: event.error.message, retriable: event.error.retriable },
+    });
+    finishTurn(
+      envelope.sessionId,
+      event.error.code === "TURN_ABORTED" ? "aborted" : "error",
+      event.error.code,
+    );
+    return;
+  }
   if (event.type === "agent_end") {
     finishTurn(envelope.sessionId, "completed");
     // Persist the completed branch as the active regenerate revision when the
@@ -1123,6 +1139,15 @@ function persistAgentEvent(envelope: AgentEventEnvelope) {
     return;
   }
   if (event.type === "message_end" && event.message.role === "assistant") {
+    // A turn that dies before producing any text leaves an empty bubble with
+    // status error/aborted — not worth a transcript row (the error banner and
+    // turn status carry the failure).
+    const failed =
+      event.message.status === "error" || event.message.status === "aborted";
+    const empty =
+      !(event.message.content || "").trim() &&
+      !(event.message.thinking || "").trim();
+    if (failed && empty) return;
     void host
       .call("session.appendMessage", {
         sessionId: envelope.sessionId,
@@ -1557,46 +1582,73 @@ function registerIpc() {
       clearTimeout(timer);
     }
   });
-  handle(IPC.invoke.providersListModels, async (providerId?: string) => {
-    if (!host) throw new Error("host unavailable");
-    const providerResult = await host.call<{ providers: RuntimeProvider[] }>(
-      "providers.list",
-      { includeDisabled: true },
-    );
-    const providerById = new Map(
-      providerResult.providers.map((provider) => [provider.id, provider]),
-    );
-    const result = await host.call<{
-      models: Array<{
-        modelId: string;
-        displayName: string;
-        providerId: string;
-        capabilities?: string[];
-        supportedThinkingLevels?: ThinkingLevel[];
-        source: string;
-      }>;
-    }>("providers.listModels", { providerId });
-    return {
-      ...result,
-      models: result.models.map((model) => {
-        const provider = providerById.get(model.providerId);
+  handle(
+    IPC.invoke.providersListModels,
+    async (
+      input?:
+        | string
+        | {
+            providerId?: string;
+            baseUrl?: string;
+            apiKey?: string;
+            apiStyle?: string;
+          },
+    ) => {
+      if (!host) throw new Error("host unavailable");
+      const req = typeof input === "string" ? { providerId: input } : input ?? {};
+      const providers = await listRuntimeProviders();
+      const provider = req.providerId
+        ? providers.find((p) => p.id === req.providerId)
+        : undefined;
+      const baseUrl = (req.baseUrl ?? provider?.baseUrl ?? "").trim();
+      const apiStyle = req.apiStyle ?? provider?.apiStyle ?? "chat_completions";
+      // Dialog edits can omit the key to reuse the stored secret; the raw key
+      // never travels back to the renderer either way.
+      let apiKey = req.apiKey ?? "";
+      if (!apiKey && provider) {
+        const secret = await host.call<{ value?: string }>("providers.getSecret", {
+          id: provider.id,
+        });
+        apiKey = secret.value ?? "";
+      }
+      const decorate = (model: { modelId: string; displayName: string }) => {
         const thinking = resolveThinkingCapabilities({
           vendorKey: provider?.vendorKey || "custom",
           modelId: model.modelId,
           supportsReasoning: provider?.supportsReasoning,
           supportedThinkingLevels: provider?.supportedThinkingLevels,
         });
-        const capabilities = new Set(model.capabilities ?? ["text"]);
-        if (thinking.supportsReasoning) capabilities.add("reasoning");
-        else capabilities.delete("reasoning");
         return {
-          ...model,
-          capabilities: [...capabilities],
+          modelId: model.modelId,
+          displayName: model.displayName,
+          providerId: provider?.id ?? "",
+          capabilities: thinking.supportsReasoning ? ["text", "reasoning"] : ["text"],
           supportedThinkingLevels: thinking.supportedThinkingLevels,
+          source: "discovered" as const,
         };
-      }),
-    };
-  });
+      };
+      let discoveryError: string | undefined;
+      if (baseUrl) {
+        try {
+          const discovered = await discoverProviderModels({ baseUrl, apiKey, apiStyle });
+          if (discovered.length > 0) {
+            return { models: discovered.map(decorate), source: "remote" };
+          }
+        } catch (e) {
+          discoveryError = e instanceof Error ? e.message : String(e);
+          logger.app("warn", "model discovery failed", {
+            data: { providerId: provider?.id, error: discoveryError },
+          });
+        }
+      }
+      // Fallback: the provider's configured model, so pickers stay usable
+      // for gateways without a /models endpoint.
+      const fallback = provider?.defaultModelId
+        ? [decorate({ modelId: provider.defaultModelId, displayName: provider.defaultModelId })]
+        : [];
+      return { models: fallback, source: "fallback", error: discoveryError };
+    },
+  );
 
   // Secret material never crosses to the renderer: set/delete/has only.
   handle(IPC.invoke.secretsSet, async (input: { secretRef: string; value: string }) => {
