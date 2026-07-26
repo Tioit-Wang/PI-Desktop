@@ -62,7 +62,7 @@ export const en = {
     running: "Working…",
     copy: "Copy",
     copied: "Copied",
-    retry: "Retry",
+    retry: "Regenerate",
     usageTokens: "{{count}} tokens",
     usageInput: "In {{count}}",
     usageOutput: "Out {{count}}",

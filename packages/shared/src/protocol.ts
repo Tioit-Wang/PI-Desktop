@@ -19,6 +19,7 @@ export const IPC = {
     sessionConfigure: "pi-desktop/session/configure",
     sessionImportScan: "pi-desktop/session/importScan",
     sessionImportRun: "pi-desktop/session/importRun",
+    sessionReplaceMessages: "pi-desktop/session/replaceMessages",
     settingsGet: "pi-desktop/settings/get",
     settingsSet: "pi-desktop/settings/set",
     secretsSet: "pi-desktop/secrets/set",

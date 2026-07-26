@@ -100,7 +100,7 @@ events.
 **Adopted in D103 (tokens-only first cut)**: completed assistant turns show a
 model badge plus a compact token chip (`{{count}} tokens`) under the answer;
 hover reveals input/output/cache/reasoning breakdown. Currency pricing remains
-deferred. Retry is available as a quiet action chip next to Copy.
+deferred. Regenerate is available as a quiet action chip next to Copy and rewrites the current turn in place (D105).
 
 ### 3.3 Template galleries on empty states
 WorkBuddy never ships a dead empty state: Automations and Projects both pair

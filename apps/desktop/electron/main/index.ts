@@ -589,6 +589,31 @@ async function createWindow() {
             const composerProbe = await mainWindow!.webContents.executeJavaScript(`(() => { const ta=document.querySelector("textarea.composer-input"); if(!ta) return null; const r=ta.getBoundingClientRect(); return {value:ta.value, ph:ta.placeholder, h:ta.offsetHeight, y:Math.round(r.y), mark:document.querySelector(".composer-thread-mark")?.textContent||""}; })()`);
             console.log("COMPOSER_PROBE", composerProbe);
             await shot("pi-final");
+            // Work panel scenes: docked column with its four tabs (D097–D100).
+            const clickPanelToggle = () =>
+              mainWindow!.webContents.executeJavaScript(
+                `document.querySelector('.main-titlebar-right .title-nav-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))`,
+              );
+            const clickPanelTab = (index: number) =>
+              mainWindow!.webContents.executeJavaScript(
+                `document.querySelectorAll('.work-panel-tab')[${index}]?.dispatchEvent(new MouseEvent('click', { bubbles: true }))`,
+              );
+            await clickPanelToggle();
+            await new Promise((r) => setTimeout(r, 500));
+            await shot("pi-panel-review");
+            await clickPanelTab(1);
+            // The PTY needs a beat for the login shell prompt to settle.
+            await new Promise((r) => setTimeout(r, 1200));
+            await shot("pi-panel-terminal");
+            await clickPanelTab(2);
+            await new Promise((r) => setTimeout(r, 400));
+            await shot("pi-panel-browser");
+            await clickPanelTab(3);
+            await new Promise((r) => setTimeout(r, 500));
+            await shot("pi-panel-files");
+            await clickPanelTab(0);
+            await clickPanelToggle();
+            await new Promise((r) => setTimeout(r, 300));
             // Open composer + menu for chrome parity proof.
             await mainWindow!.webContents.executeJavaScript(`
               (() => {

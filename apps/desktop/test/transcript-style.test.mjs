@@ -49,9 +49,19 @@ test("transcript density and hover actions are quiet", () => {
 });
 
 test("transcript markup uses the dedicated user text surface and streaming class", () => {
-  assert.match(transcriptSource, /className="message-user-text"/);
+  assert.match(transcriptSource, /className="message-user-text selectable"/);
   assert.match(transcriptSource, /streaming \? " streaming" : ""/);
   assert.match(transcriptSource, /CopyButton text=\{message\.content\}/);
+  assert.match(transcriptSource, /split\("\\n"\)/);
+  assert.match(transcriptSource, /<br \/>/);
+});
+
+test("user plaintext preserves hard newlines", () => {
+  assert.match(
+    stylesSource,
+    /\.message-user-text \{[\s\S]*?white-space:\s*pre-wrap;[\s\S]*?overflow-wrap:\s*anywhere;/,
+  );
+  assert.match(stylesSource, /\.message-user-text br \{/);
 });
 
 test("assistant meta chips and retry action are wired", () => {
@@ -61,4 +71,25 @@ test("assistant meta chips and retry action are wired", () => {
   assert.match(transcriptSource, /retryAssistantMessage/);
   assert.match(transcriptSource, /chat\.retry/);
   assert.match(stylesSource, /\.message-meta-chip\.usage/);
+});
+
+test("regenerate rewrites the current turn instead of appending", async () => {
+  const storeSource = await readFile(
+    new URL("../src/stores/app-store.ts", import.meta.url),
+    "utf8",
+  );
+  const mainSource = await readFile(
+    new URL("../electron/main/index.ts", import.meta.url),
+    "utf8",
+  );
+  const protocolSource = await readFile(
+    new URL("../../../packages/shared/src/protocol.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(storeSource, /truncateBefore:\s*userIndex/);
+  assert.match(storeSource, /messages:\s*kept/);
+  assert.match(mainSource, /session\.replaceMessages/);
+  assert.match(mainSource, /agent\.disposeSession/);
+  assert.match(mainSource, /truncateBefore/);
+  assert.match(protocolSource, /sessionReplaceMessages/);
 });

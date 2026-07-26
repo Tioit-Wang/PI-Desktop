@@ -76,6 +76,12 @@ export type AgentStatus = {
 export type AgentPromptRequest = {
   sessionId: string;
   content: string;
+  /**
+   * When set, truncate the durable transcript to this many leading messages
+   * before appending the new user turn. Used by regenerate / edit-resend so
+   * the branch replaces the tail instead of stacking a duplicate turn.
+   */
+  truncateBefore?: number;
 };
 
 export type AgentPromptResponse = {

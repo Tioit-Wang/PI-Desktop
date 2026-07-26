@@ -65,7 +65,7 @@ export const zhCN = {
     running: "处理中…",
     copy: "复制",
     copied: "已复制",
-    retry: "重试",
+    retry: "重新生成",
     usageTokens: "{{count}} tokens",
     usageInput: "输入 {{count}}",
     usageOutput: "输出 {{count}}",

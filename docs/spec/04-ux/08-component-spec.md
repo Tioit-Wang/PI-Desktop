@@ -516,16 +516,21 @@ Single message render — either user (plaintext) or assistant (markdown streami
 - Max content band: 760px thread column; assistant body max 720px
 - User: right-aligned soft plate (`color-mix` on primary ink, subtle border,
   `radius-lg-plus`), capped at `min(78%, 560px)` so short prompts read as
-  chat turns rather than full-width blocks
+  chat turns rather than full-width blocks. User body is plaintext with
+  preserved hard newlines (`white-space: pre-wrap` + explicit line breaks);
+  only trailing/leading composer trim is applied, never internal newline
+  collapse
 - Assistant: transparent surface, left-aligned, markdown rendered at full
   content width
 - Thinking: separate lightweight disclosure above the answer with no card
   background or outer border. Its Sparkles/chevron trigger uses secondary text,
   and the expanded markdown is indented by a subtle theme-token left rule. It
   is never concatenated into answer markdown.
-- Hover actions: quiet action chips under the bubble (copy always; retry on
-  completed assistant turns). Right-aligned for user turns, left-aligned for
-  assistant turns; visible on hover/focus-within
+- Hover actions: quiet action chips under the bubble (copy always; regenerate
+  on completed assistant turns). Right-aligned for user turns, left-aligned for
+  assistant turns; visible on hover/focus-within. Regenerate truncates the
+  durable transcript to the nearest preceding user prompt and re-runs that turn
+  in place instead of appending a duplicate branch.
 - Assistant meta: optional model badge + token-usage chip under the answer
   (collapsed summary with hover breakdown for input/output/cache/reasoning)
 - Gap: 10px vertical padding between consecutive message rows (denser than

@@ -1,6 +1,7 @@
 import type {
   AgentEventEnvelope,
   AgentPromptRequest,
+  UiMessage,
   AgentPromptResponse,
   AgentStatus,
   AppSettings,
@@ -155,6 +156,8 @@ export const api = {
       IPC.invoke.scheduledRun,
       id,
     ),
+  replaceSessionMessages: (sessionId: string, messages: UiMessage[]) =>
+    invoke(IPC.invoke.sessionReplaceMessages, { sessionId, messages }),
   prompt: (req: AgentPromptRequest) =>
     invoke<AgentPromptResponse>(IPC.invoke.agentPrompt, req),
   abort: (sessionId: string) =>

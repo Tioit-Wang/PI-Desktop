@@ -624,21 +624,65 @@ export const useAppStore = create<AppState>((set, get) => ({
   retryAssistantMessage: async (messageId) => {
     const state = get();
     if (state.isRunning) return;
+    const sessionId = state.activeSessionId;
+    if (!sessionId) return;
     const index = state.messages.findIndex((message) => message.id === messageId);
     if (index < 0) return;
     const target = state.messages[index];
     if (target.role !== "assistant") return;
-    // Prefer the nearest preceding user prompt as the retry seed.
-    let prompt = "";
+
+    // Branch from the nearest preceding user prompt: keep history up to that
+    // prompt (exclusive), then re-send it so the durable transcript and live
+    // agent both drop the discarded assistant/tool tail.
+    let userIndex = -1;
     for (let i = index - 1; i >= 0; i -= 1) {
       const candidate = state.messages[i];
       if (candidate.role === "user" && candidate.content.trim()) {
-        prompt = candidate.content;
+        userIndex = i;
         break;
       }
     }
-    if (!prompt) return;
-    await get().sendPrompt(prompt);
+    if (userIndex < 0) return;
+    const prompt = state.messages[userIndex].content;
+    const kept = state.messages.slice(0, userIndex);
+
+    set((s) => ({
+      messages: kept,
+      isRunning: true,
+      error: null,
+      errorCode: null,
+      runningSessions: { ...s.runningSessions, [sessionId]: true },
+    }));
+
+    try {
+      await api.prompt({
+        sessionId,
+        content: prompt,
+        truncateBefore: userIndex,
+      });
+    } catch (e) {
+      // Reload durable state if the branch failed mid-flight.
+      try {
+        const detail = await api.getSession(sessionId);
+        set((s) => ({
+          messages:
+            s.activeSessionId === sessionId
+              ? detail.session?.messages ?? kept
+              : s.messages,
+          isRunning: s.activeSessionId === sessionId ? false : s.isRunning,
+          runningSessions: { ...s.runningSessions, [sessionId]: false },
+          error: e instanceof Error ? e.message : String(e),
+          errorCode: (e as { code?: string })?.code ?? null,
+        }));
+      } catch {
+        set((s) => ({
+          isRunning: s.activeSessionId === sessionId ? false : s.isRunning,
+          runningSessions: { ...s.runningSessions, [sessionId]: false },
+          error: e instanceof Error ? e.message : String(e),
+          errorCode: (e as { code?: string })?.code ?? null,
+        }));
+      }
+    }
   },
 
   abort: async () => {
