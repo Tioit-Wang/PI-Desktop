@@ -13,6 +13,7 @@ pub const PROTOCOL_VERSION: u32 = 3;
 pub const HOST_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub struct AppState {
+    pub data_dir: std::path::PathBuf,
     pub db: Database,
     pub secrets: SecretStore,
     pub workspace: WorkspaceState,
@@ -33,6 +34,7 @@ impl AppState {
         let secrets = SecretStore::open(data_dir)?;
         let plugins = PluginManager::new(data_dir);
         Ok(Self {
+            data_dir: data_dir.to_path_buf(),
             db,
             secrets,
             workspace: WorkspaceState::default(),

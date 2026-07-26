@@ -12,7 +12,9 @@ use crate::audit;
 use crate::permissions::{PermissionDecision, PermissionManager};
 use crate::providers::{self, ProviderCreateInput, ProviderUpdateInput};
 use crate::scheduled;
+use crate::scratch;
 use crate::sessions::{self, UiMessage};
+use crate::workspace;
 use crate::state::{AppState, HOST_VERSION, PROTOCOL_VERSION};
 use crate::tools::{self, ToolsExecuteParams};
 
@@ -615,6 +617,9 @@ async fn handle_request(
             let st = state.lock().await;
             let ok = sessions::delete_session(&st.db, id)
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            if ok {
+                scratch::remove_session_dir(&st.data_dir, id);
+            }
             Ok(json!({ "ok": ok }))
         }
         "session.rename" => {
@@ -951,10 +956,10 @@ async fn handle_request(
             let p: ToolsExecuteParams = serde_json::from_value(params.clone())
                 .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
 
-            let (auto_decision, workspace_path, pending_rx, request_opt) = {
+            let (auto_decision, workspace_path, scratch_path, pending_rx, request_opt) = {
                 let mut st = state.lock().await;
                 st.permissions.expire_stale();
-                let auto = st.permissions.evaluate_auto(
+                let mut auto = st.permissions.evaluate_auto(
                     &p.session_id,
                     &p.tool_name,
                     &p.mode,
@@ -966,8 +971,25 @@ async fn handle_request(
                 // Fall back to the global workspace only for legacy callers
                 // that do not have a persisted session.
                 let ws = resolve_tool_workspace(&st, &p.session_id)?;
+                let scratch = scratch::session_dir(&st.data_dir, &p.session_id);
+                // Write/Edit targeting the session scratch dir never touch
+                // the user's project — skip the prompt (D101). The lexical
+                // pre-check only decides prompting; execution still goes
+                // through the symlink-aware resolver, so it cannot be used
+                // to escape containment. Chat mode already resolved to Deny
+                // above and is unaffected.
+                if auto.is_none() && matches!(p.tool_name.as_str(), "Write" | "Edit") {
+                    if let (Some(scratch_dir), Some(path)) = (
+                        scratch.as_deref(),
+                        p.args.get("path").and_then(|v| v.as_str()),
+                    ) {
+                        if workspace::lexically_inside(scratch_dir, path) {
+                            auto = Some(PermissionDecision::AllowOnce);
+                        }
+                    }
+                }
                 if let Some(decision) = auto {
-                    (Some(decision), ws, None, None)
+                    (Some(decision), ws, scratch, None, None)
                 } else {
                     let reason = match p.tool_name.as_str() {
                         "Write" | "Edit" => "Modifies files in your workspace",
@@ -984,7 +1006,7 @@ async fn handle_request(
                         p.args.clone(),
                         reason,
                     );
-                    (None, ws, Some(rx), Some(req))
+                    (None, ws, scratch, Some(rx), Some(req))
                 }
             };
 
@@ -1069,12 +1091,24 @@ async fn handle_request(
             let mut result = if p.tool_name.starts_with("plugin_") {
                 execute_plugin_tool(&state, &tx, &p, timeout).await
             } else {
-                tools::execute_tool(ws_path.as_deref(), &p.tool_name, &p.args, timeout).await
+                tools::execute_tool(
+                    ws_path.as_deref(),
+                    scratch_path.as_deref(),
+                    &p.tool_name,
+                    &p.args,
+                    timeout,
+                )
+                .await
             };
             result.tool_call_id = p.tool_call_id.clone();
 
             let st = state.lock().await;
-            if result.ok && matches!(p.tool_name.as_str(), "Write" | "Edit") {
+            // Scratch files are temp by definition: keep them out of the
+            // artifacts table so the work panel file list only shows
+            // workspace deliverables (D101).
+            let in_scratch =
+                result.content.get("root").and_then(|v| v.as_str()) == Some("scratch");
+            if result.ok && !in_scratch && matches!(p.tool_name.as_str(), "Write" | "Edit") {
                 if let Some(rel) = result.content.get("path").and_then(|v| v.as_str()) {
                     let abs = match ws_path.as_deref() {
                         Some(root) => root.join(rel).to_string_lossy().to_string(),
