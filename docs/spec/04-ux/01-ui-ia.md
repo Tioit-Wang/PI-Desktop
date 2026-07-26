@@ -53,7 +53,7 @@ destination, chat as the home surface, tools and permissions inline.
   overlay; workspace/model/status info lives in the composer chips and
   Settings instead.
 - **Composer**: workspace-agnostic floating pill anchored to the chat
-  destination — split-grow centered on the empty home (D045/D047),
+  destination — scrollable centered stack on the empty home (D111),
   bottom-docked in a transcript, with no project / Local / branch rail (D095).
 - **Backend status capsule**: appears under the titlebar while the backend
   restarts or is fatally degraded (D080), with an Open-logs action.
@@ -63,7 +63,7 @@ destination, chat as the home surface, tools and permissions inline.
 ### 3.1 Chat home (default)
 - Empty state: hero title ("What should we build?" — project name becomes a
   dotted-underline button when a workspace is open), suggestion cards
-  (D049/D067), centered composer.
+  (D049/D067) in document flow above the composer (D111), centered composer.
 - With transcript: message stream + tool disclosure rows (D071), docked
   composer, permission cards inline.
 

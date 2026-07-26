@@ -395,37 +395,53 @@ All motion tokens must respect `prefers-reduced-motion: reduce`:
 - No shimmer/skeleton animations longer than 1s loop — use simple fade-in for loading states
 - No bounce effects
 
-## 8.0 Home empty stack (Codex parity)
+## 8.0 Home empty stack (scrollable flow, D111)
 
 Empty composer placeholder: EN `Ask PI-Desktop to do anything` / zh-CN `向 PI-Desktop 下达任意指令`.
 
-Empty chat home matches Codex electron **split grow** layout inside `home-main-content`:
+Empty chat home uses a **single scrollable vertical stack** inside
+`home-main-content` (D111; supersedes the D047 dual-grow portal model):
 
-- Column `flex: 1; min-height: 0; overflow: hidden` (not a single optical-center stack)
-- **Upper grow** (`.home-upper`): `flex: 1 1 0; align-items: flex-end; justify-content: center; padding-bottom: 96px` holds hero (icon + `heading-xl`)
-- **Upper grow**: `min-h-fit grow basis-0 items-end justify-center` with ~62px bottom pad (tuned from pb-24 so hero first-ink ≈y305 at 1200×690); ambient suggestion cards portal under hero (`absolute top-full mt-8`) so they do not steal lower flex height
-- **Lower grow**: `min-h-fit shrink-0 grow basis-0 flex-col justify-end` holds workspace chips + floating composer only (`pt-3 pb-4`)
-- Suggestion cards: Codex auto-fit grid (`minmax(10rem,1fr)`, often **4-up single row** at desktop width), `min-height: 104px` (`min-h-26`), `rounded-2xl`; electron ring `0.5px` border-heavy + `shadow-md-strong`; dark uses elevated-secondary wash on `#181818`
-- Card actions prefill composer with Codex starter prompts (Explore / Build / Review / Fix)
-- Composer is **not** absolute-docked on empty home; thread mode keeps the bottom dock + fade veil
+- Column `flex: 1; min-height: 0; overflow: hidden`
+- Inner scroller (`.home-scroll`) is the only vertical overflow surface
+- Stack (`.home-stack-inner`) is `min-height: 100%`, content width
+  **`min(100%, 768px)`**, and centers the column when the viewport is tall
+- Order is always: **hero → suggestion cards (+ optional onboarding checklist)
+  → home composer**. Cards and checklist live in normal document flow
+  (`.home-suggestions-block`), never absolute-portaled over the composer
+- Short windows (`max-height ≤ 760px`) top-align the stack and keep every
+  block reachable by scrolling; the composer must not cover suggestion cards
+- Suggestion cards: Codex auto-fit grid (`minmax(10rem,1fr)`, often **4-up
+  single row** at desktop width), `min-height: 104px` (`min-h-26`),
+  `rounded-2xl`; electron ring `0.5px` border-heavy + `shadow-md-strong`; dark
+  uses elevated-secondary wash on `#181818`
+- Card actions prefill composer with starter prompts (Explore / Build /
+  Review / Fix)
+- Composer is **not** absolute-docked on empty home; thread mode keeps the
+  bottom dock + fade veil
 - Composer radius uses Codex `radius-3xl-base` (**20px** / `1.25rem`)
 - Empty-home composer height is content-driven: a one-line draft renders the
   compact shell, grows with the draft through seven visible rows, and then
   keeps the shell stable while the textarea scrolls internally
-- Home dual-grow content width is **`min(100%, 768px)`** (true max-w-3xl at 16px), not `48rem` under the 14px root — prevents ~120px-narrow plate vs Codex gold
-- Light **New task** control is a **ghost row** (transparent fill, hover wash only), not a solid chip
-- Empty hero title uses `var(--ds-text-primary)` (light override `#1a1c1f`); never hardcode light ink for shared hero styles
-- Night home composer plate styles are **dark-scoped only** (elevated-primary `#212121f5` + standard elevation-prominent)
+- Light **New task** control is a **ghost row** (transparent fill, hover wash
+  only), not a solid chip
+- Empty hero title uses `var(--ds-text-primary)` (light override `#1a1c1f`);
+  never hardcode light ink for shared hero styles
+- Night home composer plate styles are **dark-scoped only** (elevated-primary
+  `#212121f5` + standard elevation-prominent)
 - Empty draft row keeps **one visible line / 28px optical minimum** so the
   placeholder remains visible; it auto-grows to seven visual lines and
   scrolls internally from line eight onward
-- Left **15px shared brand logo** beside an empty draft; light placeholder ~`#525355`
-- Disabled send is a **solid gray chip** (`#8e8e90` light, white arrow), not opacity-only fade
+- Docked threads keep the **15px shared brand logo** beside the draft; home
+  empty draft stays clean without the mark. Light placeholder ~`#525355`
+- Disabled send is a **solid gray chip** (`#8e8e90` light, white arrow), not
+  opacity-only fade
 - Floating composer plates use one solid semantic surface with no internal
   gradient: `--ds-bg-composer` in light and elevated-primary in dark. A
   hairline stroke plus the restrained `--elevation-prominent` shadow provides
   separation; the docked transcript fade remains outside the input surface.
-- Dark elevated shell reads as elevated-primary (`#212121f5` / gray-800 96%) on `#181818` with standard elevation-prominent
+- Dark elevated shell reads as elevated-primary (`#212121f5` / gray-800 96%)
+  on `#181818` with standard elevation-prominent
 
 ## 8.1 Composer workspace chips (Codex parity)
 

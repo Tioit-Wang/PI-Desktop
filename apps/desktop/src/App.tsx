@@ -404,9 +404,9 @@ function AppShell() {
         ) : (
           <>
             {!hasTranscript ? (
-              <div className="home-main-content">
-                <div className="home-upper">
-                  <div className="home-upper-inner">
+              <div className="home-main-content" data-testid="home-empty">
+                <div className="home-scroll">
+                  <div className="home-stack-inner">
                     <div className="empty-hero">
                       <div className="empty-hero-icon" data-testid="home-icon" aria-hidden>
                         <BrandLogo size={56} />
@@ -430,19 +430,18 @@ function AppShell() {
                         )}
                       </h1>
                     </div>
-                    {/* Codex portals ambient cards under hero (top-full mt-8), not in lower flex flow */}
-                    <div className="home-suggestions-portal">
+                    {/* Suggestion cards + checklist live in normal flow so the
+                        home composer cannot cover them on short windows. */}
+                    <div className="home-suggestions-block">
                       <HomeSuggestions />
                       <OnboardingChecklist />
                     </div>
+                    {showComposer && (
+                      <div className="home-composer-wrap">
+                        <Composer variant="home" />
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="home-lower">
-                  {showComposer && (
-                    <div className="home-composer-wrap">
-                      <Composer variant="home" />
-                    </div>
-                  )}
                 </div>
               </div>
             ) : (

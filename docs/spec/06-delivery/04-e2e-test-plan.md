@@ -983,6 +983,23 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`sessions::tests::save_and_activate_message_revision`, schema v4 migration); full scenario Draft
 
+#### E2E-063: Empty home stack keeps cards above composer
+
+- **Preconditions**: App running on empty chat home (no transcript) in light
+  and dark themes; window can be resized to ~1200×690 and ~900×640.
+- **Steps**: 1) Open empty home. 2) Inspect hero, suggestion cards, optional
+  onboarding checklist, and home composer. 3) Resize to a short height. 4)
+  Click a suggestion card. 5) Scroll if needed on the short window.
+- **Expected**: Blocks form one scrollable stack (hero → cards/checklist →
+  composer). No absolute portal places cards under the composer. Composer never
+  covers suggestion cards. Card click prefills the draft and focuses the input.
+  Short windows keep every block reachable via scroll.
+- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/07-ui-design-system.md`,
+  `04-ux/08-component-spec.md`, `08-meta/decisions-log.md` (D111)
+- **Acceptance**: Quality (layout integrity)
+- **Milestone**: M5
+- **Status**: Unit-covered (`home-empty-layout.test.mjs`); full UI scenario Draft
+
 ## 8. Traceability Matrix
 
 
@@ -1000,7 +1017,7 @@ Each scenario is documented in this format:
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030, E2E-049 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -1008,7 +1025,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -1202,7 +1219,9 @@ This test plan spec is accepted when:
 - Expect black sidebar, main `#181818`, and destination cards/rows readable on elevated dark plates (not flat same-gray).
 
 ### US-UI-28 Home empty composer association
-- On empty chat home (light + dark), expect hero in the upper grow region and composer in the lower grow region (Codex dual-grow), not a large empty gap with a wrongly absolute-docked box.
+- On empty chat home (light + dark), expect hero, suggestion cards, and home
+  composer in one scrollable vertical stack (D111), not a large empty gap with
+  a wrongly absolute-docked box or dual-grow portal overlap.
 - The composer remains a standalone plate without an attached workspace rail.
 - Starting a transcript restores the bottom-docked composer with fade veil.
 
@@ -1217,8 +1236,12 @@ This test plan spec is accepted when:
 - Empty composer shows PI-Desktop placeholder copy: EN `Ask PI-Desktop to do anything`, zh-CN `向 PI-Desktop 下达任意指令`.
 - Placeholder ink is legible on light and dark floating plates.
 
-### US-UI-31 Home split-grow vertical layout
-- Given empty chat home, when the window is ~1200×690, the hero sits in the upper grow region and the composer plate in the lower grow region (composer lower half), matching Codex dual-grow home — not a single mid-stack blob.
+### US-UI-31 Home empty vertical stack (D111)
+- Given empty chat home, when the window is ~1200×690, hero, suggestion cards,
+  and the home composer render as one centered vertical stack with clear gaps
+  (not dual-grow absolute portal regions).
+- Cards sit above the composer in document flow; no absolute overlay covers
+  suggestion cards or onboarding checklist.
 
 ### US-UI-32 Dark floating box elevation
 - Given dark theme empty home, when the composer shell is painted, it uses elevated-primary `#212121` on `#181818` with elevation-prominent stroke+lift identical to light (no heavier custom dark shadow).
@@ -1233,9 +1256,9 @@ This test plan spec is accepted when:
   remains ~32px and session row pitch ~28–31px.
 
 ### US-UI-34 Home suggestion cards
-- On empty chat home (light + dark), four ambient suggestion cards render in an auto-fit row under the hero (portal), not only as a 2x2 stack that collides with the composer.
+- On empty chat home (light + dark), four ambient suggestion cards render in an auto-fit row under the hero in document flow (not an absolute portal).
 - Cards use Codex electron elevated plate chrome (hairline ring + shadow-md-strong); dark cards remain visible on `#181818`.
-- Hero dual-grow lands near mid/lower optical band (not pinned to the top third).
+- Composer remains fully below the cards; no overlap at ~1200×690 or shorter heights.
 - Activating a card prefills the composer with the matching starter prompt and focuses the input.
 
 ### US-UI-35 Empty composer plate density
@@ -1308,7 +1331,7 @@ This test plan spec is accepted when:
 - Dark night plate remains elevated-primary `#212121f5` with readable elevation-prominent on `#181818`.
 
 ### US-UI-31b (superseded)
-- Superseded by US-UI-31 split-grow layout.
+- Superseded by US-UI-31 home empty vertical stack (D111).
 
 
 
@@ -1449,3 +1472,12 @@ This test plan spec is accepted when:
 ### US-UI-63 Regenerate history pager (D109)
 - Regenerate an assistant answer twice.
 - Expect a `1/N` pager on the root user turn and the ability to restore earlier variants without losing them.
+
+
+### US-UI-64 Empty home no composer overlap (D111)
+- Open empty home at ~1200×690 and at a shorter height (~900×640).
+- Expect hero, four suggestion cards, optional onboarding checklist, and home
+  composer as one scrollable stack with positive vertical gaps.
+- Suggestion cards remain fully visible without being covered by the composer;
+  short windows scroll the stack rather than stacking layers on top of cards.
+- Card click still prefills the composer and focuses the draft.

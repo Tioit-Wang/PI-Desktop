@@ -59,7 +59,7 @@ export function OnboardingChecklist() {
 
   return (
     <div
-      className="mx-auto mt-6 w-full max-w-[560px] rounded-lg-plus border border-border-subtle bg-bg-elevated-opaque p-4 text-left shadow-none"
+      className="home-onboarding-checklist mx-auto w-full max-w-[560px] rounded-lg-plus border border-border-subtle bg-bg-elevated-opaque p-4 text-left shadow-none"
       data-testid="onboarding-checklist"
     >
       <div className="mb-2 flex items-center justify-between">

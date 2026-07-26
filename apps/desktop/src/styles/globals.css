@@ -596,7 +596,7 @@ textarea:disabled {
   white-space: pre-wrap;
 }
 
-/* Codex home-main-content: split grow regions (hero upper / composer lower) */
+/* Empty chat home: single scrollable stack so hero/cards/composer never collide. */
 .home-main-content {
   position: relative;
   display: flex;
@@ -604,80 +604,52 @@ textarea:disabled {
   min-height: 0;
   width: 100%;
   flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto; /* Codex: allow chips+composer to fully paint in dual-grow */
+  overflow: hidden;
   container-type: size;
   container-name: home-main-content;
-  padding-top: 24px; /* Codex min-h-full wrapper pt-6 */
 }
 
-/*
-  Codex electron home dual-grow (from app-main page):
-  upper: flex min-h-fit grow basis-0 items-end justify-center pb-24
-  lower: flex min-h-fit min-w-0 shrink-0 grow basis-0 flex-col justify-end
-*/
-.home-upper {
-  display: flex;
-  flex-grow: 1;
-  flex-shrink: 1;
-  flex-basis: 0;
-  min-height: fit-content;
+.home-scroll {
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  align-items: flex-end;
+  overflow-x: hidden;
+  overflow-y: auto;
+  display: flex;
   justify-content: center;
-  /* Gold hero first-ink ~y305 at 1200x690 */
-  padding: 0 0 62px;
-
-  overflow: visible;
 }
 
-.home-upper-inner {
-  position: relative;
+.home-stack-inner {
   display: flex;
-  /* 48rem at 16px root = 768px; html font-size is 14px so use px */
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 28px;
   width: min(100%, 768px);
   max-width: 100%;
-  justify-content: center;
-  padding-inline: 12px; /* gold main gap ~90px → plate ~744 */
-
-  overflow: visible;
+  min-height: 100%;
+  margin-inline: auto;
+  padding: 40px 12px 28px;
+  box-sizing: border-box;
 }
 
-.home-lower {
+/* Keep ambient cards + checklist in document flow above the composer. */
+.home-suggestions-block {
   display: flex;
-  flex-grow: 1;
-  flex-shrink: 0; /* Codex shrink-0 */
-  flex-basis: 0;
-  min-height: fit-content;
-  min-width: 0;
   width: 100%;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-/* Codex: -mt-16 flex min-w-0 flex-col gap-2 around ambient suggestions */
-/* Codex: absolute under hero (top-full mt-8) so lower flex only hosts composer */
-.home-suggestions-portal {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  left: 0;
-  z-index: 15;
-  margin-top: 48px; /* land cards near gold ~y425 band */
   min-width: 0;
-  padding-inline: 12px;
+  flex-direction: column;
+  gap: 16px;
   box-sizing: border-box;
 }
 
 .home-composer-wrap {
   position: relative;
-  z-index: 20;
-  /* Match Codex max-w-3xl optical width (~744–768px plate at 1200 shell) */
-  width: min(100%, 768px);
+  z-index: 2;
+  width: 100%;
   max-width: 100%;
   margin-inline: auto;
-  /* Bottom footing: pad 16 keeps plate foot shadow ~y674 at 1200x690 */
-  padding: 6px 12px 16px;
+  padding: 0;
 }
 
 /* Codex home ambient suggestion cards (electron cards mode) */
@@ -841,11 +813,12 @@ textarea:disabled {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  gap: 24px; /* Codex gap-6 */
-  min-height: 7rem; /* Codex min-h-28 */
+  justify-content: center;
+  gap: 20px;
+  min-height: 0;
   padding: 0;
   text-align: center;
+  width: 100%;
 }
 
 .empty-hero-icon {
@@ -892,6 +865,32 @@ textarea:disabled {
 
 .empty-hero .project-underline:hover {
   color: var(--ds-text-secondary);
+}
+
+.home-suggestions-block [data-testid="onboarding-checklist"],
+.home-onboarding-checklist {
+  margin-top: 0;
+  max-width: 100%;
+}
+
+@media (max-height: 760px) {
+  .home-stack-inner {
+    justify-content: flex-start;
+    padding-top: 28px;
+    gap: 20px;
+  }
+}
+
+@media (max-height: 640px) {
+  .home-stack-inner {
+    padding-top: 20px;
+    padding-bottom: 20px;
+    gap: 16px;
+  }
+
+  .home-suggestion-card {
+    min-height: 88px;
+  }
 }
 
 .composer-dock {
@@ -1379,6 +1378,11 @@ textarea:disabled {
   font-size: var(--text-xs);
   line-height: var(--leading-compact);
   font-variant-numeric: tabular-nums;
+}
+
+/* Revision history is stateful navigation, not a hover-only chrome chip. */
+.message-actions:has(.message-revision-pager) {
+  opacity: 1;
 }
 
 .message-revision-label {

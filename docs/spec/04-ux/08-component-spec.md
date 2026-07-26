@@ -11,7 +11,7 @@
 > Codex parity decision in [decisions-log §D](../08-meta/decisions-log.md)
 > (D034+), the decision log wins — it tracks the live gold captures. Known
 > updated values: sidebar ~275px (not 240px), toolbar 46px (not 44px),
-> composer placeholder per D094/D066, home split-grow per D045/D047,
+> composer placeholder per D094/D066, home empty stack per D111,
 > Projects index table per D066, settings full-page shell per D063 with the
 > compact four-destination directory from D090, and retained path-keyed
 > project groups per D093 (which preserves D088's Temporary/exact-path boundary
@@ -249,7 +249,7 @@ Primary chat area containing ChatTranscript and Composer. Scrollable, center of 
 |   ...                                |
 +--------------------------------------+
 | Composer (docked in thread view;     |
-| home uses split-grow, D045/D047)     |
+| home uses scroll stack, D111)        |
 +--------------------------------------+
 ```
 
@@ -263,7 +263,7 @@ Primary chat area containing ChatTranscript and Composer. Scrollable, center of 
 
 | State | Behavior |
 |---|---|
-| Empty | Onboarding checklist or empty-state prompt |
+| Empty | Hero + suggestion cards + optional onboarding checklist + home composer in one scrollable stack (D111) |
 | Streaming | Auto-scroll locked; new tokens append |
 | Idle (after stream) | Auto-scroll unlocked; user can scroll freely |
 
@@ -937,9 +937,10 @@ Guidance surfaces when key data is absent. Must always provide an **action link*
 
 ### 15.3 Layout
 
-- Centered in MainChat area
-- Text-xl heading + text-sm description + primary action button
-- Icon (48px Lucide) above heading
+- Chat home empty: single scrollable stack (hero → cards/checklist → composer)
+  centered in MainChat; cards never absolute-portaled over the composer
+- Other empty surfaces: text-xl heading + text-sm description + primary action
+- Icon (48px Lucide / brand mark) above heading where applicable
 - Background: bg-primary (transparent, not a card)
 
 ### 15.4 Accessibility
