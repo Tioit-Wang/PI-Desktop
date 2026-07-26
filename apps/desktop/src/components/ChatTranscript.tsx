@@ -533,16 +533,7 @@ const MessageRow = memo(function MessageRow({
         {showAnswer ? (
           <div className="message-bubble">
             {isUser ? (
-              <div className="message-user-text selectable">
-                {String(message.content || "")
-                  .split("\n")
-                  .map((line, index, lines) => (
-                    <span key={`user-line-${index}`}>
-                      {line}
-                      {index < lines.length - 1 ? <br /> : null}
-                    </span>
-                  ))}
-              </div>
+              <div className="message-user-text selectable">{message.content}</div>
             ) : (
               <div className="prose-chat">
                 <Markdown source={displayed || (isRunning ? "…" : "")} />

@@ -517,7 +517,7 @@ Single message render — either user (plaintext) or assistant (markdown streami
 - User: right-aligned soft plate (`color-mix` on primary ink, subtle border,
   `radius-lg-plus`), capped at `min(78%, 560px)` so short prompts read as
   chat turns rather than full-width blocks. User body is plaintext with
-  preserved hard newlines (`white-space: pre-wrap` + explicit line breaks);
+  preserved hard newlines (`white-space: pre-wrap`);
   only trailing/leading composer trim is applied, never internal newline
   collapse
 - Assistant: transparent surface, left-aligned, markdown rendered at full

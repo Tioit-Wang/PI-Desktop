@@ -422,6 +422,7 @@ textarea:disabled {
 }
 
 .message-row.user .message-bubble {
+  width: fit-content;
   max-width: min(78%, 560px);
   border-radius: var(--radius-lg-plus);
   background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
@@ -1274,8 +1275,9 @@ textarea:disabled {
 }
 
 .message-row.user .message-col {
-  width: auto;
+  width: fit-content;
   max-width: min(78%, 560px);
+  min-width: min(100%, 12ch);
   align-items: flex-end;
 }
 
@@ -1376,17 +1378,15 @@ textarea:disabled {
 }
 
 .message-user-text {
-  /* Preserve hard newlines from the composer (Shift+Enter / pasted blocks). */
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-  line-height: inherit;
-}
-
-.message-user-text br {
+  /* Preserve hard newlines; wrap long tokens without splitting every CJK glyph. */
   display: block;
-  content: "";
-  margin: 0;
+  width: fit-content;
+  max-width: 100%;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: normal;
+  line-break: strict;
+  line-height: inherit;
 }
 
 :root[data-theme="light"] .message-row.user .message-bubble {

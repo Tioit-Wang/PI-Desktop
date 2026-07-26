@@ -52,16 +52,14 @@ test("transcript markup uses the dedicated user text surface and streaming class
   assert.match(transcriptSource, /className="message-user-text selectable"/);
   assert.match(transcriptSource, /streaming \? " streaming" : ""/);
   assert.match(transcriptSource, /CopyButton text=\{message\.content\}/);
-  assert.match(transcriptSource, /split\("\\n"\)/);
-  assert.match(transcriptSource, /<br \/>/);
 });
 
-test("user plaintext preserves hard newlines", () => {
+test("user plaintext preserves hard newlines without forced mid-word breaks", () => {
   assert.match(
     stylesSource,
-    /\.message-user-text \{[\s\S]*?white-space:\s*pre-wrap;[\s\S]*?overflow-wrap:\s*anywhere;/,
+    /\.message-user-text \{\s*\/\* Preserve hard newlines; wrap long tokens without splitting every CJK glyph\. \*\/\s*display:\s*block;\s*width:\s*fit-content;\s*max-width:\s*100%;\s*white-space:\s*pre-wrap;\s*overflow-wrap:\s*break-word;\s*word-break:\s*normal;\s*line-break:\s*strict;/,
   );
-  assert.match(stylesSource, /\.message-user-text br \{/);
+  assert.doesNotMatch(stylesSource, /\.message-user-text br \{/);
 });
 
 test("assistant meta chips and retry action are wired", () => {
