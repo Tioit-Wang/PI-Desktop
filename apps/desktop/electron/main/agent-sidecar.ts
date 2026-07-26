@@ -7,6 +7,20 @@ import type { HostProcess, ProcessExitHandler, StderrHandler } from "./host-proc
 
 export type SidecarNotificationHandler = (method: string, params: unknown) => void;
 
+/** Result shape the sidecar's tool executor expects from tools.execute. */
+export type LocalToolResult = {
+  ok: boolean;
+  content: unknown;
+  isError?: boolean;
+  errorCode?: string;
+};
+
+export type LocalToolHandler = (input: {
+  sessionId: string;
+  toolCallId: string;
+  args: unknown;
+}) => Promise<LocalToolResult>;
+
 // The sidecar runs model-directed code paths; it must not be able to pull
 // secrets or mutate configuration through the parent proxy. Tight allowlist
 // of host methods the agent loop legitimately needs.
@@ -43,6 +57,9 @@ export class AgentSidecar {
   private disposed = false;
   private host: HostProcess | null = null;
   private unsubscribeHost: (() => void) | null = null;
+  // Tools served by Electron main itself (e.g. BrowserPreview drives the
+  // work panel's WebContentsView) — host-core never sees these.
+  private localTools = new Map<string, LocalToolHandler>();
 
   constructor(onStderr?: StderrHandler) {
     const entry = resolveSidecarEntry();
@@ -85,6 +102,11 @@ export class AgentSidecar {
     return () => this.exitHandlers.delete(handler);
   }
 
+  /** Register a tool the sidecar can call that main handles locally. */
+  setLocalTool(name: string, handler: LocalToolHandler): void {
+    this.localTools.set(name, handler);
+  }
+
   setHost(host: HostProcess) {
     this.host = host;
     this.unsubscribeHost?.();
@@ -112,7 +134,6 @@ export class AgentSidecar {
     // Reverse RPC from sidecar → host proxy
     if (msg.method === "host.proxy" && msg.id !== undefined) {
       try {
-        if (!this.host) throw new Error("host unavailable");
         const method = String(msg.params?.method || "");
         if (!HOST_PROXY_ALLOWED.has(method)) {
           throw Object.assign(
@@ -120,10 +141,26 @@ export class AgentSidecar {
             { code: -32601 },
           );
         }
-        const result = await this.host.call(
-          method,
-          msg.params?.params ?? {},
-        );
+        const params = (msg.params?.params ?? {}) as Record<string, unknown>;
+        // Main-local tools short-circuit before host-core (which doesn't
+        // know them); everything else proxies through unchanged.
+        const localTool =
+          method === "tools.execute"
+            ? this.localTools.get(String(params.toolName ?? ""))
+            : undefined;
+        if (localTool) {
+          const result = await localTool({
+            sessionId: String(params.sessionId ?? ""),
+            toolCallId: String(params.toolCallId ?? ""),
+            args: params.args,
+          });
+          this.child.stdin.write(
+            JSON.stringify({ jsonrpc: "2.0", id: msg.id, result }) + "\n",
+          );
+          return;
+        }
+        if (!this.host) throw new Error("host unavailable");
+        const result = await this.host.call(method, params);
         this.child.stdin.write(
           JSON.stringify({ jsonrpc: "2.0", id: msg.id, result }) + "\n",
         );

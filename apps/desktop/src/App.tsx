@@ -111,6 +111,11 @@ function AppShell() {
     const offEvent = api.onAgentEvent(handleAgentEvent);
     // Host-pushed toasts (plugin runtime etc.) are informational.
     const offToast = api.onToast((message) => showToast(message));
+    // Agent-driven HTML preview: surface the browser tab when the agent
+    // opens a workspace file in the embedded browser (BrowserPreview tool).
+    const offBrowserPreview = api.onBrowserPreview(() => {
+      useAppStore.getState().setWorkPanelTab("browser");
+    });
     const offHostStatus = api.onHostStatus((status) => {
       if (status.ok) {
         setBackendDown(null);
@@ -152,6 +157,7 @@ function AppShell() {
     return () => {
       offEvent();
       offToast();
+      offBrowserPreview();
       offHostStatus();
       window.removeEventListener("keydown", onKey);
     };

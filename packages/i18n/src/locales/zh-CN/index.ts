@@ -422,8 +422,8 @@ export const zhCN = {
       startFailed: "终端会话启动失败",
     },
     browser: {
-      empty: "输入地址以预览本地服务",
-      urlPlaceholder: "localhost:3000 或任意 http(s) 地址",
+      empty: "输入地址预览本地服务，或输入工作区内的 HTML 文件路径（如 index.html）实时预览",
+      urlPlaceholder: "localhost:3000、http(s) 地址或 HTML 文件路径",
       back: "后退",
       forward: "前进",
       reload: "刷新",

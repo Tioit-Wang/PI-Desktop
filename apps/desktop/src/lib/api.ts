@@ -248,6 +248,14 @@ export const api = {
       listener(payload as BrowserState),
     );
   },
+  onBrowserPreview: (
+    listener: (event: { path: string; url: string | null }) => void,
+  ) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.browserPreview, (payload) =>
+      listener(payload as { path: string; url: string | null }),
+    );
+  },
   onAgentEvent: (listener: (event: AgentEventEnvelope) => void) => {
     if (!window.piDesktop?.on) return () => undefined;
     return window.piDesktop.on(IPC.event.agentMessage, (payload) =>

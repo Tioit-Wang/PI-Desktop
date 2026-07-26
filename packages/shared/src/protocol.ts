@@ -79,6 +79,7 @@ export const IPC = {
     terminalData: "pi-desktop/terminal/event/data",
     terminalExit: "pi-desktop/terminal/event/exit",
     browserState: "pi-desktop/browser/event/state",
+    browserPreview: "pi-desktop/browser/event/preview",
   },
 } as const;
 

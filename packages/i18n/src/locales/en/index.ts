@@ -422,8 +422,9 @@ export const en = {
       startFailed: "Failed to start the terminal session",
     },
     browser: {
-      empty: "Enter a URL to preview a local server",
-      urlPlaceholder: "localhost:3000 or any http(s) URL",
+      empty:
+        "Enter a URL to preview a local server, or a workspace HTML file path (e.g. index.html) for a live preview",
+      urlPlaceholder: "localhost:3000, an http(s) URL, or an HTML file path",
       back: "Back",
       forward: "Forward",
       reload: "Reload",

@@ -37,7 +37,7 @@ import { PluginRuntime } from "./plugin-runtime";
 import { Logger } from "./logger";
 import { collectWorkspaceDiff } from "./git-diff";
 import { PtyManager } from "./terminal";
-import { BrowserPane } from "./browser-view";
+import { BrowserPane, resolveLocalFile } from "./browser-view";
 import { listDir, readWorkspaceFile, resolveWithinRoot } from "./fs-panel";
 import {
   convertSession,
@@ -911,6 +911,50 @@ function wireSidecar(s: AgentSidecar) {
 async function startSidecar(): Promise<void> {
   const s = new AgentSidecar((text) => logger.child("agent", text));
   wireSidecar(s);
+  // Agent-driven work panel preview (D100): open a workspace HTML file in
+  // the embedded browser; live reload keeps it current through later edits.
+  s.setLocalTool("BrowserPreview", async ({ args }) => {
+    const raw = String((args as { path?: unknown })?.path ?? "").trim();
+    if (!raw) {
+      return {
+        ok: false,
+        isError: true,
+        content: "BrowserPreview: `path` is required.",
+      };
+    }
+    let root: string | null = null;
+    try {
+      const res = (await host?.call("workspace.get")) as
+        | { workspace: { path: string } | null }
+        | undefined;
+      root = res?.workspace?.path ?? null;
+    } catch {
+      root = null;
+    }
+    if (!root) {
+      return {
+        ok: false,
+        isError: true,
+        content: "BrowserPreview: no workspace is open.",
+      };
+    }
+    if (!resolveLocalFile(raw, root)) {
+      return {
+        ok: false,
+        isError: true,
+        content: `BrowserPreview: "${raw}" does not resolve to an existing file inside the workspace.`,
+      };
+    }
+    const state = browserPane.navigate(raw, root);
+    sendToRenderer(IPC.event.browserPreview, {
+      path: raw,
+      url: state?.url ?? null,
+    });
+    return {
+      ok: true,
+      content: `Previewing ${raw} in the built-in browser panel. Live reload is active — subsequent edits to the file or sibling assets re-render automatically.`,
+    };
+  });
   sidecar = s;
   if (host) s.setHost(host);
   await s.call("sidecar.configure", {
@@ -1670,7 +1714,18 @@ function registerIpc() {
   });
 
   handle(IPC.invoke.browserNavigate, async (input: { url?: string } = {}) => {
-    return browserPane.navigate(String(input.url ?? ""));
+    // Workspace root gates file previews (agent-generated HTML); http(s)
+    // navigation works without a workspace.
+    let root: string | null = null;
+    try {
+      const res = (await host?.call("workspace.get")) as
+        | { workspace: { path: string } | null }
+        | undefined;
+      root = res?.workspace?.path ?? null;
+    } catch {
+      root = null;
+    }
+    return browserPane.navigate(String(input.url ?? ""), root);
   });
 
   handle(IPC.invoke.browserAction, async (input: { action?: string } = {}) => {

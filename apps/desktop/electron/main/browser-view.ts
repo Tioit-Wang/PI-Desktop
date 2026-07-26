@@ -1,5 +1,8 @@
 import { shell, WebContentsView } from "electron";
 import type { BrowserWindow } from "electron";
+import { statSync, watch, type FSWatcher } from "node:fs";
+import { dirname, isAbsolute, resolve, sep } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import type { BrowserState } from "@pi-desktop/shared";
 
 /**
@@ -10,9 +13,14 @@ import type { BrowserState } from "@pi-desktop/shared";
  * visibility authority: it hides the view whenever the browser tab is not
  * the active panel surface or a blocking overlay opens (the view always
  * composites above renderer content).
+ *
+ * Besides http(s) URLs, the pane renders HTML files inside the workspace
+ * (agent-generated pages) with live reload: the loaded file's directory is
+ * watched so edits to the page or its sibling assets refresh the preview.
  */
 
 const PARTITION = "persist:work-browser";
+const LIVE_RELOAD_DEBOUNCE_MS = 250;
 
 export function normalizeUrl(raw: string): string | null {
   const trimmed = raw.trim();
@@ -29,12 +37,54 @@ export function normalizeUrl(raw: string): string | null {
   }
 }
 
+function isWithinRoot(path: string, root: string): boolean {
+  const resolvedRoot = resolve(root);
+  return path === resolvedRoot || path.startsWith(resolvedRoot + sep);
+}
+
+/**
+ * Resolve user input to a previewable file inside the workspace: a file://
+ * URL, an absolute path, or a workspace-relative path (./demo/index.html,
+ * index.html). Returns null unless the target exists as a file within the
+ * root — inputs like "localhost:3000/a.html" then fall through to URL
+ * handling instead of a broken file load.
+ */
+export function resolveLocalFile(raw: string, root: string | null): string | null {
+  const trimmed = raw.trim();
+  if (!trimmed || !root) return null;
+  let candidate: string | null = null;
+  if (/^file:/i.test(trimmed)) {
+    try {
+      candidate = fileURLToPath(trimmed);
+    } catch {
+      return null;
+    }
+  } else if (isAbsolute(trimmed)) {
+    candidate = trimmed;
+  } else if (/^\.{1,2}\//.test(trimmed) || /\.[a-zA-Z0-9]+$/.test(trimmed)) {
+    candidate = resolve(root, trimmed);
+  }
+  if (!candidate) return null;
+  const resolved = resolve(candidate);
+  if (!isWithinRoot(resolved, root)) return null;
+  try {
+    if (!statSync(resolved).isFile()) return null;
+  } catch {
+    return null;
+  }
+  return resolved;
+}
+
 export class BrowserPane {
   private view: WebContentsView | null = null;
   private window: BrowserWindow | null = null;
   private visible = false;
   private bounds = { x: 0, y: 0, width: 0, height: 0 };
   private onState: (state: BrowserState) => void;
+  private fileRoot: string | null = null;
+  private watcher: FSWatcher | null = null;
+  private watchedDir: string | null = null;
+  private reloadTimer: NodeJS.Timeout | null = null;
 
   constructor(onState: (state: BrowserState) => void) {
     this.onState = onState;
@@ -58,9 +108,21 @@ export class BrowserPane {
     };
   }
 
-  navigate(raw: string): BrowserState | null {
+  navigate(raw: string, fileRoot: string | null = null): BrowserState | null {
+    if (fileRoot) this.fileRoot = fileRoot;
+    const localPath = resolveLocalFile(raw, this.fileRoot);
+    if (localPath) {
+      const view = this.ensureView();
+      this.watchDirForReload(dirname(localPath));
+      void view.webContents.loadURL(pathToFileURL(localPath).toString()).catch(() => {
+        // Navigation failures surface through did-fail-load → state push.
+      });
+      if (this.visible) this.attach();
+      return this.getState();
+    }
     const url = normalizeUrl(raw);
     if (!url) return this.getState();
+    this.clearLiveReload();
     const view = this.ensureView();
     void view.webContents.loadURL(url).catch(() => {
       // Navigation failures surface through did-fail-load → state push.
@@ -107,6 +169,7 @@ export class BrowserPane {
   }
 
   dispose(): void {
+    this.clearLiveReload();
     this.detach();
     if (this.view) {
       this.view.webContents.close();
@@ -131,6 +194,49 @@ export class BrowserPane {
     }
   }
 
+  /** Watch the previewed file's directory so page + asset edits re-render. */
+  private watchDirForReload(dir: string): void {
+    if (this.watcher && this.watchedDir === dir) return;
+    this.clearLiveReload();
+    try {
+      this.watcher = watch(dir, { persistent: false }, () => this.scheduleReload());
+      this.watchedDir = dir;
+    } catch {
+      this.watcher = null;
+      this.watchedDir = null;
+    }
+  }
+
+  private scheduleReload(): void {
+    if (this.reloadTimer) clearTimeout(this.reloadTimer);
+    this.reloadTimer = setTimeout(() => {
+      this.reloadTimer = null;
+      const wc = this.view?.webContents;
+      if (wc && !wc.isDestroyed() && wc.getURL().startsWith("file:")) {
+        wc.reloadIgnoringCache();
+      }
+    }, LIVE_RELOAD_DEBOUNCE_MS);
+  }
+
+  private clearLiveReload(): void {
+    if (this.reloadTimer) {
+      clearTimeout(this.reloadTimer);
+      this.reloadTimer = null;
+    }
+    this.watcher?.close();
+    this.watcher = null;
+    this.watchedDir = null;
+  }
+
+  private isAllowedFileUrl(url: string): boolean {
+    if (!this.fileRoot) return false;
+    try {
+      return isWithinRoot(resolve(fileURLToPath(url)), this.fileRoot);
+    } catch {
+      return false;
+    }
+  }
+
   private ensureView(): WebContentsView {
     if (this.view && !this.view.webContents.isDestroyed()) return this.view;
     const view = new WebContentsView({
@@ -150,7 +256,19 @@ export class BrowserPane {
       callback(false);
     });
     wc.on("will-navigate", (event, url) => {
-      if (!/^https?:/i.test(url)) event.preventDefault();
+      if (/^https?:/i.test(url)) return;
+      // Relative links inside a previewed page may point at sibling files;
+      // anything escaping the workspace root stays blocked.
+      if (/^file:/i.test(url) && this.isAllowedFileUrl(url)) return;
+      event.preventDefault();
+    });
+    wc.on("did-navigate", (_event, url) => {
+      if (!/^file:/i.test(url)) return;
+      try {
+        this.watchDirForReload(dirname(fileURLToPath(url)));
+      } catch {
+        // Non-path file URL — keep the previous watcher.
+      }
     });
     const push = () => {
       const state = this.getState();

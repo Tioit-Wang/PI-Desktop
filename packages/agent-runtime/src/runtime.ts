@@ -194,7 +194,12 @@ export class DesktopAgentRuntime {
       initialState: {
         systemPrompt:
           opts.systemPrompt ??
-          "You are PI-Desktop, a local-first coding agent. Prefer concise, actionable answers. Use tools when they help.",
+          [
+            "You are PI-Desktop, a local-first coding agent. Prefer concise, actionable answers. Use tools when they help.",
+            // Work panel browser preview (D100): workspace HTML files render
+            // in the embedded browser with live reload on file changes.
+            "When you create or edit an HTML page in the workspace, call the BrowserPreview tool with its workspace-relative path (e.g. `index.html` or `demo/index.html`) to show it in PI-Desktop's built-in browser panel. The preview live-reloads as you keep editing, so one call per page is enough — no external browser or manual refresh needed.",
+          ].join("\n\n"),
         model,
         tools,
         thinkingLevel: this.thinkingLevel,
@@ -328,9 +333,12 @@ export class DesktopAgentRuntime {
     const exec = (toolName: string): AgentTool => ({
       name: toolName,
       label: toolName,
-      description: `${toolName} tool via PI-Desktop host-core`,
+      description:
+        toolName === "BrowserPreview"
+          ? "Open a workspace HTML file in PI-Desktop's built-in browser panel. `path` is workspace-relative (e.g. \"demo/index.html\"). The preview live-reloads on later edits to the file or its sibling assets, so call once per page."
+          : `${toolName} tool via PI-Desktop host-core`,
       parameters: Type.Object(
-        toolName === "Read"
+        toolName === "Read" || toolName === "BrowserPreview"
           ? { path: Type.String() }
           : toolName === "Glob"
             ? { pattern: Type.String() }
@@ -376,7 +384,9 @@ export class DesktopAgentRuntime {
       },
     });
 
-    const tools = ["Read", "Glob", "Grep"];
+    // BrowserPreview is non-mutating (renders an existing workspace file in
+    // the work panel browser), so it ships in every mode.
+    const tools = ["Read", "Glob", "Grep", "BrowserPreview"];
     if (this.mode === "agent") {
       tools.push("Write", "Edit", "Bash");
     }
