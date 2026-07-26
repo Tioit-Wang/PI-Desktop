@@ -703,6 +703,25 @@ async function createWindow() {
             await setPage("settings");
             await new Promise((r) => setTimeout(r, 350));
             await shot("pi-settings-live");
+            // Model configuration tab: provider cards, defaults, edit dialog.
+            await mainWindow!.webContents.executeJavaScript(`
+              [...document.querySelectorAll('.settings-nav-item')][1]?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+            `);
+            await new Promise((r) => setTimeout(r, 350));
+            await shot("pi-settings-models");
+            await mainWindow!.webContents.executeJavaScript(`
+              (() => {
+                const edit = [...document.querySelectorAll('.provider-card-actions button')][0];
+                const add = document.querySelector('.provider-section-head button');
+                (edit ?? add)?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
+              })()
+            `);
+            await new Promise((r) => setTimeout(r, 350));
+            await shot("pi-settings-provider-dialog");
+            await mainWindow!.webContents.executeJavaScript(`
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            `);
+            await new Promise((r) => setTimeout(r, 200));
             await setPage("chat");
             await new Promise((r) => setTimeout(r, 250));
             await mainWindow!.webContents.executeJavaScript(`
