@@ -765,7 +765,7 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 
 | State | Appearance | Actions |
 |---|---|---|
-| Idle (no model) | textarea active, send button disabled + tooltip "Configure a model first" | Configuration link remains available in model menu |
+| Idle (no model) | textarea active, send button disabled + tooltip "Configure a model first" | Agent link remains available in model menu |
 | Idle (ready) | textarea active, send button enabled | Send active |
 | Running | textarea disabled, abort button visible | Abort active, Send hidden |
 | Permission pending | textarea disabled (per [03-permission-ux.md](03-permission-ux.md) §7) | Send disabled, abort visible |
@@ -919,7 +919,7 @@ Guidance surfaces when key data is absent. Must always provide an **action link*
 | Context | Message | Action |
 |---|---|---|
 | No sessions | "Start your first conversation" | "New Chat" button → focus composer |
-| No provider | "No model provider configured" | "Add provider" link → Settings → Configuration → Providers |
+| No provider | "No model provider configured" | "Add provider" link → Settings → Agent → Providers |
 | No project (Agent mode) | "No project open — local tools unavailable" | "Open folder" button → ProjectPicker |
 | No project (Chat mode) | "Open a project for context" (muted warning) | "Open folder" button |
 | Session empty (first message) | "Ask PI-Desktop to do anything" placeholder (home variant "Ask anything", D094/D066) | N/A |

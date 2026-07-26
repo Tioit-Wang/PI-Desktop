@@ -110,10 +110,10 @@ declarations.
 
 ### 3.6 Settings (full-page takeover)
 Settings replaces the whole shell (D063): back-to-app + search + a compact
-four-destination rail in the exact order General / Configuration /
-Import sessions / About (D090), with elevated content cards.
-Appearance lives inside General; provider management lives inside
-Configuration. Import sessions scans supported local agent stores and presents
+four-destination rail in the exact order Basics / Agent /
+Import / Info (D090), with elevated content cards.
+Appearance lives inside Basics; provider management lives inside
+Agent. Import scans supported local agent stores and presents
 candidates in collapsible groups. Project path is an alternate grouping
 alongside the default source grouping, and every scan or grouping change starts
 with all groups collapsed. Plugin management remains solely on the app shell's

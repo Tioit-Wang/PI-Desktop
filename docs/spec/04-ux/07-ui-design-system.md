@@ -443,7 +443,7 @@ The composer renders only controls connected to the active pi session:
 
 - Chat / Agent updates the durable session mode and changes the next pi toolset.
 - The model trigger shows the active model ID. Its menu selects a configured
-  provider/default-model pair for the active session and links to Configuration.
+  provider/default-model pair for the active session and links to Agent.
 - Both controls are disabled while the active session is running.
 - File, photo, and appshot controls remain hidden until their payload contracts
   are implemented end to end.

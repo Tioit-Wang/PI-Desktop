@@ -125,7 +125,7 @@ Each scenario is documented in this format:
 - **Preconditions**: Fresh profile (no `~/.pi-desktop`).
 - **Steps**: 1) Launch app on fresh profile. 2) Observe onboarding checklist.
 - **Expected**: Inline checklist is displayed; provider/key items open Settings
-  → Configuration, and the optional plugin item opens the app-shell Plugins
+  → Agent, and the optional plugin item opens the app-shell Plugins
   destination.
 - **Specs linked**: `04-ux/05-onboarding.md`
 - **Acceptance**: A (first-run checklist)
@@ -137,7 +137,7 @@ Each scenario is documented in this format:
 #### E2E-005: Add a provider and save API key
 
 - **Preconditions**: App running; no provider configured.
-- **Steps**: 1) Open Settings → Configuration. 2) Add a provider in the Providers card. 3) Enter API key. 4) Save.
+- **Steps**: 1) Open Settings → Agent. 2) Add a provider in the Providers card. 3) Enter API key. 4) Save.
 - **Expected**: Provider appears in list; key stored securely (not in plaintext config).
 - **Specs linked**: `03-runtime/12-provider-config-schema.md`, `03-runtime/14-secrets-storage.md`
 - **Acceptance**: B (add provider, save key)
@@ -147,7 +147,7 @@ Each scenario is documented in this format:
 #### E2E-006: Key survives restart
 
 - **Preconditions**: Provider + key configured.
-- **Steps**: 1) Quit app. 2) Relaunch. 3) Open Settings → Configuration → Providers.
+- **Steps**: 1) Quit app. 2) Relaunch. 3) Open Settings → Agent → Providers.
 - **Expected**: Provider still listed; key usable (no re-entry needed).
 - **Specs linked**: `03-runtime/14-secrets-storage.md`
 - **Acceptance**: B (key survives restart)
@@ -320,7 +320,7 @@ Each scenario is documented in this format:
 #### E2E-036: Localized import grouping starts collapsed
 
 - **Preconditions**: Supported local agent stores contain importable sessions across at least two project paths and two sources, including one session without a project path; the app can be launched once with an English system locale and once with a Simplified Chinese system locale.
-- **Steps**: 1) Launch in English and open Settings → Import sessions. 2) Scan for sessions. 3) Inspect the initial source groups. 4) Expand one group and select a session. 5) Change Group by to Project path. 6) Switch back to Source. 7) Repeat the flow after launching with a Simplified Chinese system locale.
+- **Steps**: 1) Launch in English and open Settings → Import. 2) Scan for sessions. 3) Inspect the initial source groups. 4) Expand one group and select a session. 5) Change Group by to Project path. 6) Switch back to Source. 7) Repeat the flow after launching with a Simplified Chinese system locale.
 - **Expected**: Source/来源 is the initial grouping; all groups are collapsed after the scan and after either grouping change; project-path mode shows exact project paths and a final No project/未关联项目 group; expanding one group leaves the others collapsed; the selected session remains selected across grouping changes; counts, dates, selection labels, accessible names, and the import result use the active locale without raw keys or unresolved `{{...}}` placeholders.
 - **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/02-i18n-english-first.md`, `04-ux/08-component-spec.md`
 - **Acceptance**: F (session import review)
@@ -340,8 +340,8 @@ Each scenario is documented in this format:
 #### E2E-038: Settings exposes four destinations with merged sections
 
 - **Preconditions**: App running with at least one configured provider and one supported local session store.
-- **Steps**: 1) Open Settings. 2) Inspect the complete settings rail. 3) Open General and change the theme in its Appearance card. 4) Open Configuration and inspect its Providers card. 5) Open Import sessions and About in order. 6) Return to the app shell and open Plugins.
-- **Expected**: The rail contains exactly General, Configuration, Import sessions, and About in that order; Appearance has no standalone destination and is usable inside General; Providers has no standalone destination and is usable inside Configuration; Import sessions and About each open their intended content; Plugins is absent from Settings and remains reachable as an independent app-shell destination.
+- **Steps**: 1) Open Settings. 2) Inspect the complete settings rail. 3) Open Basics and change the theme in its Appearance card. 4) Open Agent and inspect its Providers card. 5) Open Import and Info in order. 6) Return to the app shell and open Plugins.
+- **Expected**: The rail contains exactly Basics, Agent, Import, and Info in that order; Appearance has no standalone destination and is usable inside Basics; Providers has no standalone destination and is usable inside Agent; Import and Info each open their intended content; Plugins is absent from Settings and remains reachable as an independent app-shell destination.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/01-ui-ia.md`, `03-runtime/11-provider-model-system.md`
 - **Acceptance**: B (model configuration), F (session import)
 - **Milestone**: M4
@@ -360,7 +360,7 @@ Each scenario is documented in this format:
 #### E2E-043: Settings content follows window width
 
 - **Preconditions**: App running windowed on macOS with Settings open.
-- **Steps**: 1) Open General at the default window width and record the content-card width. 2) Expand the window to 1600px wide. 3) Open Configuration and Import sessions. 4) Shrink the window to the supported 960px minimum.
+- **Steps**: 1) Open Basics at the default window width and record the content-card width. 2) Expand the window to 1600px wide. 3) Open Agent and Import. 4) Shrink the window to the supported 960px minimum.
 - **Expected**: The right-side content cards expand and contract with the available pane at every tested width; the 275px rail and pane gutters remain stable; controls remain visible without clipping or horizontal page scrolling.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/07-ui-design-system.md`
 - **Acceptance**: Quality (key operations feel polished)
@@ -704,7 +704,7 @@ Each scenario is documented in this format:
 - **Steps**: 1) Select each provider/model in turn. 2) Open the model menu and
   inspect its Thinking section. 3) Choose multiple supported levels without
   reopening the menu. 4) Use Enable thinking on the unknown custom provider.
-  5) Disable its override in Configuration and refresh model data.
+  5) Disable its override in Agent and refresh model data.
 - **Expected**: The menu always shows the current Thinking state; reasoning
   models expose only their sparse supported levels in canonical order and keep
   the menu open after selection. Custom providers may persist
@@ -1121,7 +1121,7 @@ This test plan spec is accepted when:
 
 ### US-UI-21 Composer model menu configures pi
 - Create a session with provider A/model A, then open the composer model menu.
-- Expect enabled, runnable provider/default-model pairs and a Configuration
+- Expect enabled, runnable provider/default-model pairs and an Agent
   entry; no decorative effort levels.
 - Select provider B/model B, send a prompt, and expect the main-to-sidecar
   `agent.prompt` payload and pi runtime to use B for that session.
@@ -1144,8 +1144,8 @@ This test plan spec is accepted when:
 ### US-UI-24 Settings full-page shell
 - Open Settings (footer profile → Settings).
 - Expect **full-page** Codex settings (no app sidebar/nav). Left rail has Back
-  to app, search, and exactly General / Configuration / Import sessions /
-  About in that order; content pane shows section title + elevated cards.
+  to app, search, and exactly Basics / Agent / Import /
+  Info in that order; content pane shows section title + elevated cards.
 - Return to the app shell and expect Plugins to remain an independent sidebar
   destination.
 - Drag the empty 46px top band over either the rail or content pane; the native
@@ -1202,7 +1202,7 @@ This test plan spec is accepted when:
 - Light composer renders as one uninterrupted solid surface with no context
   rail or independent top elevation.
 - Model chip shows the active model ID; its menu contains only runnable
-  provider/model choices and Configuration.
+  provider/model choices and Agent.
 - Placeholder and approval chip remain legible on light and dark plates.
 
 ### US-UI-39 Home mark + hero title optical
@@ -1234,15 +1234,15 @@ This test plan spec is accepted when:
 
 ### US-UI-44 Settings compact directory + merged sections
 - Open Settings light theme at ~1200×690.
-- Full-page shell: rail ~260px on `#f3f3f3`, main `#fff`; Back to app; search pill; General active pill with icon.
-- Rail order is exactly General, Configuration, Import sessions, and About;
+- Full-page shell: rail ~260px on `#f3f3f3`, main `#fff`; Back to app; search pill; Basics active pill with icon.
+- Rail order is exactly Basics, Agent, Import, and Info;
   there are no Personal/Integrations/Coding group headings, plugin duplicate,
   or placeholder destinations.
-- General content: large title and an **Appearance** card with working
+- Basics content: large title and an **Appearance** card with working
   system/light/dark controls. Permission defaults, file-open target, language
   override, menu-bar behavior, and bottom-panel behavior are absent until
   host-backed implementations exist.
-- Configuration contains default mode/model, Enter-to-send, and the
+- Agent contains default mode/model, Enter-to-send, and the
   **Providers** card.
 - Plugin load/enable/disable/uninstall remains available from the app shell's
   independent Plugins destination.
@@ -1302,17 +1302,17 @@ This test plan spec is accepted when:
 - Dark home New task remains a ghost row (no solid selected chip) unless genuinely active.
 
 ### US-UI-52 Settings gold chrome metrics (D070)
-- Open Settings light General at ~1200×690.
-- Expect ~275px `#f4f4f4` rail, single active General pill, Back + search.
+- Open Settings light Basics at ~1200×690.
+- Expect ~275px `#f4f4f4` rail, single active Basics pill, Back + search.
 - Expect the working theme selector without inert toggle or open-target rows.
-- Expect Permissions + General + Appearance elevated cards; Configuration,
-  Import sessions, and About remain the only other destinations.
+- Expect Permissions + Basics + Appearance elevated cards; Agent,
+  Import, and Info remain the only other destinations.
 - Resize between 960px, 1200px, and 1600px widths; the content cards fill the
   available right pane at each size without changing the rail or introducing
   horizontal scrolling.
 
 ### US-UI-53 Settings dark shell (D070)
-- Dark theme Settings General: black rail, elevated cards, blue on-toggles, Back returns to chat.
+- Dark theme Settings Basics: black rail, elevated cards, blue on-toggles, Back returns to chat.
 - Row descriptions use theme-aware secondary text and remain clearly readable on
   the `#212121` card surface; they must not fall back to low-contrast muted ink.
 

@@ -9,10 +9,10 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 - The 46px top band across both the rail and content pane is a native window
   drag region; interactive controls remain explicitly non-draggable
 - A compact navigation directory with icons, in this exact order:
-  1. **General**
-  2. **Configuration**
-  3. **Import sessions**
-  4. **About**
+  1. **Basics**
+  2. **Agent**
+  3. **Import**
+  4. **Info**
 - No additional settings destinations or placeholder navigation rows are shown
 - Main content pane on primary surface with large section title + elevated
   rounded cards of rows. Its content uses the full width available after the
@@ -20,14 +20,14 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 
 ## 2. Section contents
 
-### General
+### Basics
 - **Appearance** card:
   - theme system/light/dark (select + theme cards)
 - Permission defaults, file-open target, language override, menu-bar behavior,
   and bottom-panel behavior are not rendered until their host-backed settings
   schemas and runtime effects exist.
 
-### Configuration
+### Agent
 - **Defaults** card:
   - default mode + default model id
   - Enter to send (local preference; not on Codex General gold)
@@ -35,20 +35,20 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
   - add provider form + configured list
   - API keys are never shown raw
 
-### Import sessions
+### Import
 - Scan supported local agent stores and review candidates through
   `SessionImportPanel`
 - Source and project-path grouping behavior follows
   [08-component-spec §18](08-component-spec.md#18-sessionimportpanel)
 
-### About
+### Info
 - app/host/protocol versions + open logs
 
 ## 3. Navigation rules
 
-- Profile footer / command palette open Settings full page (default General)
+- Profile footer / command palette open Settings full page (default Basics)
 - Composer model menu and provider setup actions deep-link to the Providers
-  card inside Configuration
+  card inside Agent
 - Plugin management remains available from the app shell's independent
   **Plugins** destination, including load, enable, disable, and uninstall; it is
   not duplicated in Settings
@@ -57,13 +57,13 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
 ## 4. Acceptance
 
 1. Opening Settings hides the coding app sidebar (full-page takeover)
-2. Rail shows search + back and exactly General, Configuration,
-   Import sessions, and About in that order
-3. Appearance is part of General and has no standalone rail destination
-4. Providers is part of Configuration and has no standalone rail destination
+2. Rail shows search + back and exactly Basics, Agent,
+   Import, and Info in that order
+3. Appearance is part of Basics and has no standalone rail destination
+4. Providers is part of Agent and has no standalone rail destination
 5. Plugins has no Settings destination; the app-shell Plugins page supports
    load, enable, disable, and uninstall
-6. General shows only the host-backed Appearance card
+6. Basics shows only the host-backed Appearance card
 7. Provider secrets never display raw key values
 8. Row descriptions use semantic secondary text and maintain at least 4.5:1
    contrast against their card surface in both light and dark themes
@@ -73,7 +73,7 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
     available content pane; the fixed rail and pane gutters remain intact and
     the page does not gain horizontal overflow
 
-## 5. General chrome metrics
+## 5. Basics chrome metrics
 
 The shell retains the Codex gold chrome while allowing the content pane to use
 the current window width:

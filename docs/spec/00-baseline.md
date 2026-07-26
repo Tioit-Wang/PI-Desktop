@@ -58,7 +58,7 @@
 37. Secrets backend: **safeStorage primary + encrypted file fallback**
 38. Workspace ignore: **denylist + defaults + `.pi-desktopignore`**
 39. Tool result limits: **256KB / 4000 lines with truncation markers**
-40. Settings directory: **General / Configuration / Import sessions / About**;
+40. Settings directory: **Basics / Agent / Import / Info**;
     plugin management remains the app shell's independent **Plugins** destination
 41. Sidebar organization: **retained multi-project tabs with renderer-local
     project/session pin, archive, collapse, and sort metadata**

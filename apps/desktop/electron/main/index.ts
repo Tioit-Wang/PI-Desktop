@@ -1154,6 +1154,25 @@ function registerIpc() {
     return host.call("session.rename", { id, title });
   });
   handle(
+    IPC.invoke.sessionReplaceMessages,
+    async (input: { sessionId: string; messages: unknown[] }) => {
+      if (!host) throw new Error("host unavailable");
+      const sessionId = String(input?.sessionId || "");
+      if (!sessionId) throw new Error("sessionId required");
+      // Drop the live pi-agent so the next prompt reseeds from the truncated
+      // transcript instead of replaying the discarded branch in memory.
+      if (sidecar) {
+        await sidecar
+          .call("agent.disposeSession", { sessionId })
+          .catch(() => undefined);
+      }
+      return host.call("session.replaceMessages", {
+        sessionId,
+        messages: input.messages ?? [],
+      });
+    },
+  );
+  handle(
     IPC.invoke.sessionConfigure,
     async (
       id: string,
@@ -1662,17 +1681,40 @@ function registerIpc() {
   handle(IPC.invoke.agentPrompt, async (req: {
     sessionId: string;
     content: string;
+    truncateBefore?: number;
   }) => {
     if (!host || !sidecar) throw new Error("backend unavailable");
     const settings = await host.call<any>("settings.get");
     const sessionResult = await host.call<{ session?: any }>("session.get", {
       id: req.sessionId,
     });
-    const session = sessionResult.session;
+    let session = sessionResult.session;
     if (!session) {
       throw Object.assign(new Error("Session not found"), {
         errorCode: ErrorCodes.NOT_FOUND,
       });
+    }
+    if (
+      typeof req.truncateBefore === "number" &&
+      Number.isFinite(req.truncateBefore) &&
+      req.truncateBefore >= 0
+    ) {
+      const kept = Array.isArray(session.messages)
+        ? session.messages.slice(0, Math.floor(req.truncateBefore))
+        : [];
+      await host.call("session.replaceMessages", {
+        sessionId: req.sessionId,
+        messages: kept,
+      });
+      if (sidecar) {
+        await sidecar
+          .call("agent.disposeSession", { sessionId: req.sessionId })
+          .catch(() => undefined);
+      }
+      const refreshed = await host.call<{ session?: any }>("session.get", {
+        id: req.sessionId,
+      });
+      session = refreshed.session ?? { ...session, messages: kept };
     }
     const providers = await host.call<{ providers: RuntimeProvider[] }>(
       "providers.list",
@@ -1869,7 +1911,7 @@ function registerIpc() {
       { id: "builtin.project.clear", title: "Clear project", category: "Project", keywords: ["clear", "close", "workspace"], source: "builtin" as const },
       { id: "builtin.settings.open", title: "Open settings", category: "App", keywords: ["settings", "preferences"], source: "builtin" as const },
       { id: "builtin.settings.providers", title: "Open provider settings", category: "Settings", keywords: ["provider", "model", "key"], source: "builtin" as const },
-      { id: "builtin.settings.import", title: "Import sessions from other tools", category: "Settings", keywords: ["import", "claude", "codex", "opencode", "pi", "migrate"], source: "builtin" as const },
+      { id: "builtin.settings.import", title: "Import from other tools", category: "Settings", keywords: ["import", "claude", "codex", "opencode", "pi", "migrate"], source: "builtin" as const },
       { id: "builtin.plugins.open", title: "Open plugins", category: "Plugins", keywords: ["plugins", "extensions"], source: "builtin" as const },
       { id: "builtin.plugins.loadDev", title: "Load development plugin", category: "Plugins", keywords: ["load", "dev", "plugin"], source: "builtin" as const },
       { id: "builtin.logs.open", title: "Open logs folder", category: "Diagnostics", keywords: ["logs", "diagnostics"], source: "builtin" as const },
