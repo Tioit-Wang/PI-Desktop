@@ -158,7 +158,7 @@ export const zhCN = {
     back: "返回",
 
     general: "基础",
-    configuration: "智能体",
+    configuration: "模型配置",
     personalization: "个性化",
     voice: "语音",
     keyboard: "键盘快捷键",

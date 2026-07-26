@@ -137,7 +137,7 @@ Each scenario is documented in this format:
 #### E2E-005: Add a provider and save API key
 
 - **Preconditions**: App running; no provider configured.
-- **Steps**: 1) Open Settings → Agent. 2) Open the provider composer if collapsed. 3) Enter name, base URL, model id, and API key. 4) Save.
+- **Steps**: 1) Open Settings → Agent. 2) Open the add-provider dialog. 3) Enter name, base URL, model id, and API key. 4) Save.
 - **Expected**: Provider appears as a card with secret badge; key stored securely (not in plaintext config); hero summary counts update.
 - **Specs linked**: `03-runtime/12-provider-config-schema.md`, `03-runtime/14-secrets-storage.md`
 - **Acceptance**: B (add provider, save key)
@@ -1289,8 +1289,7 @@ This test plan spec is accepted when:
   override, menu-bar behavior, and bottom-panel behavior are absent until
   host-backed implementations exist.
 - Agent contains the provider studio hero, default mode/model, Enter-to-send
-  switch, and card-based Providers management with a collapsible add-provider
-  composer.
+  switch, and card-based Providers management with an add-provider dialog.
 - Plugin load/enable/disable/uninstall remains available from the app shell's
   independent Plugins destination.
 - Dark: rail `#000`, main `#181818`, cards elevated `#212121`.

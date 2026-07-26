@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import type { ThinkingLevel } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
@@ -14,6 +14,7 @@ import { Badge, Button, Field, Input, Select, cx } from "../components/ui";
 import {
   IconCheck,
   IconChevronLeft,
+  IconClose,
   IconConfig,
   IconInfo,
   IconPlus,
@@ -420,7 +421,7 @@ function ConfigurationSection() {
   const refreshProviders = useAppStore((s) => s.refreshProviders);
   const showToast = useAppStore((s) => s.showToast);
 
-  const [composerOpen, setComposerOpen] = useState(providers.length === 0);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [name, setName] = useState("Compatible");
   const [baseUrl, setBaseUrl] = useState("https://api.oj.ink/v1");
   const [modelId, setModelId] = useState("mimo-v2.5");
@@ -445,6 +446,17 @@ function ConfigurationSection() {
     setThinkingMode("off");
     setCustomThinkingLevels("off,high");
   };
+
+  useEffect(() => {
+    if (!dialogOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || saving) return;
+      setDialogOpen(false);
+      resetComposer();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [dialogOpen, saving]);
 
   const saveProvider = async () => {
     if (!name.trim()) return;
@@ -473,7 +485,7 @@ function ConfigurationSection() {
         defaultModelId: modelId.trim() || settings.defaultModelId,
       });
       setApiKey("");
-      setComposerOpen(false);
+      setDialogOpen(false);
       resetComposer();
       await refreshProviders();
       showToast(t("settings.providerSaved"), { variant: "success" });
@@ -678,120 +690,146 @@ function ConfigurationSection() {
             <h3 className="settings-card-heading">{t("settings.providers")}</h3>
             <p className="provider-section-desc">{t("settings.providersSectionDesc")}</p>
           </div>
-          <Button
-            variant={composerOpen ? "secondary" : "primary"}
-            onClick={() => setComposerOpen((open) => !open)}
-          >
+          <Button variant="primary" onClick={() => setDialogOpen(true)}>
             <span className="provider-add-btn-inner">
               <IconPlus size={14} />
-              <span>
-                {composerOpen ? t("settings.hideAddProvider") : t("settings.addProvider")}
-              </span>
+              <span>{t("settings.addProvider")}</span>
             </span>
           </Button>
         </div>
 
-        {composerOpen ? (
-          <div className="settings-panel provider-composer">
-            <div className="provider-composer-head">
-              <div>
-                <div className="provider-composer-title">{t("settings.addProviderTitle")}</div>
-                <div className="provider-composer-desc">{t("settings.addProviderDesc")}</div>
-              </div>
-              <Badge tone="neutral">{t("settings.openaiCompatible")}</Badge>
-            </div>
-
-            <div className="provider-form-grid">
-              <Field label={t("settings.name")}>
-                <Input value={name} onChange={(e) => setName(e.target.value)} />
-              </Field>
-              <Field label={t("settings.baseUrl")}>
-                <Input
-                  value={baseUrl}
-                  onChange={(e) => setBaseUrl(e.target.value)}
-                  className="font-mono text-sm-plus"
-                  placeholder="https://api.example.com/v1"
-                />
-              </Field>
-              <Field label={t("settings.modelId")}>
-                <Input
-                  value={modelId}
-                  onChange={(e) => setModelId(e.target.value)}
-                  className="font-mono text-sm-plus"
-                  placeholder="gpt-4.1"
-                />
-              </Field>
-              <Field label={t("settings.apiKey")} hint={t("settings.apiKeyHint")}>
-                <Input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-…"
-                  className="font-mono text-sm-plus"
-                  autoComplete="off"
-                />
-              </Field>
-              <Field label={t("settings.thinkingMode")} hint={t("settings.thinkingModeDesc")}>
-                <div
-                  className="settings-segment settings-segment-wrap"
-                  role="group"
-                  aria-label={t("settings.thinkingMode")}
-                >
-                  {(
-                    [
-                      ["off", "settings.thinkingModeOff"],
-                      ["toggle", "settings.thinkingModeToggle"],
-                      ["graded", "settings.thinkingModeGraded"],
-                      ["custom", "settings.thinkingModeCustom"],
-                    ] as const
-                  ).map(([value, labelKey]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={cx(
-                        "settings-segment-item",
-                        thinkingMode === value && "active",
-                      )}
-                      aria-pressed={thinkingMode === value}
-                      onClick={() => setThinkingMode(value)}
-                    >
-                      {t(labelKey)}
-                    </button>
-                  ))}
+        {dialogOpen ? (
+          <div
+            className="overlay provider-dialog-overlay"
+            role="presentation"
+            onClick={() => {
+              if (saving) return;
+              setDialogOpen(false);
+              resetComposer();
+            }}
+          >
+            <div
+              className="dialog provider-dialog"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="provider-dialog-title"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="provider-dialog-head">
+                <div className="provider-dialog-copy">
+                  <div className="provider-dialog-kicker">{t("settings.openaiCompatible")}</div>
+                  <h3 id="provider-dialog-title" className="provider-dialog-title">
+                    {t("settings.addProviderTitle")}
+                  </h3>
+                  <p className="provider-dialog-desc">{t("settings.addProviderDesc")}</p>
                 </div>
-              </Field>
-              {thinkingMode === "custom" ? (
-                <Field
-                  label={t("settings.thinkingLevels")}
-                  hint={t("settings.thinkingLevelsDesc")}
+                <button
+                  type="button"
+                  className="provider-dialog-close"
+                  aria-label={t("settings.cancel")}
+                  disabled={saving}
+                  onClick={() => {
+                    setDialogOpen(false);
+                    resetComposer();
+                  }}
                 >
+                  <IconClose size={16} />
+                </button>
+              </div>
+
+              <div className="provider-form-grid">
+                <Field label={t("settings.name")}>
+                  <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+                </Field>
+                <Field label={t("settings.baseUrl")}>
                   <Input
-                    value={customThinkingLevels}
-                    onChange={(e) => setCustomThinkingLevels(e.target.value)}
+                    value={baseUrl}
+                    onChange={(e) => setBaseUrl(e.target.value)}
                     className="font-mono text-sm-plus"
-                    placeholder="off,high"
+                    placeholder="https://api.example.com/v1"
                   />
                 </Field>
-              ) : null}
-            </div>
+                <Field label={t("settings.modelId")}>
+                  <Input
+                    value={modelId}
+                    onChange={(e) => setModelId(e.target.value)}
+                    className="font-mono text-sm-plus"
+                    placeholder="gpt-4.1"
+                  />
+                </Field>
+                <Field label={t("settings.apiKey")} hint={t("settings.apiKeyHint")}>
+                  <Input
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-…"
+                    className="font-mono text-sm-plus"
+                    autoComplete="off"
+                  />
+                </Field>
+                <Field label={t("settings.thinkingMode")} hint={t("settings.thinkingModeDesc")}>
+                  <div
+                    className="settings-segment settings-segment-wrap"
+                    role="group"
+                    aria-label={t("settings.thinkingMode")}
+                  >
+                    {(
+                      [
+                        ["off", "settings.thinkingModeOff"],
+                        ["toggle", "settings.thinkingModeToggle"],
+                        ["graded", "settings.thinkingModeGraded"],
+                        ["custom", "settings.thinkingModeCustom"],
+                      ] as const
+                    ).map(([value, labelKey]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        className={cx(
+                          "settings-segment-item",
+                          thinkingMode === value && "active",
+                        )}
+                        aria-pressed={thinkingMode === value}
+                        onClick={() => setThinkingMode(value)}
+                      >
+                        {t(labelKey)}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+                {thinkingMode === "custom" ? (
+                  <Field
+                    label={t("settings.thinkingLevels")}
+                    hint={t("settings.thinkingLevelsDesc")}
+                  >
+                    <Input
+                      value={customThinkingLevels}
+                      onChange={(e) => setCustomThinkingLevels(e.target.value)}
+                      className="font-mono text-sm-plus"
+                      placeholder="off,high"
+                    />
+                  </Field>
+                ) : null}
+              </div>
 
-            <div className="provider-composer-actions">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setComposerOpen(providers.length === 0);
-                  resetComposer();
-                }}
-              >
-                {t("settings.cancel")}
-              </Button>
-              <Button
-                variant="primary"
-                disabled={saving || !name.trim() || !baseUrl.trim() || !modelId.trim()}
-                onClick={() => void saveProvider()}
-              >
-                {saving ? t("settings.saving") : t("settings.saveProvider")}
-              </Button>
+              <div className="provider-dialog-actions">
+                <Button
+                  variant="ghost"
+                  disabled={saving}
+                  onClick={() => {
+                    setDialogOpen(false);
+                    resetComposer();
+                  }}
+                >
+                  {t("settings.cancel")}
+                </Button>
+                <Button
+                  variant="primary"
+                  disabled={saving || !name.trim() || !baseUrl.trim() || !modelId.trim()}
+                  onClick={() => void saveProvider()}
+                >
+                  {saving ? t("settings.saving") : t("settings.saveProvider")}
+                </Button>
+              </div>
             </div>
           </div>
         ) : null}
@@ -804,14 +842,12 @@ function ConfigurationSection() {
               </div>
               <div className="provider-empty-title">{t("settings.noProviders")}</div>
               <div className="provider-empty-desc">{t("settings.noProvidersDesc")}</div>
-              {!composerOpen ? (
-                <Button variant="primary" onClick={() => setComposerOpen(true)}>
-                  <span className="provider-add-btn-inner">
-                    <IconPlus size={14} />
-                    <span>{t("settings.addProvider")}</span>
-                  </span>
-                </Button>
-              ) : null}
+              <Button variant="primary" onClick={() => setDialogOpen(true)}>
+                <span className="provider-add-btn-inner">
+                  <IconPlus size={14} />
+                  <span>{t("settings.addProvider")}</span>
+                </span>
+              </Button>
             </div>
           ) : (
             <div className="provider-card-list">

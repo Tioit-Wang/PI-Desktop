@@ -1134,20 +1134,20 @@ Modern model-configuration surface for adding OpenAI-compatible providers, revie
 1. **Hero summary** — kicker, title, short description, stats for provider count / ready count / default pair
 2. **Defaults card** — segmented default mode, default model id, Enter-to-send switch
 3. **Providers head** — section title + primary Add provider toggle
-4. **Composer** — collapsible 2-column form (name, base URL, model id, API key, thinking presets, optional custom levels)
+4. **Composer** — dialog with 2-column form (name, base URL, model id, API key, thinking presets, optional custom levels)
 5. **Provider cards** — avatar initials, badges (default / secret state), host + model + thinking meta, thinking select, Test / Make default / Delete
 
 ### 19.3 States
 | State | Presentation |
 |---|---|
 | Empty | Hero shows zeros / No default; composer open; empty panel with primary add CTA |
-| Populated | Composer collapsed by default; cards list every provider |
+| Populated | Cards list every provider; add flow opens a modal dialog |
 | Default provider | Card gets subtle accent wash + default badge; Make default hidden |
 | Secret missing | Warning badge "No API key"; test may fail closed |
 | Busy row | Test/update/delete actions disabled for that card |
 
 ### 19.4 Interactions
-- Add provider toggles the composer; Cancel resets fields and re-collapses when providers exist
+- Add provider opens a modal dialog; Cancel/close resets fields and dismisses the dialog
 - Save creates the provider, stores the secret, sets it as default when successful, and refreshes the list
 - Test connection calls `providers.testConnection` and toasts success/failure
 - Thinking preset updates persist through `providers.update` with D102 semantics
@@ -1186,4 +1186,4 @@ Modern model-configuration surface for adding OpenAI-compatible providers, revie
 13. Toasts stack top-center with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17
 14. Session import defaults to source grouping, offers project-path grouping, collapses all groups after scan/group changes, and exposes accessible group disclosure state per §18
 15. Imported project paths materialize exactly once in the durable Projects index; path-less imports remain Temporary sessions and no filesystem directory is created
-16. ProviderStudio shows hero summary + collapsible composer + provider cards; secrets never render raw; test/default/delete remain keyboard reachable
+16. ProviderStudio shows hero summary + add dialog + provider cards; secrets never render raw; test/default/delete remain keyboard reachable

@@ -155,7 +155,7 @@ export const en = {
     back: "Back",
 
     general: "Basics",
-    configuration: "Agent",
+    configuration: "Model configuration",
     personalization: "Personalization",
     voice: "Voice",
     keyboard: "Keyboard shortcuts",

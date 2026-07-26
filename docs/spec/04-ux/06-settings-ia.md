@@ -34,7 +34,7 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
   - default model id
   - Enter to send as a switch (local preference; not on Codex General gold)
 - **Providers** studio:
-  - collapsible OpenAI-compatible add-provider composer (open by default when empty; collapsed when providers already exist)
+  - OpenAI-compatible add-provider dialog (opened from Add provider / empty-state CTA)
   - provider cards with avatar initials, host, default model, secret status, thinking mode, and test / make-default / delete actions
   - empty state with primary add action
   - API keys are never shown raw after save
@@ -69,7 +69,7 @@ Settings is a **full-window page** that replaces the app sidebar + main chrome (
    load, enable, disable, and uninstall
 6. Basics shows only the host-backed Appearance card
 7. Provider secrets never display raw key values
-8. Agent shows the provider studio (hero + defaults + collapsible composer + cards) rather than a dense always-on form dump
+8. Model configuration shows the provider studio (hero + defaults + add dialog + cards) rather than a dense always-on form dump
 8. Row descriptions use semantic secondary text and maintain at least 4.5:1
    contrast against their card surface in both light and dark themes
 9. Dragging the empty top band from either side of Settings moves the native
