@@ -566,11 +566,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       defaultThinkingLevels.includes("off")
         ? "off"
         : defaultThinkingLevels[0] ?? "off";
+    // No providerId/modelId here: sessions without an explicit pick resolve
+    // them at prompt time, so later default-model changes apply everywhere.
+    // The Composer pins both onto the session when the user chooses a model.
     const created = await api.createSession({
       title: untitledTaskTitle(),
       mode: settings?.defaultMode ?? "chat",
-      providerId: settings?.defaultProviderId,
-      modelId: settings?.defaultModelId,
       thinkingLevel: defaultThinkingLevel,
       projectPath: requestedProjectPath ?? undefined,
     });

@@ -5621,3 +5621,39 @@ textarea:disabled {
 .provider-dialog .provider-form-grid {
   margin: 0;
 }
+
+/* Custom thinking levels row spans the dialog like the two rows above it. */
+.provider-form-grid > :nth-child(7) {
+  grid-column: 1 / -1;
+}
+
+.provider-dialog-subheading {
+  margin: 2px 0 -6px;
+  color: var(--ds-text-secondary);
+  font-size: var(--text-xs-plus);
+  font-weight: var(--font-weight-strong);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.provider-form-grid-advanced {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.provider-form-grid-advanced > :nth-child(n) {
+  grid-column: auto;
+}
+
+.provider-card.is-disabled .provider-card-main {
+  opacity: 0.55;
+}
+
+@media (max-width: 980px) {
+  .provider-form-grid-advanced {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-form-grid > :nth-child(7) {
+    grid-column: auto;
+  }
+}

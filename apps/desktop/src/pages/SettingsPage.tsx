@@ -414,6 +414,82 @@ function thinkingModeLabel(
   }
 }
 
+const API_STYLE_OPTIONS = [
+  ["chat_completions", "settings.apiStyleChatCompletions"],
+  ["responses", "settings.apiStyleResponses"],
+  ["anthropic_messages", "settings.apiStyleAnthropic"],
+  ["google_generative_ai", "settings.apiStyleGoogle"],
+] as const;
+
+type ApiStyle = (typeof API_STYLE_OPTIONS)[number][0];
+
+function normalizeApiStyle(value?: string | null): ApiStyle {
+  return API_STYLE_OPTIONS.some(([style]) => style === value)
+    ? (value as ApiStyle)
+    : "chat_completions";
+}
+
+type ProviderForm = {
+  name: string;
+  baseUrl: string;
+  modelId: string;
+  apiKey: string;
+  apiStyle: ApiStyle;
+  thinkingMode: ThinkingModePreset;
+  customThinkingLevels: string;
+  contextWindow: string;
+  maxOutputTokens: string;
+  temperature: string;
+};
+
+const EMPTY_PROVIDER_FORM: ProviderForm = {
+  name: "Compatible",
+  baseUrl: "https://api.oj.ink/v1",
+  modelId: "mimo-v2.5",
+  apiKey: "",
+  apiStyle: "chat_completions",
+  thinkingMode: "off",
+  customThinkingLevels: "off,high",
+  contextWindow: "",
+  maxOutputTokens: "",
+  temperature: "",
+};
+
+function formFromProvider(provider: ProviderPublic): ProviderForm {
+  return {
+    name: provider.name,
+    baseUrl: provider.baseUrl ?? "",
+    modelId: provider.defaultModelId ?? "",
+    apiKey: "",
+    apiStyle: normalizeApiStyle(provider.apiStyle),
+    thinkingMode: thinkingModeFromLevels(
+      provider.supportsReasoning,
+      provider.supportedThinkingLevels,
+    ),
+    customThinkingLevels:
+      formatThinkingLevels(provider.supportedThinkingLevels) || "off,high",
+    contextWindow: provider.contextWindow ? String(provider.contextWindow) : "",
+    maxOutputTokens: provider.maxOutputTokens
+      ? String(provider.maxOutputTokens)
+      : "",
+    temperature:
+      typeof provider.temperature === "number"
+        ? String(provider.temperature)
+        : "",
+  };
+}
+
+/** Blank or invalid → 0, which the host treats as "clear the override". */
+function parseTokenCount(raw: string): number {
+  const parsed = Number.parseInt(raw.trim(), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+}
+
+function parseTemperature(raw: string): number {
+  const parsed = Number.parseFloat(raw.trim());
+  return Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 2) : 0;
+}
+
 function ConfigurationSection() {
   const { t } = useTranslation();
   const providers = useAppStore((s) => s.providers);
@@ -421,74 +497,119 @@ function ConfigurationSection() {
   const refreshProviders = useAppStore((s) => s.refreshProviders);
   const showToast = useAppStore((s) => s.showToast);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [name, setName] = useState("Compatible");
-  const [baseUrl, setBaseUrl] = useState("https://api.oj.ink/v1");
-  const [modelId, setModelId] = useState("mimo-v2.5");
-  const [apiKey, setApiKey] = useState("");
-  const [thinkingMode, setThinkingMode] = useState<ThinkingModePreset>("off");
-  const [customThinkingLevels, setCustomThinkingLevels] = useState("off,high");
+  // null = closed, "" = add dialog, provider id = edit dialog.
+  const [dialogFor, setDialogFor] = useState<string | null>(null);
+  const [form, setForm] = useState<ProviderForm>(EMPTY_PROVIDER_FORM);
   const [saving, setSaving] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  if (!settings) return null;
-
-  const supportsReasoning = thinkingMode !== "off";
-  const defaultProvider = providers.find((p) => p.id === settings.defaultProviderId) ?? null;
-  const readyCount = providers.filter((p) => p.hasSecret || p.authKind === "none").length;
-
-  const resetComposer = () => {
-    setName("Compatible");
-    setBaseUrl("https://api.oj.ink/v1");
-    setModelId("mimo-v2.5");
-    setApiKey("");
-    setThinkingMode("off");
-    setCustomThinkingLevels("off,high");
-  };
+  const dialogOpen = dialogFor !== null;
+  const editingProvider =
+    dialogFor ? providers.find((p) => p.id === dialogFor) ?? null : null;
 
   useEffect(() => {
     if (!dialogOpen) return;
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || saving) return;
-      setDialogOpen(false);
-      resetComposer();
+      setDialogFor(null);
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [dialogOpen, saving]);
 
+  if (!settings) return null;
+
+  const defaultProvider = providers.find((p) => p.id === settings.defaultProviderId) ?? null;
+  const providerReady = (p: ProviderPublic) =>
+    p.enabled && !!p.defaultModelId && (p.hasSecret || p.authKind === "none");
+  const readyCount = providers.filter((p) => p.hasSecret || p.authKind === "none").length;
+  const setField = <K extends keyof ProviderForm>(key: K, value: ProviderForm[K]) =>
+    setForm((prev) => ({ ...prev, [key]: value }));
+
+  const openAdd = () => {
+    setForm(EMPTY_PROVIDER_FORM);
+    setDialogFor("");
+  };
+
+  const openEdit = (provider: ProviderPublic) => {
+    setForm(formFromProvider(provider));
+    setDialogFor(provider.id);
+  };
+
   const saveProvider = async () => {
-    if (!name.trim()) return;
+    if (!form.name.trim()) return;
     setSaving(true);
     try {
-      const selectedLevels =
-        thinkingMode === "custom"
-          ? parseThinkingLevelsInput(customThinkingLevels)
-          : levelsForThinkingMode(thinkingMode);
-      const created = await api.createProvider({
-        name: name.trim(),
-        vendorKey: "custom",
-        type: "openai_compatible",
-        protocol: "openai_compatible",
-        baseUrl: baseUrl.trim(),
-        authKind: "api_key_and_base_url",
-        defaultModelId: modelId.trim(),
-        secretValue: apiKey || undefined,
-        apiStyle: "chat_completions",
-        supportsReasoning,
-        ...(selectedLevels ? { supportedThinkingLevels: selectedLevels } : {}),
-      });
-      await api.setSettings({
-        ...settings,
-        defaultProviderId: created.provider.id,
-        defaultModelId: modelId.trim() || settings.defaultModelId,
-      });
-      setApiKey("");
-      setDialogOpen(false);
-      resetComposer();
+      const supportsReasoning = form.thinkingMode !== "off";
+      const customLevels = parseThinkingLevelsInput(form.customThinkingLevels);
+      const contextWindow = parseTokenCount(form.contextWindow);
+      const maxOutputTokens = parseTokenCount(form.maxOutputTokens);
+      const temperature = parseTemperature(form.temperature);
+      if (editingProvider) {
+        // Empty levels array clears an explicit override (graded default).
+        const levelsForUpdate =
+          form.thinkingMode === "custom"
+            ? customLevels.length > 0
+              ? customLevels
+              : (["off", "high"] as ThinkingLevel[])
+            : form.thinkingMode === "toggle"
+              ? (["off", "high"] as ThinkingLevel[])
+              : [];
+        await api.updateProvider({
+          id: editingProvider.id,
+          name: form.name.trim(),
+          baseUrl: form.baseUrl.trim(),
+          defaultModelId: form.modelId.trim(),
+          apiStyle: form.apiStyle,
+          ...(form.apiKey ? { secretValue: form.apiKey } : {}),
+          supportsReasoning,
+          supportedThinkingLevels: levelsForUpdate,
+          contextWindow,
+          maxOutputTokens,
+          temperature,
+        });
+        // Keep the global default model in step when it points at this provider.
+        if (settings.defaultProviderId === editingProvider.id) {
+          await api.setSettings({
+            ...settings,
+            defaultModelId: form.modelId.trim() || settings.defaultModelId,
+          });
+        }
+        showToast(t("settings.providerUpdated"), { variant: "success" });
+      } else {
+        const selectedLevels =
+          form.thinkingMode === "custom"
+            ? customLevels
+            : levelsForThinkingMode(form.thinkingMode);
+        const created = await api.createProvider({
+          name: form.name.trim(),
+          vendorKey: "custom",
+          type: "openai_compatible",
+          protocol: "openai_compatible",
+          baseUrl: form.baseUrl.trim(),
+          authKind: "api_key_and_base_url",
+          defaultModelId: form.modelId.trim(),
+          secretValue: form.apiKey || undefined,
+          apiStyle: form.apiStyle,
+          supportsReasoning,
+          ...(selectedLevels && selectedLevels.length > 0
+            ? { supportedThinkingLevels: selectedLevels }
+            : {}),
+          ...(contextWindow > 0 ? { contextWindow } : {}),
+          ...(maxOutputTokens > 0 ? { maxOutputTokens } : {}),
+          ...(temperature > 0 ? { temperature } : {}),
+        });
+        await api.setSettings({
+          ...settings,
+          defaultProviderId: created.provider.id,
+          defaultModelId: form.modelId.trim() || settings.defaultModelId,
+        });
+        showToast(t("settings.providerSaved"), { variant: "success" });
+      }
+      setDialogFor(null);
+      setForm(EMPTY_PROVIDER_FORM);
       await refreshProviders();
-      showToast(t("settings.providerSaved"), { variant: "success" });
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
     } finally {
@@ -496,26 +617,15 @@ function ConfigurationSection() {
     }
   };
 
-  const updateThinking = async (provider: ProviderPublic, mode: ThinkingModePreset) => {
+  const toggleEnabled = async (provider: ProviderPublic) => {
     setBusyId(provider.id);
     try {
-      await api.updateProvider({
-        id: provider.id,
-        supportsReasoning: mode !== "off",
-        // Empty array clears an explicit sparse override.
-        supportedThinkingLevels:
-          mode === "toggle"
-            ? ["off", "high"]
-            : mode === "custom"
-              ? provider.supportedThinkingLevels && provider.supportedThinkingLevels.length > 0
-                ? [...provider.supportedThinkingLevels]
-                : ["off", "high"]
-              : [],
-      });
+      await api.updateProvider({ id: provider.id, enabled: !provider.enabled });
       await refreshProviders();
-      showToast(thinkingModeLabel(mode, t, provider.supportedThinkingLevels), {
-        variant: "success",
-      });
+      showToast(
+        t(provider.enabled ? "settings.providerDisabled" : "settings.providerEnabled"),
+        { variant: "success" },
+      );
     } catch (error) {
       showToast(error instanceof Error ? error.message : String(error), {
         variant: "error",
@@ -523,6 +633,17 @@ function ConfigurationSection() {
     } finally {
       setBusyId(null);
     }
+  };
+
+  const setDefaultModel = async (providerId: string) => {
+    const provider = providers.find((p) => p.id === providerId);
+    if (!provider) return;
+    await api.setSettings({
+      ...settings,
+      defaultProviderId: provider.id,
+      defaultModelId: provider.defaultModelId || settings.defaultModelId,
+    });
+    await refreshProviders();
   };
 
   const makeDefault = async (provider: ProviderPublic) => {
@@ -649,20 +770,32 @@ function ConfigurationSection() {
             ))}
           </div>
         </SettingsRow>
-        <SettingsRow title={t("settings.modelId")} description={t("settings.modelIdDesc")}>
-          <Input
-            key={settings.defaultModelId || ""}
-            defaultValue={settings.defaultModelId || ""}
-            onBlur={async (e) => {
-              await api.setSettings({
-                ...settings,
-                defaultModelId: e.target.value,
-              });
-              await refreshProviders();
-            }}
-            className="font-mono text-sm-plus"
-            placeholder="model-id"
-          />
+        <SettingsRow
+          title={t("settings.defaultModel")}
+          description={t("settings.defaultModelDesc")}
+        >
+          <Select
+            value={
+              providers.some((p) => p.id === settings.defaultProviderId && providerReady(p))
+                ? settings.defaultProviderId
+                : ""
+            }
+            disabled={!providers.some(providerReady)}
+            onChange={(e) => void setDefaultModel(e.target.value)}
+          >
+            {!providers.some(providerReady) ? (
+              <option value="">{t("settings.defaultModelNone")}</option>
+            ) : !providers.some(
+                (p) => p.id === settings.defaultProviderId && providerReady(p),
+              ) ? (
+              <option value="">{t("settings.noDefaultProvider")}</option>
+            ) : null}
+            {providers.filter(providerReady).map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name} · {p.defaultModelId}
+              </option>
+            ))}
+          </Select>
         </SettingsRow>
         <SettingsRow title={t("settings.enterToSend")} description={t("settings.enterToSendDesc")}>
           <button
@@ -690,7 +823,7 @@ function ConfigurationSection() {
             <h3 className="settings-card-heading">{t("settings.providers")}</h3>
             <p className="provider-section-desc">{t("settings.providersSectionDesc")}</p>
           </div>
-          <Button variant="primary" onClick={() => setDialogOpen(true)}>
+          <Button variant="primary" onClick={openAdd}>
             <span className="provider-add-btn-inner">
               <IconPlus size={14} />
               <span>{t("settings.addProvider")}</span>
@@ -704,8 +837,7 @@ function ConfigurationSection() {
             role="presentation"
             onClick={() => {
               if (saving) return;
-              setDialogOpen(false);
-              resetComposer();
+              setDialogFor(null);
             }}
           >
             <div
@@ -717,21 +849,29 @@ function ConfigurationSection() {
             >
               <div className="provider-dialog-head">
                 <div className="provider-dialog-copy">
-                  <div className="provider-dialog-kicker">{t("settings.openaiCompatible")}</div>
+                  <div className="provider-dialog-kicker">
+                    {t(
+                      API_STYLE_OPTIONS.find(([style]) => style === form.apiStyle)?.[1] ??
+                        "settings.openaiCompatible",
+                    )}
+                  </div>
                   <h3 id="provider-dialog-title" className="provider-dialog-title">
-                    {t("settings.addProviderTitle")}
+                    {editingProvider
+                      ? t("settings.editProviderTitle")
+                      : t("settings.addProviderTitle")}
                   </h3>
-                  <p className="provider-dialog-desc">{t("settings.addProviderDesc")}</p>
+                  <p className="provider-dialog-desc">
+                    {editingProvider
+                      ? t("settings.editProviderDesc")
+                      : t("settings.addProviderDesc")}
+                  </p>
                 </div>
                 <button
                   type="button"
                   className="provider-dialog-close"
                   aria-label={t("settings.cancel")}
                   disabled={saving}
-                  onClick={() => {
-                    setDialogOpen(false);
-                    resetComposer();
-                  }}
+                  onClick={() => setDialogFor(null)}
                 >
                   <IconClose size={16} />
                 </button>
@@ -739,29 +879,52 @@ function ConfigurationSection() {
 
               <div className="provider-form-grid">
                 <Field label={t("settings.name")}>
-                  <Input value={name} onChange={(e) => setName(e.target.value)} autoFocus />
+                  <Input
+                    value={form.name}
+                    onChange={(e) => setField("name", e.target.value)}
+                    autoFocus
+                  />
+                </Field>
+                <Field label={t("settings.apiStyle")} hint={t("settings.apiStyleDesc")}>
+                  <Select
+                    value={form.apiStyle}
+                    onChange={(e) => setField("apiStyle", e.target.value as ApiStyle)}
+                  >
+                    {API_STYLE_OPTIONS.map(([value, labelKey]) => (
+                      <option key={value} value={value}>
+                        {t(labelKey)}
+                      </option>
+                    ))}
+                  </Select>
                 </Field>
                 <Field label={t("settings.baseUrl")}>
                   <Input
-                    value={baseUrl}
-                    onChange={(e) => setBaseUrl(e.target.value)}
+                    value={form.baseUrl}
+                    onChange={(e) => setField("baseUrl", e.target.value)}
                     className="font-mono text-sm-plus"
                     placeholder="https://api.example.com/v1"
                   />
                 </Field>
                 <Field label={t("settings.modelId")}>
                   <Input
-                    value={modelId}
-                    onChange={(e) => setModelId(e.target.value)}
+                    value={form.modelId}
+                    onChange={(e) => setField("modelId", e.target.value)}
                     className="font-mono text-sm-plus"
                     placeholder="gpt-4.1"
                   />
                 </Field>
-                <Field label={t("settings.apiKey")} hint={t("settings.apiKeyHint")}>
+                <Field
+                  label={t("settings.apiKey")}
+                  hint={
+                    editingProvider && editingProvider.hasSecret
+                      ? t("settings.apiKeyKeepHint")
+                      : t("settings.apiKeyHint")
+                  }
+                >
                   <Input
                     type="password"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
+                    value={form.apiKey}
+                    onChange={(e) => setField("apiKey", e.target.value)}
                     placeholder="sk-…"
                     className="font-mono text-sm-plus"
                     autoComplete="off"
@@ -786,24 +949,24 @@ function ConfigurationSection() {
                         type="button"
                         className={cx(
                           "settings-segment-item",
-                          thinkingMode === value && "active",
+                          form.thinkingMode === value && "active",
                         )}
-                        aria-pressed={thinkingMode === value}
-                        onClick={() => setThinkingMode(value)}
+                        aria-pressed={form.thinkingMode === value}
+                        onClick={() => setField("thinkingMode", value)}
                       >
                         {t(labelKey)}
                       </button>
                     ))}
                   </div>
                 </Field>
-                {thinkingMode === "custom" ? (
+                {form.thinkingMode === "custom" ? (
                   <Field
                     label={t("settings.thinkingLevels")}
                     hint={t("settings.thinkingLevelsDesc")}
                   >
                     <Input
-                      value={customThinkingLevels}
-                      onChange={(e) => setCustomThinkingLevels(e.target.value)}
+                      value={form.customThinkingLevels}
+                      onChange={(e) => setField("customThinkingLevels", e.target.value)}
                       className="font-mono text-sm-plus"
                       placeholder="off,high"
                     />
@@ -811,20 +974,58 @@ function ConfigurationSection() {
                 ) : null}
               </div>
 
-              <div className="provider-dialog-actions">
-                <Button
-                  variant="ghost"
-                  disabled={saving}
-                  onClick={() => {
-                    setDialogOpen(false);
-                    resetComposer();
-                  }}
+              <h4 className="provider-dialog-subheading">{t("settings.advancedTitle")}</h4>
+              <div className="provider-form-grid provider-form-grid-advanced">
+                <Field
+                  label={t("settings.contextWindow")}
+                  hint={t("settings.contextWindowHint")}
                 >
+                  <Input
+                    inputMode="numeric"
+                    value={form.contextWindow}
+                    onChange={(e) => setField("contextWindow", e.target.value)}
+                    className="font-mono text-sm-plus"
+                    placeholder="128000"
+                  />
+                </Field>
+                <Field
+                  label={t("settings.maxOutputTokens")}
+                  hint={t("settings.maxOutputTokensHint")}
+                >
+                  <Input
+                    inputMode="numeric"
+                    value={form.maxOutputTokens}
+                    onChange={(e) => setField("maxOutputTokens", e.target.value)}
+                    className="font-mono text-sm-plus"
+                    placeholder="8192"
+                  />
+                </Field>
+                <Field
+                  label={t("settings.temperature")}
+                  hint={t("settings.temperatureHint")}
+                >
+                  <Input
+                    inputMode="decimal"
+                    value={form.temperature}
+                    onChange={(e) => setField("temperature", e.target.value)}
+                    className="font-mono text-sm-plus"
+                    placeholder="1.0"
+                  />
+                </Field>
+              </div>
+
+              <div className="provider-dialog-actions">
+                <Button variant="ghost" disabled={saving} onClick={() => setDialogFor(null)}>
                   {t("settings.cancel")}
                 </Button>
                 <Button
                   variant="primary"
-                  disabled={saving || !name.trim() || !baseUrl.trim() || !modelId.trim()}
+                  disabled={
+                    saving ||
+                    !form.name.trim() ||
+                    !form.baseUrl.trim() ||
+                    !form.modelId.trim()
+                  }
                   onClick={() => void saveProvider()}
                 >
                   {saving ? t("settings.saving") : t("settings.saveProvider")}
@@ -842,7 +1043,7 @@ function ConfigurationSection() {
               </div>
               <div className="provider-empty-title">{t("settings.noProviders")}</div>
               <div className="provider-empty-desc">{t("settings.noProvidersDesc")}</div>
-              <Button variant="primary" onClick={() => setDialogOpen(true)}>
+              <Button variant="primary" onClick={openAdd}>
                 <span className="provider-add-btn-inner">
                   <IconPlus size={14} />
                   <span>{t("settings.addProvider")}</span>
@@ -858,10 +1059,17 @@ function ConfigurationSection() {
                 );
                 const isDefault = settings.defaultProviderId === provider.id;
                 const rowBusy = busyId === provider.id || testingId === provider.id;
+                const styleLabelKey = API_STYLE_OPTIONS.find(
+                  ([style]) => style === normalizeApiStyle(provider.apiStyle),
+                )?.[1];
                 return (
                   <article
                     key={provider.id}
-                    className={cx("provider-card", isDefault && "is-default")}
+                    className={cx(
+                      "provider-card",
+                      isDefault && "is-default",
+                      !provider.enabled && "is-disabled",
+                    )}
                   >
                     <div className="provider-card-main">
                       <div className="provider-avatar" aria-hidden>
@@ -872,6 +1080,9 @@ function ConfigurationSection() {
                           <h4 className="provider-card-title">{provider.name}</h4>
                           {isDefault ? (
                             <Badge tone="success">{t("settings.default")}</Badge>
+                          ) : null}
+                          {!provider.enabled ? (
+                            <Badge tone="neutral">{t("settings.disabledBadge")}</Badge>
                           ) : null}
                           <Badge tone={provider.hasSecret ? "success" : "warning"}>
                             {provider.hasSecret
@@ -890,6 +1101,14 @@ function ConfigurationSection() {
                           <span className="provider-meta-item font-mono">
                             {provider.defaultModelId || t("settings.noModel")}
                           </span>
+                          {styleLabelKey ? (
+                            <>
+                              <span className="provider-meta-dot" aria-hidden>
+                                ·
+                              </span>
+                              <span className="provider-meta-item">{t(styleLabelKey)}</span>
+                            </>
+                          ) : null}
                           <span className="provider-meta-dot" aria-hidden>
                             ·
                           </span>
@@ -903,32 +1122,30 @@ function ConfigurationSection() {
                     <div className="provider-card-controls">
                       <label className="provider-control">
                         <span className="provider-control-label">
-                          {t("settings.thinkingMode")}
+                          {t("settings.enabledToggle")}
                         </span>
-                        <Select
-                          className="settings-pill-select"
-                          aria-label={t("settings.thinkingMode")}
+                        <button
+                          type="button"
+                          className={cx("settings-toggle", provider.enabled && "on")}
+                          role="switch"
+                          aria-checked={provider.enabled}
+                          aria-label={t("settings.enabledToggle")}
                           disabled={rowBusy}
-                          value={mode}
-                          onChange={(e) =>
-                            void updateThinking(
-                              provider,
-                              e.target.value as ThinkingModePreset,
-                            )
-                          }
+                          onClick={() => void toggleEnabled(provider)}
                         >
-                          <option value="off">{t("settings.thinkingModeOff")}</option>
-                          <option value="toggle">{t("settings.thinkingModeToggle")}</option>
-                          <option value="graded">{t("settings.thinkingModeGraded")}</option>
-                          {mode === "custom" ? (
-                            <option value="custom">
-                              {thinkingModeLabel("custom", t, provider.supportedThinkingLevels)}
-                            </option>
-                          ) : null}
-                        </Select>
+                          <span className="settings-toggle-thumb" />
+                        </button>
                       </label>
 
                       <div className="provider-card-actions">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={rowBusy}
+                          onClick={() => openEdit(provider)}
+                        >
+                          {t("settings.editProvider")}
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
