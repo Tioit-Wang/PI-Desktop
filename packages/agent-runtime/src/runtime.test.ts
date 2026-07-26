@@ -162,4 +162,42 @@ describe("DesktopAgentRuntime assistant thinking events", () => {
 
     await runtime.dispose();
   });
+
+  it("turns a provider model failure into an error message and event", async () => {
+    const onEvent = vi.fn();
+    const runtime = createRuntime({ onEvent });
+    const handleAgentEvent = (runtime as any).handleAgentEvent.bind(runtime);
+
+    await handleAgentEvent({
+      type: "message_start",
+      message: {
+        role: "assistant",
+        content: [],
+      },
+    });
+    await handleAgentEvent({
+      type: "message_end",
+      message: {
+        role: "assistant",
+        content: [],
+        stopReason: "error",
+        errorMessage: '404: {"error":{"message":"model not found"}}',
+      },
+    });
+
+    const events = onEvent.mock.calls.map(([envelope]) => envelope as any);
+    expect(events.at(-2)?.event).toMatchObject({
+      type: "message_end",
+      message: { status: "error" },
+    });
+    expect(events.at(-1)?.event).toMatchObject({
+      type: "error",
+      error: {
+        code: "MODEL_NOT_CONFIGURED",
+        retriable: false,
+      },
+    });
+
+    await runtime.dispose();
+  });
 });

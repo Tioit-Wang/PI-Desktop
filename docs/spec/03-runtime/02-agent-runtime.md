@@ -68,7 +68,11 @@ interface AgentRuntime {
 8. stream normalized answer and thinking events to UI
 9. on tool calls, delegate to Rust host bridge with the durable `sessionId`;
    host resolves the session-bound workspace root
-10. finalize and persist answer/thinking blocks independently
+10. if pi finishes a message with `stopReason: "error"`, finalize any partial
+    assistant bubble as failed and emit a normalized `error` event carrying the
+    provider `AppError`; an empty failed bubble is removed while the inline
+    error remains visible
+11. finalize and persist successful answer/thinking blocks independently
 
 ## 5b. Mode defaults
 
@@ -167,7 +171,10 @@ Implemented: streaming turns over the OpenAI-compatible protocol path
 (universal escape hatch, D024); one active turn per session enforced with
 `AGENT_BUSY`; real `turnId` returned per accepted prompt; provider failures
 mapped to `PROVIDER_UNAUTHORIZED` / `PROVIDER_RATE_LIMITED` /
-`STREAM_FAILED` / `TURN_ABORTED` where detectable.
+`MODEL_NOT_CONFIGURED` / `STREAM_FAILED` / `TURN_ABORTED` where detectable.
+The desktop development lifecycle rebuilds `packages/agent-runtime/dist`
+before Electron starts so the spawned sidecar always executes the current
+normalization and error-mapping source.
 
 Tracked gaps (post-MVP backlog): richer system prompt composition (§7) and
 provider/model catalog discovery beyond the currently wired paths.

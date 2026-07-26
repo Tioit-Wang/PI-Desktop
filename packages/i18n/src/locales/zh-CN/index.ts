@@ -514,7 +514,7 @@ export const zhCN = {
   },
   errors: {
     HOST_UNAVAILABLE: "本地后端不可用",
-    MODEL_NOT_CONFIGURED: "尚未配置模型。请先添加一个提供商。",
+    MODEL_NOT_CONFIGURED: "所选模型未配置，或当前提供商不提供该模型。",
     TOOL_DENIED: "工具权限被拒绝",
     PROVIDER_SECRET_MISSING: "该提供商需要先配置 API Key 才能运行。",
     PROTOCOL_MISMATCH: "应用组件版本不一致，请重新安装或重新构建。",

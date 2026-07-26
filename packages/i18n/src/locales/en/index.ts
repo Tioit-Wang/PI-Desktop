@@ -517,7 +517,8 @@ export const en = {
   },
   errors: {
     HOST_UNAVAILABLE: "The local backend is unavailable",
-    MODEL_NOT_CONFIGURED: "No model configured. Add a provider to start.",
+    MODEL_NOT_CONFIGURED:
+      "The selected model is not configured or is unavailable from this provider.",
     TOOL_DENIED: "Tool permission denied",
     PROVIDER_SECRET_MISSING: "This provider needs an API key before it can run.",
     PROTOCOL_MISMATCH: "App components are out of sync. Reinstall or rebuild the app.",

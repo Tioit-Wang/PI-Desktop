@@ -562,13 +562,22 @@ Each scenario is documented in this format:
 
 #### E2E-031: Error codes are stable and readable
 
-- **Preconditions**: Trigger an error condition.
-- **Steps**: 1) Cause a known error (e.g. invalid provider key). 2) Observe error display.
-- **Expected**: Error shows a stable `AppError` code; human-readable message present.
-- **Specs linked**: `03-runtime/08-error-codes.md`
-- **Acceptance**: H (errors expose stable codes)
+- **Preconditions**: App launched through the normal desktop development
+  command; provider configured.
+- **Steps**: 1) Select or enter a model ID that the provider rejects. 2) Send a
+  prompt. 3) Observe the transcript, composer state, and inline error. 4)
+  Repeat with an invalid provider key.
+- **Expected**: The run stops, no empty assistant bubble remains, and the chat
+  shows a readable inline error with stable `MODEL_NOT_CONFIGURED` or
+  `PROVIDER_UNAUTHORIZED` code. The composer becomes usable again. The
+  development launch must execute a sidecar rebuilt from the current runtime
+  source, not a stale ignored artifact.
+- **Specs linked**: `03-runtime/02-agent-runtime.md`,
+  `03-runtime/07-process-model.md`, `03-runtime/08-error-codes.md`
+- **Acceptance**: C (failed chat settles), H (errors expose stable codes)
 - **Milestone**: M2
-- **Status**: Draft
+- **Status**: Unit-covered (agent-runtime error event and desktop predev build
+  contract); full Electron UI scenario Draft
 
 ### Hardening (M5)
 
@@ -1062,7 +1071,7 @@ Each scenario is documented in this format:
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
 | B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055 |
-| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-060, E2E-061, E2E-062 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-031, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-060, E2E-061, E2E-062 |
 | D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060 |
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040, E2E-049 |
 | F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062 |
