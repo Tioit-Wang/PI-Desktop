@@ -335,12 +335,89 @@ function ToolRow({ message }: { message: UiMessage }) {
   );
 }
 
-function ToolActivityGroup({
-  messages,
+/**
+ * One item on the activity timeline between two answers: either a thinking
+ * segment (an assistant message's reasoning) or a tool call. Grouping both
+ * into a single disclosure keeps long agent loops from stacking alternating
+ * "Thinking" / "Processed" rows down the transcript.
+ */
+type ActivityItem =
+  | { kind: "thinking"; message: UiMessage }
+  | { kind: "tool"; message: UiMessage };
+
+function activityItemSummary(
+  item: ActivityItem,
+  t: (key: string) => string,
+): string {
+  if (item.kind === "thinking") {
+    // Latest thought line, so the collapsed header reads like a live ticker.
+    const lines = thinkingText(item.message)
+      .split("\n")
+      .map((line) => line.replace(/^#+\s*|\*\*/g, "").trim())
+      .filter(Boolean);
+    return lines[lines.length - 1] || "";
+  }
+  const message = item.message;
+  const action = getToolAction(message.toolName);
+  const actionLabel = t(
+    message.toolStatus === "running"
+      ? TOOL_RUNNING_KEYS[action]
+      : TOOL_ACTION_KEYS[action],
+  );
+  const summary = getToolSummary(message.toolName, message.toolArgs);
+  return summary ? `${actionLabel} ${summary}` : actionLabel;
+}
+
+/** A thinking segment rendered like a tool row: one-line summary, expandable. */
+function ThinkingRow({
+  message,
+  streaming,
+}: {
+  message: UiMessage;
+  streaming: boolean;
+}) {
+  const { t } = useTranslation();
+  const detailsId = useId();
+  const [open, setOpen] = useState(false);
+  const text = thinkingText(message);
+  const summary = text.replace(/\s+/g, " ").trim();
+  return (
+    <div className={`tool-row thinking ${open ? "open" : ""}`}>
+      <button
+        className="tool-row-header"
+        aria-expanded={open}
+        aria-controls={detailsId}
+        aria-label={t(open ? "chat.thinkingHide" : "chat.thinkingShow")}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span className="tool-row-icon">
+          <IconSparkles size={15} aria-hidden />
+        </span>
+        <span className={`tool-row-name ${streaming ? "running" : ""}`}>
+          {t("chat.thinking", { defaultValue: "Thinking" })}
+        </span>
+        <span className="tool-row-summary">{summary}</span>
+        <span className="tool-row-caret" aria-hidden>
+          <IconChevronRight size={12} />
+        </span>
+      </button>
+      {open ? (
+        <div className="tool-row-body" id={detailsId}>
+          <div className="prose-chat thinking-prose">
+            <Markdown source={text} />
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ActivityGroup({
+  items,
   isActive,
   endedAt,
 }: {
-  messages: UiMessage[];
+  items: ActivityItem[];
   isActive: boolean;
   endedAt?: string;
 }) {
@@ -350,6 +427,7 @@ function ToolActivityGroup({
   const [now, setNow] = useState(Date.now);
   const [finishedAt, setFinishedAt] = useState<number | null>(null);
   const wasActiveRef = useRef(isActive);
+  const messages = items.map((item) => item.message);
   const startedAt = Date.parse(messages[0]?.createdAt || "") || now;
   const fallbackEnd =
     Math.max(
@@ -370,12 +448,30 @@ function ToolActivityGroup({
     Math.floor(((isActive ? now : completedAt) - startedAt) / 1000),
   );
   const elapsed = formatToolDuration(elapsedSeconds);
-  const failed = messages.some((message) => message.toolStatus === "error");
+  const failed = items.some((item) =>
+    item.kind === "tool"
+      ? item.message.toolStatus === "error"
+      : item.message.status === "error",
+  );
+  const lastItem = items[items.length - 1];
+  const thinkingNow =
+    isActive &&
+    lastItem?.kind === "thinking" &&
+    lastItem.message.status === "streaming";
+  const onlyThinking = items.every((item) => item.kind === "thinking");
   const label = failed
     ? t("chat.processingFailedAfter", { time: elapsed })
     : isActive
-      ? t("chat.processingFor", { time: elapsed })
-      : t("chat.processedFor", { time: elapsed });
+      ? t(thinkingNow || onlyThinking ? "chat.thinkingFor" : "chat.processingFor", {
+          time: elapsed,
+        })
+      : onlyThinking
+        ? elapsedSeconds > 0
+          ? t("chat.thoughtFor", { time: elapsed })
+          : // History reloads keep no end timestamp for pure-thinking groups.
+            t("chat.thinking", { defaultValue: "Thinking" })
+        : t("chat.processedFor", { time: elapsed });
+  const tail = isActive && !open && lastItem ? activityItemSummary(lastItem, t) : "";
 
   useEffect(() => {
     if (wasActiveRef.current && !isActive) setFinishedAt(Date.now());
@@ -404,13 +500,20 @@ function ToolActivityGroup({
         <span className={`tool-activity-label ${isActive ? "running" : ""}`}>
           {label}
         </span>
-        <span className="tool-activity-count">
-          {t("chat.processingSteps", { count: messages.length })}
-        </span>
+        {items.length > 1 ? (
+          <span className="tool-activity-count">
+            {t("chat.processingSteps", { count: items.length })}
+          </span>
+        ) : null}
         <span className="tool-activity-caret" aria-hidden>
           <IconChevronRight size={12} />
         </span>
       </button>
+      {tail ? (
+        <div className="tool-activity-preview" aria-hidden>
+          {tail}
+        </div>
+      ) : null}
       <div
         className="tool-activity-collapse"
         aria-hidden={!open}
@@ -418,9 +521,17 @@ function ToolActivityGroup({
       >
         <div className="tool-activity-collapse-inner">
           <div className="tool-activity-body" id={detailsId}>
-            {messages.map((message) => (
-              <ToolRow key={message.id} message={message} />
-            ))}
+            {items.map((item) =>
+              item.kind === "tool" ? (
+                <ToolRow key={item.message.id} message={item.message} />
+              ) : (
+                <ThinkingRow
+                  key={`thinking-${item.message.id}`}
+                  message={item.message}
+                  streaming={isActive && item.message.status === "streaming"}
+                />
+              ),
+            )}
           </div>
         </div>
       </div>
@@ -452,66 +563,6 @@ function WorkingIndicator() {
 function thinkingText(message: UiMessage): string {
   if (typeof message.thinking !== "string") return "";
   return message.thinking.trim() ? message.thinking : "";
-}
-
-/**
- * Reasoning is intentionally rendered in its own disclosure. Keeping it out
- * of the answer bubble means streamed thought cannot alter answer markdown,
- * copy actions, or the conversation minimap semantics.
- */
-function ThinkingDisclosure({
-  thinking,
-  streaming,
-}: {
-  thinking: string;
-  streaming: boolean;
-}) {
-  const { t } = useTranslation();
-  const contentId = useId();
-  const [open, setOpen] = useState(streaming);
-
-  useEffect(() => {
-    setOpen(streaming);
-  }, [streaming]);
-
-  return (
-    <div
-      className={`thinking-disclosure ${open ? "open" : ""} ${streaming ? "streaming" : ""}`}
-    >
-      <button
-        type="button"
-        className="thinking-disclosure-header"
-        aria-expanded={open}
-        aria-controls={contentId}
-        aria-label={t(open ? "chat.thinkingHide" : "chat.thinkingShow")}
-        onClick={() => setOpen((value) => !value)}
-      >
-        <span className="thinking-disclosure-icon" aria-hidden>
-          <IconSparkles size={14} />
-        </span>
-        <span className={`thinking-disclosure-label ${streaming ? "running" : ""}`}>
-          {t("chat.thinking", { defaultValue: "Thinking" })}
-        </span>
-        <span className="thinking-disclosure-caret" aria-hidden>
-          <IconChevronRight size={12} />
-        </span>
-      </button>
-      <div
-        className="thinking-disclosure-collapse"
-        id={contentId}
-        aria-hidden={!open}
-        inert={!open}
-      >
-        <div className="thinking-disclosure-collapse-inner">
-          <div className="thinking-disclosure-body">
-            <div className="prose-chat thinking-prose">
-              <Markdown source={thinking} />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 /* Typewriter reveal for streaming assistant messages: incoming chunks
@@ -592,13 +643,12 @@ const MessageRow = memo(function MessageRow({
   const retryLabel = t("chat.retry");
   const deleteLabel = t("chat.deleteMessage");
   const displayed = useTypewriter(message);
-  const thinking = thinkingText(message);
   const hasAnswer = Boolean((message.content || "").trim());
   const streaming =
     !isUser && isRunning && message.status === "streaming";
   const completeAssistant =
     !isUser && message.status !== "streaming" && hasAnswer;
-  const showAnswer = isUser || Boolean(displayed) || (!thinking && isRunning);
+  const showAnswer = isUser || Boolean(displayed) || isRunning;
   const showMeta = completeAssistant && Boolean(message.modelId || message.usage);
   const revisionCount = message.revisionCount ?? 0;
   const activeRevision = message.activeRevision ?? revisionCount;
@@ -611,12 +661,6 @@ const MessageRow = memo(function MessageRow({
       aria-label={isUser ? t("chat.userMessage") : t("chat.assistantMessage")}
     >
       <div className="message-col">
-        {!isUser && thinking ? (
-          <ThinkingDisclosure
-            thinking={thinking}
-            streaming={streaming}
-          />
-        ) : null}
         {showAnswer ? (
           <div className="message-bubble">
             {isUser ? (
@@ -757,42 +801,59 @@ export function ChatTranscript({
     return true;
   });
   const minimapMessages = visible.filter(
-    (message) => message.role === "user" || message.role === "assistant",
+    (message) =>
+      message.role === "user" ||
+      (message.role === "assistant" && (message.content || "").trim()),
   );
+  // Thinking segments and tool calls between two answers merge into one
+  // activity group, so a long agent loop reads as a single "Processed"
+  // disclosure instead of alternating "Thinking" / tool rows.
   const entries: Array<
     | { kind: "message"; message: UiMessage }
-    | { kind: "tools"; messages: UiMessage[]; endedAt?: string }
+    | { kind: "activity"; items: ActivityItem[]; endedAt?: string }
   > = [];
-  for (let index = 0; index < visible.length; index += 1) {
-    const message = visible[index];
-    if (message.role !== "tool") {
-      entries.push({ kind: "message", message });
+  const pushActivity = (item: ActivityItem) => {
+    const last = entries[entries.length - 1];
+    if (last?.kind === "activity") last.items.push(item);
+    else entries.push({ kind: "activity", items: [item] });
+  };
+  for (const message of visible) {
+    if (message.role === "tool") {
+      pushActivity({ kind: "tool", message });
       continue;
     }
-    const tools = [message];
-    while (visible[index + 1]?.role === "tool") {
-      index += 1;
-      tools.push(visible[index]);
+    if (message.role === "assistant") {
+      if (thinkingText(message)) pushActivity({ kind: "thinking", message });
+      if ((message.content || "").trim() || !thinkingText(message)) {
+        entries.push({ kind: "message", message });
+      }
+      continue;
     }
-    entries.push({
-      kind: "tools",
-      messages: tools,
-      endedAt:
-        visible[index + 1]?.role === "assistant"
-          ? visible[index + 1].createdAt
-          : undefined,
-    });
+    entries.push({ kind: "message", message });
+  }
+  // An answer following a group closes it; skip the timestamp when the
+  // answer is the same message as a thinking segment (its createdAt marks
+  // the start of thinking, not the end).
+  for (let index = 0; index < entries.length; index += 1) {
+    const entry = entries[index];
+    const next = entries[index + 1];
+    if (
+      entry.kind === "activity" &&
+      next?.kind === "message" &&
+      next.message.role === "assistant" &&
+      !entry.items.some((item) => item.message.id === next.message.id)
+    ) {
+      entry.endedAt = next.message.createdAt;
+    }
   }
   const activeToolGroup =
-    isRunning && entries[entries.length - 1]?.kind === "tools";
-  const lastVisibleMessage = visible[visible.length - 1];
+    isRunning && entries[entries.length - 1]?.kind === "activity";
+  const lastEntry = entries[entries.length - 1];
   const assistantIsAnswering =
-    lastVisibleMessage?.role === "assistant" &&
-    lastVisibleMessage.status === "streaming" &&
-    Boolean(
-      (lastVisibleMessage.content || "").trim() ||
-        thinkingText(lastVisibleMessage),
-    );
+    lastEntry?.kind === "message" &&
+    lastEntry.message.role === "assistant" &&
+    lastEntry.message.status === "streaming" &&
+    Boolean((lastEntry.message.content || "").trim());
   const showWorking =
     isRunning && !activeToolGroup && !assistantIsAnswering;
 
@@ -808,10 +869,10 @@ export function ChatTranscript({
       >
         <div className="thread-content" ref={contentRef}>
           {entries.map((entry, index) =>
-            entry.kind === "tools" ? (
-              <ToolActivityGroup
-                key={`tools-${entry.messages[0].id}`}
-                messages={entry.messages}
+            entry.kind === "activity" ? (
+              <ActivityGroup
+                key={`activity-${entry.items[0].message.id}`}
+                items={entry.items}
                 endedAt={entry.endedAt}
                 isActive={isRunning && index === entries.length - 1}
               />
