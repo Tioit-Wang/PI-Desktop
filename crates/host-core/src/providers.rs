@@ -29,6 +29,15 @@ pub struct ProviderPublic {
     /// `None` keeps catalog/default level resolution.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub supported_thinking_levels: Option<Vec<String>>,
+    /// Model context window override in tokens. `None` uses the runtime default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context_window: Option<u32>,
+    /// Max output tokens override. `None` uses the runtime default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_output_tokens: Option<u32>,
+    /// Sampling temperature override. `None` leaves the provider default.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub temperature: Option<f64>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -48,6 +57,13 @@ pub struct ProviderCreateInput {
     pub api_style: Option<String>,
     pub supports_reasoning: Option<bool>,
     pub supported_thinking_levels: Option<Vec<String>>,
+    /// Zero (or negative temperature) clears a stored override.
+    #[serde(default)]
+    pub context_window: Option<u32>,
+    #[serde(default)]
+    pub max_output_tokens: Option<u32>,
+    #[serde(default)]
+    pub temperature: Option<f64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,6 +82,13 @@ pub struct ProviderUpdateInput {
     pub api_style: Option<String>,
     pub supports_reasoning: Option<bool>,
     pub supported_thinking_levels: Option<Vec<String>>,
+    /// Zero (or negative temperature) clears a stored override.
+    #[serde(default)]
+    pub context_window: Option<u32>,
+    #[serde(default)]
+    pub max_output_tokens: Option<u32>,
+    #[serde(default)]
+    pub temperature: Option<f64>,
     pub enabled: Option<bool>,
 }
 
@@ -125,6 +148,15 @@ fn config_thinking_levels_override(raw: &str) -> Option<Vec<String>> {
     }
 }
 
+fn config_limit_u32(raw: &str, key: &str) -> Option<u32> {
+    let value = config_value(raw)?.get("limits")?.get(key)?.as_u64()?;
+    u32::try_from(value).ok().filter(|v| *v > 0)
+}
+
+fn config_limit_f64(raw: &str, key: &str) -> Option<f64> {
+    config_value(raw)?.get("limits")?.get(key)?.as_f64()
+}
+
 fn ensure_config_object(raw: &str) -> Result<serde_json::Value> {
     let config: serde_json::Value = serde_json::from_str(raw)
         .map_err(|e| anyhow::anyhow!("provider config_json is invalid: {e}"))?;
@@ -146,6 +178,48 @@ fn compatibility_object(
     compatibility.as_object_mut().ok_or_else(|| {
         anyhow::anyhow!("provider config_json.compatibility must be a JSON object")
     })
+}
+
+fn limits_object(
+    config: &mut serde_json::Value,
+) -> Result<&mut serde_json::Map<String, serde_json::Value>> {
+    let object = config
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("provider config_json must be a JSON object"))?;
+    let limits = object.entry("limits").or_insert_with(|| serde_json::json!({}));
+    limits
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("provider config_json.limits must be a JSON object"))
+}
+
+/// Set or clear a `limits.<key>` override. `None` removes the key so runtime
+/// defaults apply again.
+fn config_with_limit(
+    raw: &str,
+    key: &str,
+    value: Option<serde_json::Value>,
+) -> Result<String> {
+    let mut config = ensure_config_object(raw)?;
+    let limits = limits_object(&mut config)?;
+    match value {
+        Some(value) => {
+            limits.insert(key.to_string(), value);
+        }
+        None => {
+            limits.remove(key);
+        }
+    }
+    Ok(config.to_string())
+}
+
+/// UI clear sentinel: zero context/output tokens or a non-positive temperature
+/// drop the override instead of storing a meaningless value.
+fn limit_u32_value(value: u32) -> Option<serde_json::Value> {
+    (value > 0).then(|| serde_json::json!(value))
+}
+
+fn limit_temperature_value(value: f64) -> Option<serde_json::Value> {
+    (value > 0.0 && value.is_finite()).then(|| serde_json::json!(value))
 }
 
 fn config_with_reasoning_override(raw: &str, value: bool) -> Result<String> {
@@ -180,9 +254,16 @@ fn config_with_thinking_levels_override(
     Ok(config.to_string())
 }
 
+struct LimitOverrides {
+    context_window: Option<u32>,
+    max_output_tokens: Option<u32>,
+    temperature: Option<f64>,
+}
+
 fn build_provider_config_json(
     supports_reasoning: Option<bool>,
     supported_thinking_levels: Option<&[String]>,
+    limits: &LimitOverrides,
 ) -> Result<String> {
     let mut config = serde_json::json!({});
     if let Some(value) = supports_reasoning {
@@ -196,6 +277,15 @@ fn build_provider_config_json(
                 .insert("supportedThinkingLevels".into(), serde_json::json!(normalized));
         }
     }
+    if let Some(value) = limits.context_window.and_then(limit_u32_value) {
+        limits_object(&mut config)?.insert("contextWindow".into(), value);
+    }
+    if let Some(value) = limits.max_output_tokens.and_then(limit_u32_value) {
+        limits_object(&mut config)?.insert("maxOutputTokens".into(), value);
+    }
+    if let Some(value) = limits.temperature.and_then(limit_temperature_value) {
+        limits_object(&mut config)?.insert("temperature".into(), value);
+    }
     Ok(config.to_string())
 }
 
@@ -203,8 +293,14 @@ fn merge_provider_config_overrides(
     raw: &str,
     supports_reasoning: Option<bool>,
     supported_thinking_levels: Option<Option<Vec<String>>>,
+    limits: &LimitOverrides,
 ) -> Result<Option<String>> {
-    if supports_reasoning.is_none() && supported_thinking_levels.is_none() {
+    if supports_reasoning.is_none()
+        && supported_thinking_levels.is_none()
+        && limits.context_window.is_none()
+        && limits.max_output_tokens.is_none()
+        && limits.temperature.is_none()
+    {
         return Ok(None);
     }
     let mut next = raw.to_string();
@@ -216,6 +312,15 @@ fn merge_provider_config_overrides(
             &next,
             levels.as_deref(),
         )?;
+    }
+    if let Some(value) = limits.context_window {
+        next = config_with_limit(&next, "contextWindow", limit_u32_value(value))?;
+    }
+    if let Some(value) = limits.max_output_tokens {
+        next = config_with_limit(&next, "maxOutputTokens", limit_u32_value(value))?;
+    }
+    if let Some(value) = limits.temperature {
+        next = config_with_limit(&next, "temperature", limit_temperature_value(value))?;
     }
     Ok(Some(next))
 }
@@ -245,6 +350,18 @@ fn provider_from_row(
             .get::<_, String>(11)
             .ok()
             .and_then(|raw| config_thinking_levels_override(&raw)),
+        context_window: row
+            .get::<_, String>(11)
+            .ok()
+            .and_then(|raw| config_limit_u32(&raw, "contextWindow")),
+        max_output_tokens: row
+            .get::<_, String>(11)
+            .ok()
+            .and_then(|raw| config_limit_u32(&raw, "maxOutputTokens")),
+        temperature: row
+            .get::<_, String>(11)
+            .ok()
+            .and_then(|raw| config_limit_f64(&raw, "temperature")),
         created_at: ms_to_ts(row.get(12)?),
         updated_at: ms_to_ts(row.get(13)?),
     })
@@ -308,6 +425,11 @@ pub fn create_provider(
     let config_json = build_provider_config_json(
         input.supports_reasoning,
         input.supported_thinking_levels.as_deref(),
+        &LimitOverrides {
+            context_window: input.context_window,
+            max_output_tokens: input.max_output_tokens,
+            temperature: input.temperature,
+        },
     )?;
 
     db.conn()
@@ -373,6 +495,11 @@ pub fn update_provider(
         &raw_config,
         input.supports_reasoning,
         levels_update,
+        &LimitOverrides {
+            context_window: input.context_window,
+            max_output_tokens: input.max_output_tokens,
+            temperature: input.temperature,
+        },
     )?;
 
     db.conn()
@@ -454,11 +581,6 @@ pub fn get_secret_for_provider(
     }
 }
 
-pub fn provider_count_with_secret(db: &Database, secrets: &SecretStore) -> Result<i64> {
-    let providers = list_providers(db, secrets, true)?;
-    Ok(providers.iter().filter(|p| p.has_secret).count() as i64)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -487,6 +609,9 @@ mod tests {
                 default_model_id: Some("model-1".into()),
                 secret_value: None,
                 api_style: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
                 supports_reasoning: Some(true),
                 supported_thinking_levels: Some(vec!["off".into(), "high".into()]),
             },
@@ -529,6 +654,9 @@ mod tests {
                 default_model_id: None,
                 secret_value: None,
                 api_style: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
                 supports_reasoning: Some(false),
                 supported_thinking_levels: Some(vec!["off".into(), "low".into()]),
                 enabled: None,
@@ -575,6 +703,9 @@ mod tests {
                 default_model_id: None,
                 secret_value: None,
                 api_style: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
                 supports_reasoning: None,
                 supported_thinking_levels: None,
                 enabled: None,
@@ -587,6 +718,64 @@ mod tests {
             unchanged.supported_thinking_levels.as_deref(),
             Some(["off".to_string(), "low".to_string()].as_slice())
         );
+    }
+
+    #[test]
+    fn limit_overrides_roundtrip_and_clear_with_zero() {
+        let (_dir, db, secrets) = test_context();
+        let provider = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "Limits".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("none".into()),
+                default_model_id: Some("model-1".into()),
+                secret_value: None,
+                api_style: None,
+                context_window: Some(200_000),
+                max_output_tokens: Some(32_000),
+                temperature: Some(0.7),
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+            },
+        )
+        .unwrap();
+        assert_eq!(provider.context_window, Some(200_000));
+        assert_eq!(provider.max_output_tokens, Some(32_000));
+        assert_eq!(provider.temperature, Some(0.7));
+
+        // Absent fields leave overrides intact; zero / non-positive clears.
+        let updated = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id.clone(),
+                name: None,
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                context_window: Some(131_072),
+                max_output_tokens: None,
+                temperature: Some(0.0),
+                supports_reasoning: None,
+                supported_thinking_levels: None,
+                enabled: None,
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(updated.context_window, Some(131_072));
+        assert_eq!(updated.max_output_tokens, Some(32_000));
+        assert_eq!(updated.temperature, None);
     }
 
     #[test]
@@ -605,6 +794,9 @@ mod tests {
                 default_model_id: None,
                 secret_value: None,
                 api_style: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
                 supports_reasoning: None,
                 supported_thinking_levels: None,
             },
@@ -633,6 +825,9 @@ mod tests {
                 default_model_id: Some("mimo-v2.5".into()),
                 secret_value: None,
                 api_style: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
                 supports_reasoning: Some(true),
                 supported_thinking_levels: Some(vec![
                     "high".into(),
@@ -663,6 +858,9 @@ mod tests {
                 default_model_id: None,
                 secret_value: None,
                 api_style: None,
+                context_window: None,
+                max_output_tokens: None,
+                temperature: None,
                 supports_reasoning: None,
                 supported_thinking_levels: Some(vec![]),
                 enabled: None,
