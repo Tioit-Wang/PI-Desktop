@@ -186,6 +186,7 @@ export type AppState = {
     thinkingLevel: ThinkingLevel;
   }) => Promise<void>;
   sendPrompt: (content: string) => Promise<void>;
+  retryAssistantMessage: (messageId: string) => Promise<void>;
   abort: () => Promise<void>;
   openProject: () => Promise<void>;
   activateProject: (path: string) => Promise<ProjectWorkspace | null>;
@@ -618,6 +619,26 @@ export const useAppStore = create<AppState>((set, get) => ({
         errorCode: (e as { code?: string })?.code ?? null,
       }));
     }
+  },
+
+  retryAssistantMessage: async (messageId) => {
+    const state = get();
+    if (state.isRunning) return;
+    const index = state.messages.findIndex((message) => message.id === messageId);
+    if (index < 0) return;
+    const target = state.messages[index];
+    if (target.role !== "assistant") return;
+    // Prefer the nearest preceding user prompt as the retry seed.
+    let prompt = "";
+    for (let i = index - 1; i >= 0; i -= 1) {
+      const candidate = state.messages[i];
+      if (candidate.role === "user" && candidate.content.trim()) {
+        prompt = candidate.content;
+        break;
+      }
+    }
+    if (!prompt) return;
+    await get().sendPrompt(prompt);
   },
 
   abort: async () => {

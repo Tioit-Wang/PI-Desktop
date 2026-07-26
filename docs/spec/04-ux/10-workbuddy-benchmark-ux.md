@@ -97,6 +97,11 @@ Adopt the inline **token/cost chip and model badge** on assistant messages
 input/output/cached breakdown). Data already exists in the runtime usage
 events.
 
+**Adopted in D103 (tokens-only first cut)**: completed assistant turns show a
+model badge plus a compact token chip (`{{count}} tokens`) under the answer;
+hover reveals input/output/cache/reasoning breakdown. Currency pricing remains
+deferred. Retry is available as a quiet action chip next to Copy.
+
 ### 3.3 Template galleries on empty states
 WorkBuddy never ships a dead empty state: Automations and Projects both pair
 the empty hero with click-to-instantiate templates. **Spec**: Scheduled page

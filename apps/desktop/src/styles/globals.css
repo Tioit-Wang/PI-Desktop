@@ -1363,6 +1363,10 @@ textarea:disabled {
   text-overflow: ellipsis;
 }
 
+.message-meta-chip.usage {
+  font-variant-numeric: tabular-nums;
+}
+
 .message-bubble {
   max-width: min(100%, 720px);
   border-radius: var(--radius-lg-plus);
@@ -4741,4 +4745,52 @@ textarea:disabled {
   color: var(--ds-text-muted);
   background: color-mix(in oklab, var(--ds-bg-primary) 88%, transparent);
   border-top: 1px solid var(--ds-border-subtle);
+}
+
+/* Work panel — browser tab */
+
+.work-browser {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.work-browser-chrome {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ds-border-subtle);
+}
+
+.work-browser-url {
+  flex: 1;
+  min-width: 0;
+}
+
+.work-browser-url input {
+  width: 100%;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--ds-border-subtle);
+  background: color-mix(in oklab, var(--ds-text-primary) 4%, transparent);
+  color: var(--ds-text-primary);
+  font-size: var(--text-sm);
+}
+
+.work-browser-url input:focus {
+  outline: none;
+  border-color: var(--ds-accent);
+  background: var(--ds-bg-primary);
+}
+
+.work-browser-surface {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  display: flex;
+  background: var(--ds-bg-primary);
 }

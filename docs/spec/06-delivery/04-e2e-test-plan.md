@@ -879,21 +879,40 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`transcript-style.test.mjs`); full visual scenario Draft
 
+#### E2E-060: Assistant meta chips and retry action
+
+- **Preconditions**: A completed assistant message includes modelId and token
+  usage; another completed assistant message has content but no usage.
+- **Steps**: 1) Open the session. 2) Hover the completed assistant turn that has
+  usage. 3) Inspect the model/token chips and their tooltip. 4) Click Retry on
+  that turn while idle. 5) Confirm a turn without usage still offers Retry and
+  omits the token chip.
+- **Expected**: Model badge and token chip appear under completed assistant
+  answers when data exists; token chip hover shows input/output and optional
+  cache/reasoning breakdown; Retry re-sends the nearest preceding user prompt
+  and is disabled while a turn is running; Copy still excludes thinking text.
+- **Specs linked**: `04-ux/08-component-spec.md`,
+  `04-ux/10-workbuddy-benchmark-ux.md`, `03-runtime/01-ipc-protocol.md`
+- **Acceptance**: C (chat stream), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`transcript-style.test.mjs`, runtime usage mapping); full scenario Draft
+
 ## 8. Traceability Matrix
+
 
 
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
 | B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055 |
-| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-060 |
 | D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057, E2E-058 |
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040, E2E-049 |
 | F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030, E2E-049 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -901,7 +920,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -1323,3 +1342,11 @@ This test plan spec is accepted when:
   prose, denser row spacing, and hover-only copy chips under each turn.
 - While an assistant answer streams, expect a thin accent left rule rather than
   a boxed frame.
+
+
+### US-UI-61 Assistant meta chips + retry (D103)
+- Complete an assistant turn that reports usage.
+- Expect a model badge and token chip under the answer; hover shows the
+  input/output breakdown.
+- Hover the action row and click Retry; the nearest preceding user prompt is
+  re-sent.

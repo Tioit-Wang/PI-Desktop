@@ -51,6 +51,20 @@ pub struct SessionSummary {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MessageUsage {
+    pub input_tokens: i64,
+    pub output_tokens: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_read_tokens: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_write_tokens: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reasoning_tokens: Option<i64>,
+    pub total_tokens: i64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UiMessage {
     pub id: String,
     pub role: String,
@@ -60,6 +74,12 @@ pub struct UiMessage {
     pub thinking: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<MessageUsage>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -108,10 +128,34 @@ fn is_default_title(title: &str) -> bool {
 
 /// (text, content_json, meta_json) for a wire message.
 fn ui_to_storage(message: &UiMessage) -> (Option<String>, String, Option<String>) {
-    let meta = message
-        .status
-        .as_ref()
-        .map(|s| json!({ "status": s }).to_string());
+    let mut meta_obj = serde_json::Map::new();
+    if let Some(status) = &message.status {
+        meta_obj.insert("status".into(), json!(status));
+    }
+    if let Some(model_id) = &message.model_id {
+        meta_obj.insert("modelId".into(), json!(model_id));
+    }
+    if let Some(provider_id) = &message.provider_id {
+        meta_obj.insert("providerId".into(), json!(provider_id));
+    }
+    if let Some(usage) = &message.usage {
+        meta_obj.insert(
+            "usage".into(),
+            json!({
+                "inputTokens": usage.input_tokens,
+                "outputTokens": usage.output_tokens,
+                "cacheReadTokens": usage.cache_read_tokens,
+                "cacheWriteTokens": usage.cache_write_tokens,
+                "reasoningTokens": usage.reasoning_tokens,
+                "totalTokens": usage.total_tokens,
+            }),
+        );
+    }
+    let meta = if meta_obj.is_empty() {
+        None
+    } else {
+        Some(Value::Object(meta_obj).to_string())
+    };
     if message.role == "tool" {
         let mut blocks = Vec::new();
         if let Some(thinking) = &message.thinking {
@@ -184,6 +228,30 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
         .get("status")
         .and_then(|v| v.as_str())
         .map(|s| s.to_string());
+    let model_id = meta
+        .get("modelId")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let provider_id = meta
+        .get("providerId")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let usage = meta.get("usage").and_then(|value| {
+        let input_tokens = value.get("inputTokens").and_then(|v| v.as_i64())?;
+        let output_tokens = value.get("outputTokens").and_then(|v| v.as_i64())?;
+        let total_tokens = value
+            .get("totalTokens")
+            .and_then(|v| v.as_i64())
+            .unwrap_or(input_tokens + output_tokens);
+        Some(MessageUsage {
+            input_tokens,
+            output_tokens,
+            cache_read_tokens: value.get("cacheReadTokens").and_then(|v| v.as_i64()),
+            cache_write_tokens: value.get("cacheWriteTokens").and_then(|v| v.as_i64()),
+            reasoning_tokens: value.get("reasoningTokens").and_then(|v| v.as_i64()),
+            total_tokens,
+        })
+    });
     let thinking = blocks
         .iter()
         .filter_map(|b| {
@@ -212,6 +280,9 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             created_at: ms_to_ts(row.created_at),
             thinking,
             status,
+            model_id,
+            provider_id,
+            usage,
             tool_name: row.tool_name,
             tool_call_id: block
                 .get("callId")
@@ -248,6 +319,9 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             created_at: ms_to_ts(row.created_at),
             thinking,
             status,
+            model_id,
+            provider_id,
+            usage,
             tool_name: None,
             tool_call_id: None,
             tool_status: None,
@@ -785,6 +859,9 @@ mod tests {
             created_at: ts.into(),
             thinking: None,
             status: None,
+            model_id: None,
+            provider_id: None,
+            usage: None,
             tool_name: None,
             tool_call_id: None,
             tool_status: None,
@@ -988,6 +1065,9 @@ mod tests {
             created_at: "2025-05-01T00:00:02Z".into(),
             thinking: None,
             status: Some("complete".into()),
+            model_id: None,
+            provider_id: None,
+            usage: None,
             tool_name: Some("Write".into()),
             tool_call_id: Some("c1".into()),
             tool_status: Some("success".into()),
@@ -1039,6 +1119,16 @@ mod tests {
             created_at: "2025-05-01T00:00:01Z".into(),
             thinking: Some("first plan\nsecond plan".into()),
             status: Some("complete".into()),
+            model_id: Some("model-1".into()),
+            provider_id: Some("provider-1".into()),
+            usage: Some(MessageUsage {
+                input_tokens: 12,
+                output_tokens: 34,
+                cache_read_tokens: Some(2),
+                cache_write_tokens: None,
+                reasoning_tokens: Some(5),
+                total_tokens: 48,
+            }),
             tool_name: None,
             tool_call_id: None,
             tool_status: None,
@@ -1080,6 +1170,14 @@ mod tests {
             Some("first plan\nsecond plan")
         );
         assert_eq!(detail.messages[0].content, "final answer");
+        assert_eq!(detail.messages[0].model_id.as_deref(), Some("model-1"));
+        assert_eq!(detail.messages[0].provider_id.as_deref(), Some("provider-1"));
+        let usage = detail.messages[0].usage.as_ref().expect("usage");
+        assert_eq!(usage.input_tokens, 12);
+        assert_eq!(usage.output_tokens, 34);
+        assert_eq!(usage.cache_read_tokens, Some(2));
+        assert_eq!(usage.reasoning_tokens, Some(5));
+        assert_eq!(usage.total_tokens, 48);
     }
 
     #[test]

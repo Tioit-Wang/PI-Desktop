@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { useTranslation } from "react-i18next";
-import type { UiMessage } from "@pi-desktop/shared";
+import type { MessageUsage, UiMessage } from "@pi-desktop/shared";
 import { ConversationMinimap } from "./ConversationMinimap";
 import { Markdown, useCopy } from "./Markdown";
 import {
@@ -30,10 +30,12 @@ import {
   IconGlobe,
   IconPencil,
   IconSearch,
+  IconReview,
   IconSparkles,
   IconTerminal,
   IconWrench,
 } from "./icons";
+import { useAppStore } from "../stores/app-store";
 
 function CopyButton({ text, label }: { text: string; label: string }) {
   const { copied, copy } = useCopy();
@@ -48,6 +50,61 @@ function CopyButton({ text, label }: { text: string; label: string }) {
       {copied ? <IconCheck size={13} /> : <IconCopy size={13} />}
       <span>{copied ? t("chat.copied") : label}</span>
     </button>
+  );
+}
+
+
+function formatTokenCount(value: number): string {
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(value >= 10_000_000 ? 0 : 1)}M`;
+  if (value >= 10_000) return `${Math.round(value / 1000)}k`;
+  if (value >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  return String(value);
+}
+
+function usageLabel(usage: MessageUsage, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  const total = usage.totalTokens || usage.inputTokens + usage.outputTokens;
+  return t("chat.usageTokens", { count: formatTokenCount(total) });
+}
+
+function usageTitle(usage: MessageUsage, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  const parts = [
+    t("chat.usageInput", { count: formatTokenCount(usage.inputTokens) }),
+    t("chat.usageOutput", { count: formatTokenCount(usage.outputTokens) }),
+  ];
+  if (usage.cacheReadTokens) {
+    parts.push(t("chat.usageCacheRead", { count: formatTokenCount(usage.cacheReadTokens) }));
+  }
+  if (usage.cacheWriteTokens) {
+    parts.push(t("chat.usageCacheWrite", { count: formatTokenCount(usage.cacheWriteTokens) }));
+  }
+  if (usage.reasoningTokens !== undefined) {
+    parts.push(t("chat.usageReasoning", { count: formatTokenCount(usage.reasoningTokens) }));
+  }
+  return parts.join(" · ");
+}
+
+function MessageMeta({
+  modelId,
+  usage,
+}: {
+  modelId?: string;
+  usage?: MessageUsage;
+}) {
+  const { t } = useTranslation();
+  if (!modelId && !usage) return null;
+  return (
+    <div className="message-meta">
+      {modelId ? (
+        <span className="message-meta-chip model" title={modelId}>
+          {modelId}
+        </span>
+      ) : null}
+      {usage ? (
+        <span className="message-meta-chip usage" title={usageTitle(usage, t)}>
+          {usageLabel(usage, t)}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -446,14 +503,19 @@ const MessageRow = memo(function MessageRow({
   isRunning: boolean;
 }) {
   const { t } = useTranslation();
+  const retryAssistantMessage = useAppStore((s) => s.retryAssistantMessage);
   const isUser = message.role === "user";
   const copyLabel = t("chat.copy");
+  const retryLabel = t("chat.retry");
   const displayed = useTypewriter(message);
   const thinking = thinkingText(message);
   const hasAnswer = Boolean((message.content || "").trim());
   const streaming =
     !isUser && isRunning && message.status === "streaming";
+  const completeAssistant =
+    !isUser && message.status !== "streaming" && hasAnswer;
   const showAnswer = isUser || Boolean(displayed) || (!thinking && isRunning);
+  const showMeta = completeAssistant && Boolean(message.modelId || message.usage);
   return (
     <div
       className={`message-row ${isUser ? "user" : message.role}${streaming ? " streaming" : ""}`}
@@ -479,9 +541,24 @@ const MessageRow = memo(function MessageRow({
             )}
           </div>
         ) : null}
+        {showMeta ? (
+          <MessageMeta modelId={message.modelId} usage={message.usage} />
+        ) : null}
         {hasAnswer ? (
           <div className="message-actions">
             <CopyButton text={message.content} label={copyLabel} />
+            {completeAssistant ? (
+              <button
+                className="copy-btn"
+                title={retryLabel}
+                aria-label={retryLabel}
+                disabled={isRunning}
+                onClick={() => void retryAssistantMessage(message.id)}
+              >
+                <IconReview size={13} />
+                <span>{retryLabel}</span>
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>

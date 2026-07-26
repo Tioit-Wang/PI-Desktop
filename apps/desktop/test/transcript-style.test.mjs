@@ -53,3 +53,12 @@ test("transcript markup uses the dedicated user text surface and streaming class
   assert.match(transcriptSource, /streaming \? " streaming" : ""/);
   assert.match(transcriptSource, /CopyButton text=\{message\.content\}/);
 });
+
+test("assistant meta chips and retry action are wired", () => {
+  assert.match(transcriptSource, /function MessageMeta/);
+  assert.match(transcriptSource, /message-meta-chip/);
+  assert.match(transcriptSource, /chat\.usageTokens/);
+  assert.match(transcriptSource, /retryAssistantMessage/);
+  assert.match(transcriptSource, /chat\.retry/);
+  assert.match(stylesSource, /\.message-meta-chip\.usage/);
+});

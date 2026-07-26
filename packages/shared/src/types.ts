@@ -14,6 +14,15 @@ export type PermissionDecision = "allow-once" | "allow-session" | "deny";
 
 export type UiMessageRole = "user" | "assistant" | "system" | "tool";
 
+export type MessageUsage = {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens?: number;
+  cacheWriteTokens?: number;
+  reasoningTokens?: number;
+  totalTokens: number;
+};
+
 export type UiMessage = {
   id: string;
   role: UiMessageRole;
@@ -22,6 +31,11 @@ export type UiMessage = {
   thinking?: string;
   createdAt: string;
   status?: "streaming" | "complete" | "error" | "aborted";
+  /** Provider/model that produced this assistant turn, when known. */
+  modelId?: string;
+  providerId?: string;
+  /** Token usage for the assistant turn, when the provider reported it. */
+  usage?: MessageUsage;
   toolName?: string;
   toolCallId?: string;
   toolStatus?: "running" | "success" | "error" | "denied";

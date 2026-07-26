@@ -523,8 +523,11 @@ Single message render — either user (plaintext) or assistant (markdown streami
   background or outer border. Its Sparkles/chevron trigger uses secondary text,
   and the expanded markdown is indented by a subtle theme-token left rule. It
   is never concatenated into answer markdown.
-- Hover actions: quiet copy chip under the bubble; right-aligned for user
-  turns, left-aligned for assistant turns; visible on hover/focus-within
+- Hover actions: quiet action chips under the bubble (copy always; retry on
+  completed assistant turns). Right-aligned for user turns, left-aligned for
+  assistant turns; visible on hover/focus-within
+- Assistant meta: optional model badge + token-usage chip under the answer
+  (collapsed summary with hover breakdown for input/output/cache/reasoning)
 - Gap: 10px vertical padding between consecutive message rows (denser than
   consumer chat, closer to WorkBuddy task transcript)
 - Font: text-base (14px) for body; text-sm (13px) mono for code

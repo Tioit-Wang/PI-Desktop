@@ -16,12 +16,42 @@ import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completio
 import type {
   AgentEventEnvelope,
   AgentStatus,
+  MessageUsage,
   Mode,
   ThinkingLevel,
   UiMessage,
 } from "@pi-desktop/shared";
 import type { HostClient } from "./host-client.js";
 import { clampThinkingLevel } from "./thinking-level.js";
+
+
+function usageFromPi(usage: Usage | undefined | null): MessageUsage | undefined {
+  if (!usage) return undefined;
+  const inputTokens = Math.max(0, Math.round(usage.input || 0));
+  const outputTokens = Math.max(0, Math.round(usage.output || 0));
+  const cacheReadTokens = Math.max(0, Math.round(usage.cacheRead || 0));
+  const cacheWriteTokens = Math.max(0, Math.round(usage.cacheWrite || 0));
+  const reasoningTokens =
+    typeof usage.reasoning === "number"
+      ? Math.max(0, Math.round(usage.reasoning))
+      : undefined;
+  const totalTokens = Math.max(
+    0,
+    Math.round(
+      usage.totalTokens ||
+        inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens,
+    ),
+  );
+  if (totalTokens <= 0 && inputTokens <= 0 && outputTokens <= 0) return undefined;
+  return {
+    inputTokens,
+    outputTokens,
+    ...(cacheReadTokens > 0 ? { cacheReadTokens } : {}),
+    ...(cacheWriteTokens > 0 ? { cacheWriteTokens } : {}),
+    ...(reasoningTokens !== undefined ? { reasoningTokens } : {}),
+    totalTokens,
+  };
+}
 
 export type RuntimeProviderConfig = {
   id: string;
@@ -394,6 +424,8 @@ export class DesktopAgentRuntime {
               : {}),
             createdAt: nowIso(),
             status: "streaming",
+            modelId: this.provider.modelId,
+            providerId: this.provider.id,
           };
           this.emit({ type: "message_start", message: this.currentAssistant });
         }
@@ -449,6 +481,7 @@ export class DesktopAgentRuntime {
           const nextThinking = content.hasThinking
             ? content.thinking
             : this.currentAssistant.thinking ?? "";
+          const usage = usageFromPi((event.message as any).usage as Usage | undefined);
           this.currentAssistant = {
             ...this.currentAssistant,
             content: nextText,
@@ -458,6 +491,9 @@ export class DesktopAgentRuntime {
                 ? { thinking: undefined }
                 : {}),
             status: "complete",
+            modelId: this.provider.modelId,
+            providerId: this.provider.id,
+            ...(usage ? { usage } : {}),
           };
           this.emit({ type: "message_end", message: this.currentAssistant });
           this.currentAssistant = undefined;
