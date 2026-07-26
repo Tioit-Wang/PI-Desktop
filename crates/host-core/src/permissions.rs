@@ -36,7 +36,6 @@ pub struct PermissionRequest {
 
 #[derive(Debug)]
 struct Pending {
-    request: PermissionRequest,
     created_at: Instant,
     tx: Option<tokio::sync::oneshot::Sender<PermissionDecision>>,
 }
@@ -110,7 +109,6 @@ impl PermissionManager {
         self.pending.insert(
             request_id,
             Pending {
-                request: request.clone(),
                 created_at: Instant::now(),
                 tx: Some(tx),
             },

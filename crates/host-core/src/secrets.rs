@@ -3,19 +3,9 @@ use aes_gcm::{Aes256Gcm, Nonce};
 use anyhow::{anyhow, Context, Result};
 use base64::{engine::general_purpose::STANDARD as B64, Engine};
 use rand::RngCore;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
 use std::path::{Path, PathBuf};
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SecretMeta {
-    pub secret_ref: String,
-    pub provider_id: Option<String>,
-    pub kind: String,
-    pub backend: String,
-    pub updated_at: String,
-}
 
 pub struct SecretStore {
     dir: PathBuf,
