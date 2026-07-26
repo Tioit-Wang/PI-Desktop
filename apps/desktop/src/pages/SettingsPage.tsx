@@ -12,13 +12,18 @@ import {
 } from "../lib/import-groups";
 import { Badge, Button, Field, Input, Select, cx } from "../components/ui";
 import {
+  IconCheck,
   IconChevronLeft,
   IconConfig,
   IconInfo,
+  IconPlus,
   IconSearch,
+  IconServer,
   IconSettings,
   IconSnapshot,
+  IconSparkles,
 } from "../components/icons";
+import type { ProviderPublic } from "@pi-desktop/shared";
 
 type SettingsTab = ReturnType<typeof useAppStore.getState>["settingsTab"];
 
@@ -368,18 +373,54 @@ function parseThinkingLevelsInput(raw: string): ThinkingLevel[] {
   return uniqueThinkingLevels(parts as ThinkingLevel[]);
 }
 
-export function SettingsPage() {
+function providerInitials(name: string): string {
+  const parts = name
+    .trim()
+    .split(/[\s/_-]+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  if (parts.length === 0) return "P";
+  return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "P";
+}
+
+function hostFromBaseUrl(baseUrl?: string | null): string {
+  if (!baseUrl) return "—";
+  try {
+    return new URL(baseUrl).host || baseUrl;
+  } catch {
+    return baseUrl.replace(/^https?:\/\//, "").split("/")[0] || baseUrl;
+  }
+}
+
+function thinkingModeLabel(
+  mode: ThinkingModePreset,
+  t: (key: string) => string,
+  levels?: readonly ThinkingLevel[] | null,
+): string {
+  switch (mode) {
+    case "toggle":
+      return t("settings.thinkingModeToggle");
+    case "graded":
+      return t("settings.thinkingModeGraded");
+    case "custom": {
+      const formatted = formatThinkingLevels(levels);
+      return formatted
+        ? `${t("settings.thinkingModeCustom")} (${formatted})`
+        : t("settings.thinkingModeCustom");
+    }
+    default:
+      return t("settings.thinkingModeOff");
+  }
+}
+
+function ConfigurationSection() {
   const { t } = useTranslation();
-  const tab = useAppStore((s) => s.settingsTab);
-  const setSettingsTab = useAppStore((s) => s.setSettingsTab);
-  const setPage = useAppStore((s) => s.setPage);
   const providers = useAppStore((s) => s.providers);
   const settings = useAppStore((s) => s.settings);
-  const version = useAppStore((s) => s.version);
   const refreshProviders = useAppStore((s) => s.refreshProviders);
   const showToast = useAppStore((s) => s.showToast);
 
-  const [query, setQuery] = useState("");
+  const [composerOpen, setComposerOpen] = useState(providers.length === 0);
   const [name, setName] = useState("Compatible");
   const [baseUrl, setBaseUrl] = useState("https://api.oj.ink/v1");
   const [modelId, setModelId] = useState("mimo-v2.5");
@@ -387,7 +428,525 @@ export function SettingsPage() {
   const [thinkingMode, setThinkingMode] = useState<ThinkingModePreset>("off");
   const [customThinkingLevels, setCustomThinkingLevels] = useState("off,high");
   const [saving, setSaving] = useState(false);
+  const [testingId, setTestingId] = useState<string | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+
+  if (!settings) return null;
+
   const supportsReasoning = thinkingMode !== "off";
+  const defaultProvider = providers.find((p) => p.id === settings.defaultProviderId) ?? null;
+  const readyCount = providers.filter((p) => p.hasSecret || p.authKind === "none").length;
+
+  const resetComposer = () => {
+    setName("Compatible");
+    setBaseUrl("https://api.oj.ink/v1");
+    setModelId("mimo-v2.5");
+    setApiKey("");
+    setThinkingMode("off");
+    setCustomThinkingLevels("off,high");
+  };
+
+  const saveProvider = async () => {
+    if (!name.trim()) return;
+    setSaving(true);
+    try {
+      const selectedLevels =
+        thinkingMode === "custom"
+          ? parseThinkingLevelsInput(customThinkingLevels)
+          : levelsForThinkingMode(thinkingMode);
+      const created = await api.createProvider({
+        name: name.trim(),
+        vendorKey: "custom",
+        type: "openai_compatible",
+        protocol: "openai_compatible",
+        baseUrl: baseUrl.trim(),
+        authKind: "api_key_and_base_url",
+        defaultModelId: modelId.trim(),
+        secretValue: apiKey || undefined,
+        apiStyle: "chat_completions",
+        supportsReasoning,
+        ...(selectedLevels ? { supportedThinkingLevels: selectedLevels } : {}),
+      });
+      await api.setSettings({
+        ...settings,
+        defaultProviderId: created.provider.id,
+        defaultModelId: modelId.trim() || settings.defaultModelId,
+      });
+      setApiKey("");
+      setComposerOpen(false);
+      resetComposer();
+      await refreshProviders();
+      showToast(t("settings.providerSaved"), { variant: "success" });
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateThinking = async (provider: ProviderPublic, mode: ThinkingModePreset) => {
+    setBusyId(provider.id);
+    try {
+      await api.updateProvider({
+        id: provider.id,
+        supportsReasoning: mode !== "off",
+        // Empty array clears an explicit sparse override.
+        supportedThinkingLevels:
+          mode === "toggle"
+            ? ["off", "high"]
+            : mode === "custom"
+              ? provider.supportedThinkingLevels && provider.supportedThinkingLevels.length > 0
+                ? [...provider.supportedThinkingLevels]
+                : ["off", "high"]
+              : [],
+      });
+      await refreshProviders();
+      showToast(thinkingModeLabel(mode, t, provider.supportedThinkingLevels), {
+        variant: "success",
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), {
+        variant: "error",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const makeDefault = async (provider: ProviderPublic) => {
+    setBusyId(provider.id);
+    try {
+      await api.setSettings({
+        ...settings,
+        defaultProviderId: provider.id,
+        defaultModelId: provider.defaultModelId || settings.defaultModelId,
+      });
+      await refreshProviders();
+      showToast(t("settings.defaultUpdated"), { variant: "success" });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), {
+        variant: "error",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const removeProvider = async (provider: ProviderPublic) => {
+    setBusyId(provider.id);
+    try {
+      await api.deleteProvider(provider.id);
+      await refreshProviders();
+      showToast(t("settings.providerRemoved"), { variant: "success" });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), {
+        variant: "error",
+      });
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const testProvider = async (provider: ProviderPublic) => {
+    setTestingId(provider.id);
+    try {
+      const result = (await api.testProvider(provider.id)) as {
+        ok?: boolean;
+        message?: string;
+        network?: string;
+        status?: number;
+      };
+      if (result?.ok) {
+        showToast(t("settings.testOk"), { variant: "success" });
+      } else {
+        showToast(
+          result?.message ||
+            (result?.status
+              ? t("settings.testFailedStatus", { status: result.status })
+              : t("settings.testFailed")),
+          { variant: "error" },
+        );
+      }
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), {
+        variant: "error",
+      });
+    } finally {
+      setTestingId(null);
+    }
+  };
+
+  return (
+    <div className="settings-stack">
+      <section className="provider-hero" aria-label={t("settings.providers")}>
+        <div className="provider-hero-copy">
+          <div className="provider-hero-kicker">
+            <IconSparkles size={14} />
+            <span>{t("settings.providersHeroKicker")}</span>
+          </div>
+          <h2 className="provider-hero-title">{t("settings.providersHeroTitle")}</h2>
+          <p className="provider-hero-desc">{t("settings.providersHeroDesc")}</p>
+        </div>
+        <div className="provider-hero-stats" aria-label={t("settings.providersSummary")}>
+          <div className="provider-stat">
+            <div className="provider-stat-value">{providers.length}</div>
+            <div className="provider-stat-label">{t("settings.providersCount")}</div>
+          </div>
+          <div className="provider-stat">
+            <div className="provider-stat-value">{readyCount}</div>
+            <div className="provider-stat-label">{t("settings.providersReady")}</div>
+          </div>
+          <div className="provider-stat provider-stat-wide">
+            <div className="provider-stat-value provider-stat-value-text">
+              {defaultProvider?.name || t("settings.noDefaultProvider")}
+            </div>
+            <div className="provider-stat-label">
+              {defaultProvider?.defaultModelId ||
+                settings.defaultModelId ||
+                t("settings.noModel")}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <SettingsCard title={t("settings.defaultsTitle")}>
+        <SettingsRow title={t("settings.mode")} description={t("settings.modeDesc")}>
+          <div className="settings-segment" role="group" aria-label={t("settings.mode")}>
+            {([
+              ["agent", "settings.modeAgent"],
+              ["chat", "settings.modeChat"],
+            ] as const).map(([value, labelKey]) => (
+              <button
+                key={value}
+                type="button"
+                className={cx(
+                  "settings-segment-item",
+                  settings.defaultMode === value && "active",
+                )}
+                aria-pressed={settings.defaultMode === value}
+                onClick={async () => {
+                  await api.setSettings({
+                    ...settings,
+                    defaultMode: value,
+                  });
+                  await refreshProviders();
+                }}
+              >
+                {t(labelKey)}
+              </button>
+            ))}
+          </div>
+        </SettingsRow>
+        <SettingsRow title={t("settings.modelId")} description={t("settings.modelIdDesc")}>
+          <Input
+            key={settings.defaultModelId || ""}
+            defaultValue={settings.defaultModelId || ""}
+            onBlur={async (e) => {
+              await api.setSettings({
+                ...settings,
+                defaultModelId: e.target.value,
+              });
+              await refreshProviders();
+            }}
+            className="font-mono text-sm-plus"
+            placeholder="model-id"
+          />
+        </SettingsRow>
+        <SettingsRow title={t("settings.enterToSend")} description={t("settings.enterToSendDesc")}>
+          <button
+            type="button"
+            className={cx("settings-toggle", settings.enterToSend && "on")}
+            role="switch"
+            aria-checked={settings.enterToSend}
+            aria-label={t("settings.enterToSend")}
+            onClick={async () => {
+              await api.setSettings({
+                ...settings,
+                enterToSend: !settings.enterToSend,
+              });
+              await refreshProviders();
+            }}
+          >
+            <span className="settings-toggle-thumb" />
+          </button>
+        </SettingsRow>
+      </SettingsCard>
+
+      <section className="settings-card-block">
+        <div className="provider-section-head">
+          <div>
+            <h3 className="settings-card-heading">{t("settings.providers")}</h3>
+            <p className="provider-section-desc">{t("settings.providersSectionDesc")}</p>
+          </div>
+          <Button
+            variant={composerOpen ? "secondary" : "primary"}
+            onClick={() => setComposerOpen((open) => !open)}
+          >
+            <span className="provider-add-btn-inner">
+              <IconPlus size={14} />
+              <span>
+                {composerOpen ? t("settings.hideAddProvider") : t("settings.addProvider")}
+              </span>
+            </span>
+          </Button>
+        </div>
+
+        {composerOpen ? (
+          <div className="settings-panel provider-composer">
+            <div className="provider-composer-head">
+              <div>
+                <div className="provider-composer-title">{t("settings.addProviderTitle")}</div>
+                <div className="provider-composer-desc">{t("settings.addProviderDesc")}</div>
+              </div>
+              <Badge tone="neutral">{t("settings.openaiCompatible")}</Badge>
+            </div>
+
+            <div className="provider-form-grid">
+              <Field label={t("settings.name")}>
+                <Input value={name} onChange={(e) => setName(e.target.value)} />
+              </Field>
+              <Field label={t("settings.baseUrl")}>
+                <Input
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  className="font-mono text-sm-plus"
+                  placeholder="https://api.example.com/v1"
+                />
+              </Field>
+              <Field label={t("settings.modelId")}>
+                <Input
+                  value={modelId}
+                  onChange={(e) => setModelId(e.target.value)}
+                  className="font-mono text-sm-plus"
+                  placeholder="gpt-4.1"
+                />
+              </Field>
+              <Field label={t("settings.apiKey")} hint={t("settings.apiKeyHint")}>
+                <Input
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="sk-…"
+                  className="font-mono text-sm-plus"
+                  autoComplete="off"
+                />
+              </Field>
+              <Field label={t("settings.thinkingMode")} hint={t("settings.thinkingModeDesc")}>
+                <div
+                  className="settings-segment settings-segment-wrap"
+                  role="group"
+                  aria-label={t("settings.thinkingMode")}
+                >
+                  {(
+                    [
+                      ["off", "settings.thinkingModeOff"],
+                      ["toggle", "settings.thinkingModeToggle"],
+                      ["graded", "settings.thinkingModeGraded"],
+                      ["custom", "settings.thinkingModeCustom"],
+                    ] as const
+                  ).map(([value, labelKey]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      className={cx(
+                        "settings-segment-item",
+                        thinkingMode === value && "active",
+                      )}
+                      aria-pressed={thinkingMode === value}
+                      onClick={() => setThinkingMode(value)}
+                    >
+                      {t(labelKey)}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+              {thinkingMode === "custom" ? (
+                <Field
+                  label={t("settings.thinkingLevels")}
+                  hint={t("settings.thinkingLevelsDesc")}
+                >
+                  <Input
+                    value={customThinkingLevels}
+                    onChange={(e) => setCustomThinkingLevels(e.target.value)}
+                    className="font-mono text-sm-plus"
+                    placeholder="off,high"
+                  />
+                </Field>
+              ) : null}
+            </div>
+
+            <div className="provider-composer-actions">
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  setComposerOpen(providers.length === 0);
+                  resetComposer();
+                }}
+              >
+                {t("settings.cancel")}
+              </Button>
+              <Button
+                variant="primary"
+                disabled={saving || !name.trim() || !baseUrl.trim() || !modelId.trim()}
+                onClick={() => void saveProvider()}
+              >
+                {saving ? t("settings.saving") : t("settings.saveProvider")}
+              </Button>
+            </div>
+          </div>
+        ) : null}
+
+        <div className="settings-panel provider-list-panel">
+          {providers.length === 0 ? (
+            <div className="provider-empty">
+              <div className="provider-empty-icon" aria-hidden>
+                <IconServer size={18} />
+              </div>
+              <div className="provider-empty-title">{t("settings.noProviders")}</div>
+              <div className="provider-empty-desc">{t("settings.noProvidersDesc")}</div>
+              {!composerOpen ? (
+                <Button variant="primary" onClick={() => setComposerOpen(true)}>
+                  <span className="provider-add-btn-inner">
+                    <IconPlus size={14} />
+                    <span>{t("settings.addProvider")}</span>
+                  </span>
+                </Button>
+              ) : null}
+            </div>
+          ) : (
+            <div className="provider-card-list">
+              {providers.map((provider) => {
+                const mode = thinkingModeFromLevels(
+                  provider.supportsReasoning,
+                  provider.supportedThinkingLevels,
+                );
+                const isDefault = settings.defaultProviderId === provider.id;
+                const rowBusy = busyId === provider.id || testingId === provider.id;
+                return (
+                  <article
+                    key={provider.id}
+                    className={cx("provider-card", isDefault && "is-default")}
+                  >
+                    <div className="provider-card-main">
+                      <div className="provider-avatar" aria-hidden>
+                        {providerInitials(provider.name)}
+                      </div>
+                      <div className="provider-card-copy">
+                        <div className="provider-card-title-row">
+                          <h4 className="provider-card-title">{provider.name}</h4>
+                          {isDefault ? (
+                            <Badge tone="success">{t("settings.default")}</Badge>
+                          ) : null}
+                          <Badge tone={provider.hasSecret ? "success" : "warning"}>
+                            {provider.hasSecret
+                              ? t("settings.hasSecret")
+                              : t("settings.noSecret")}
+                          </Badge>
+                        </div>
+                        <div className="provider-card-meta">
+                          <span className="provider-meta-item">
+                            <IconServer size={12} />
+                            {hostFromBaseUrl(provider.baseUrl)}
+                          </span>
+                          <span className="provider-meta-dot" aria-hidden>
+                            ·
+                          </span>
+                          <span className="provider-meta-item font-mono">
+                            {provider.defaultModelId || t("settings.noModel")}
+                          </span>
+                          <span className="provider-meta-dot" aria-hidden>
+                            ·
+                          </span>
+                          <span className="provider-meta-item">
+                            {thinkingModeLabel(mode, t, provider.supportedThinkingLevels)}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="provider-card-controls">
+                      <label className="provider-control">
+                        <span className="provider-control-label">
+                          {t("settings.thinkingMode")}
+                        </span>
+                        <Select
+                          className="settings-pill-select"
+                          aria-label={t("settings.thinkingMode")}
+                          disabled={rowBusy}
+                          value={mode}
+                          onChange={(e) =>
+                            void updateThinking(
+                              provider,
+                              e.target.value as ThinkingModePreset,
+                            )
+                          }
+                        >
+                          <option value="off">{t("settings.thinkingModeOff")}</option>
+                          <option value="toggle">{t("settings.thinkingModeToggle")}</option>
+                          <option value="graded">{t("settings.thinkingModeGraded")}</option>
+                          {mode === "custom" ? (
+                            <option value="custom">
+                              {thinkingModeLabel("custom", t, provider.supportedThinkingLevels)}
+                            </option>
+                          ) : null}
+                        </Select>
+                      </label>
+
+                      <div className="provider-card-actions">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={rowBusy}
+                          onClick={() => void testProvider(provider)}
+                        >
+                          {testingId === provider.id
+                            ? t("settings.testing")
+                            : t("settings.testConnection")}
+                        </Button>
+                        {!isDefault ? (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={rowBusy}
+                            onClick={() => void makeDefault(provider)}
+                          >
+                            <span className="provider-action-with-icon">
+                              <IconCheck size={13} />
+                              <span>{t("settings.makeDefault")}</span>
+                            </span>
+                          </Button>
+                        ) : null}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          disabled={rowBusy}
+                          onClick={() => void removeProvider(provider)}
+                        >
+                          {t("settings.delete")}
+                        </Button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+export function SettingsPage() {
+  const { t } = useTranslation();
+  const tab = useAppStore((s) => s.settingsTab);
+  const setSettingsTab = useAppStore((s) => s.setSettingsTab);
+  const setPage = useAppStore((s) => s.setPage);
+  const settings = useAppStore((s) => s.settings);
+  const version = useAppStore((s) => s.version);
+  const refreshProviders = useAppStore((s) => s.refreshProviders);
+
+  const [query, setQuery] = useState("");
 
   const navItems: NavItem[] = useMemo(
     () => [
@@ -506,295 +1065,7 @@ export function SettingsPage() {
             </>
           )}
 
-          {tab === "agent" && settings && (
-            <div className="settings-stack">
-              <SettingsCard title={t("settings.configuration")}>
-                <SettingsRow title={t("settings.mode")} description={t("settings.modeDesc")}>
-                  <Select
-                    className="settings-pill-select"
-                    value={settings.defaultMode}
-                    onChange={async (e) => {
-                      await api.setSettings({
-                        ...settings,
-                        defaultMode: e.target.value as "chat" | "agent",
-                      });
-                      await refreshProviders();
-                    }}
-                  >
-                    <option value="agent">{t("settings.modeAgent")}</option>
-                    <option value="chat">{t("settings.modeChat")}</option>
-                  </Select>
-                </SettingsRow>
-                <SettingsRow title={t("settings.modelId")} description={t("settings.modelIdDesc")}>
-                  <Input
-                    key={settings.defaultModelId || ""}
-                    defaultValue={settings.defaultModelId || ""}
-                    onBlur={async (e) => {
-                      await api.setSettings({
-                        ...settings,
-                        defaultModelId: e.target.value,
-                      });
-                      await refreshProviders();
-                    }}
-                    className="font-mono text-sm-plus"
-                    placeholder="model-id"
-                  />
-                </SettingsRow>
-                <SettingsRow
-                  title={t("settings.enterToSend")}
-                  description={t("settings.enterToSendDesc")}
-                >
-                  <Select
-                    className="settings-pill-select"
-                    value={settings.enterToSend ? "yes" : "no"}
-                    onChange={async (e) => {
-                      await api.setSettings({
-                        ...settings,
-                        enterToSend: e.target.value === "yes",
-                      });
-                      await refreshProviders();
-                    }}
-                  >
-                    <option value="yes">{t("settings.yes")}</option>
-                    <option value="no">{t("settings.noCmdEnter")}</option>
-                  </Select>
-                </SettingsRow>
-              </SettingsCard>
-
-              <SettingsCard title={t("settings.addProvider")}>
-                <div className="settings-form-grid">
-                  <Field label={t("settings.name")}>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} />
-                  </Field>
-                  <Field label={t("settings.baseUrl")}>
-                    <Input
-                      value={baseUrl}
-                      onChange={(e) => setBaseUrl(e.target.value)}
-                      className="font-mono text-sm-plus"
-                    />
-                  </Field>
-                  <Field label={t("settings.modelId")}>
-                    <Input
-                      value={modelId}
-                      onChange={(e) => setModelId(e.target.value)}
-                      className="font-mono text-sm-plus"
-                    />
-                  </Field>
-                  <Field label={t("settings.apiKey")}>
-                    <Input
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="sk-…"
-                      className="font-mono text-sm-plus"
-                    />
-                  </Field>
-                  <Field
-                    label={t("settings.thinkingMode")}
-                    hint={t("settings.thinkingModeDesc")}
-                  >
-                    <Select
-                      value={thinkingMode}
-                      onChange={(e) =>
-                        setThinkingMode(e.target.value as ThinkingModePreset)
-                      }
-                      className="settings-pill-select"
-                    >
-                      <option value="off">{t("settings.thinkingModeOff")}</option>
-                      <option value="toggle">{t("settings.thinkingModeToggle")}</option>
-                      <option value="graded">{t("settings.thinkingModeGraded")}</option>
-                      <option value="custom">{t("settings.thinkingModeCustom")}</option>
-                    </Select>
-                  </Field>
-                  {thinkingMode === "custom" ? (
-                    <Field
-                      label={t("settings.thinkingLevels")}
-                      hint={t("settings.thinkingLevelsDesc")}
-                    >
-                      <Input
-                        value={customThinkingLevels}
-                        onChange={(e) => setCustomThinkingLevels(e.target.value)}
-                        className="font-mono text-sm-plus"
-                        placeholder='off,high'
-                      />
-                    </Field>
-                  ) : null}
-                </div>
-                <div className="settings-panel-actions">
-                  <Button
-                    variant="primary"
-                    disabled={saving || !name.trim()}
-                    onClick={async () => {
-                      setSaving(true);
-                      try {
-                        const selectedLevels =
-                          thinkingMode === "custom"
-                            ? parseThinkingLevelsInput(customThinkingLevels)
-                            : levelsForThinkingMode(thinkingMode);
-                        const created = await api.createProvider({
-                          name,
-                          vendorKey: "custom",
-                          type: "openai_compatible",
-                          protocol: "openai_compatible",
-                          baseUrl,
-                          authKind: "api_key_and_base_url",
-                          defaultModelId: modelId,
-                          secretValue: apiKey || undefined,
-                          apiStyle: "chat_completions",
-                          supportsReasoning,
-                          ...(selectedLevels ? { supportedThinkingLevels: selectedLevels } : {}),
-                        });
-                        await api.setSettings({
-                          ...(settings as any),
-                          defaultProviderId: created.provider.id,
-                          defaultModelId: modelId,
-                          defaultMode: settings?.defaultMode ?? "agent",
-                          theme: settings?.theme ?? "dark",
-                          enterToSend: settings?.enterToSend ?? true,
-                          onboardingDismissed: settings?.onboardingDismissed ?? false,
-                        });
-                        setApiKey("");
-                        await refreshProviders();
-                        showToast(t("settings.providerSaved"), { variant: "success" });
-                      } catch (e) {
-                        showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
-                      } finally {
-                        setSaving(false);
-                      }
-                    }}
-                  >
-                    {saving ? t("settings.saving") : t("settings.saveProvider")}
-                  </Button>
-                </div>
-              </SettingsCard>
-
-              <SettingsCard title={t("settings.configured")}>
-                <div className="settings-list">
-                  {providers.length === 0 ? (
-                    <div className="settings-empty">{t("settings.noProviders")}</div>
-                  ) : (
-                    providers.map((p) => (
-                      <div key={p.id} className="settings-list-row">
-                        <div className="min-w-0">
-                          <div className="truncate text-md-plus font-medium">{p.name}</div>
-                          <div className="truncate font-mono text-xs-plus text-text-muted">
-                            {p.baseUrl || "—"} · {p.defaultModelId || t("settings.noModel")}
-                            {p.supportsReasoning
-                              ? ` · ${t("settings.thinkingMode")}: ${
-                                  thinkingModeFromLevels(
-                                    p.supportsReasoning,
-                                    p.supportedThinkingLevels,
-                                  ) === "toggle"
-                                    ? t("settings.thinkingModeToggle")
-                                    : thinkingModeFromLevels(
-                                          p.supportsReasoning,
-                                          p.supportedThinkingLevels,
-                                        ) === "graded"
-                                      ? t("settings.thinkingModeGraded")
-                                      : formatThinkingLevels(p.supportedThinkingLevels) ||
-                                        t("settings.thinkingModeCustom")
-                                }`
-                              : ` · ${t("settings.thinkingModeOff")}`}
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Select
-                            className="settings-pill-select"
-                            aria-label={t("settings.thinkingMode")}
-                            value={thinkingModeFromLevels(
-                              p.supportsReasoning,
-                              p.supportedThinkingLevels,
-                            )}
-                            onChange={async (e) => {
-                              const mode = e.target.value as ThinkingModePreset;
-                              try {
-                                await api.updateProvider({
-                                  id: p.id,
-                                  supportsReasoning: mode !== "off",
-                                  // Empty array clears an explicit sparse override.
-                                  supportedThinkingLevels:
-                                    mode === "toggle"
-                                      ? ["off", "high"]
-                                      : mode === "custom"
-                                        ? p.supportedThinkingLevels &&
-                                          p.supportedThinkingLevels.length > 0
-                                          ? [...p.supportedThinkingLevels]
-                                          : ["off", "high"]
-                                        : [],
-                                });
-                                await refreshProviders();
-                                showToast(
-                                  mode === "off"
-                                    ? t("settings.thinkingModeOff")
-                                    : mode === "toggle"
-                                      ? t("settings.thinkingModeToggle")
-                                      : mode === "graded"
-                                        ? t("settings.thinkingModeGraded")
-                                        : t("settings.thinkingModeCustom"),
-                                  { variant: "success" },
-                                );
-                              } catch (error) {
-                                showToast(
-                                  error instanceof Error ? error.message : String(error),
-                                  { variant: "error" },
-                                );
-                              }
-                            }}
-                          >
-                            <option value="off">{t("settings.thinkingModeOff")}</option>
-                            <option value="toggle">{t("settings.thinkingModeToggle")}</option>
-                            <option value="graded">{t("settings.thinkingModeGraded")}</option>
-                            {thinkingModeFromLevels(
-                              p.supportsReasoning,
-                              p.supportedThinkingLevels,
-                            ) === "custom" ? (
-                              <option value="custom">
-                                {t("settings.thinkingModeCustom")}
-                                {formatThinkingLevels(p.supportedThinkingLevels)
-                                  ? ` (${formatThinkingLevels(p.supportedThinkingLevels)})`
-                                  : ""}
-                              </option>
-                            ) : null}
-                          </Select>
-                          {settings?.defaultProviderId === p.id ? (
-                            <Badge tone="success">{t("settings.default")}</Badge>
-                          ) : (
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={async () => {
-                                if (!settings) return;
-                                await api.setSettings({
-                                  ...settings,
-                                  defaultProviderId: p.id,
-                                  defaultModelId: p.defaultModelId || settings.defaultModelId,
-                                });
-                                await refreshProviders();
-                                showToast(t("settings.defaultUpdated"), { variant: "success" });
-                              }}
-                            >
-                              {t("settings.makeDefault")}
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={async () => {
-                              await api.deleteProvider(p.id);
-                              await refreshProviders();
-                              showToast(t("settings.providerRemoved"), { variant: "success" });
-                            }}
-                          >
-                            {t("settings.delete")}
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </SettingsCard>
-            </div>
-          )}
+          {tab === "agent" && <ConfigurationSection />}
 
           {tab === "import" && <ImportSection />}
 

@@ -1119,7 +1119,48 @@ groups, select candidates, and start an explicit import.
 
 ---
 
-## 19. Acceptance criteria (all components)
+## 19. ProviderStudio (Settings → Agent)
+
+### 19.1 Purpose
+Modern model-configuration surface for adding OpenAI-compatible providers, reviewing readiness, and managing default/thinking behavior without a dense form dump.
+
+### 19.2 Anatomy
+1. **Hero summary** — kicker, title, short description, stats for provider count / ready count / default pair
+2. **Defaults card** — segmented default mode, default model id, Enter-to-send switch
+3. **Providers head** — section title + primary Add provider toggle
+4. **Composer** — collapsible 2-column form (name, base URL, model id, API key, thinking presets, optional custom levels)
+5. **Provider cards** — avatar initials, badges (default / secret state), host + model + thinking meta, thinking select, Test / Make default / Delete
+
+### 19.3 States
+| State | Presentation |
+|---|---|
+| Empty | Hero shows zeros / No default; composer open; empty panel with primary add CTA |
+| Populated | Composer collapsed by default; cards list every provider |
+| Default provider | Card gets subtle accent wash + default badge; Make default hidden |
+| Secret missing | Warning badge "No API key"; test may fail closed |
+| Busy row | Test/update/delete actions disabled for that card |
+
+### 19.4 Interactions
+- Add provider toggles the composer; Cancel resets fields and re-collapses when providers exist
+- Save creates the provider, stores the secret, sets it as default when successful, and refreshes the list
+- Test connection calls `providers.testConnection` and toasts success/failure
+- Thinking preset updates persist through `providers.update` with D102 semantics
+- Make default updates `defaultProviderId` / `defaultModelId` only
+
+### 19.5 Accessibility
+- Segmented controls expose `aria-pressed`
+- Enter-to-send uses `role="switch"` + `aria-checked`
+- Card actions keep visible text labels; thinking select has an accessible name
+- Empty and hero regions expose localized labels
+
+### 19.6 MVP constraints
+- OpenAI-compatible path only in the composer (vendor marketplace deferred)
+- No raw secret redisplay after save
+- No catalog browser yet; custom model id remains first-class
+
+---
+
+## 20. Acceptance criteria (all components)
 
 1. All components use semantic color tokens from [07-ui-design-system.md](07-ui-design-system.md) — no raw hex
 2. All interactive elements have visible focus rings (2px accent, offset 2px)
@@ -1139,3 +1180,4 @@ groups, select candidates, and start an explicit import.
 13. Toasts stack top-center with variant icon + dismiss, auto-dismiss 4s/8s, pause on hover, and announce via `role="status"`/`role="alert"` per §17
 14. Session import defaults to source grouping, offers project-path grouping, collapses all groups after scan/group changes, and exposes accessible group disclosure state per §18
 15. Imported project paths materialize exactly once in the durable Projects index; path-less imports remain Temporary sessions and no filesystem directory is created
+16. ProviderStudio shows hero summary + collapsible composer + provider cards; secrets never render raw; test/default/delete remain keyboard reachable

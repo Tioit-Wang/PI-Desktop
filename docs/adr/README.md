@@ -34,3 +34,4 @@ Each ADR includes:
 | 0016 | Organize the sidebar around retained multi-project tabs | Accepted |
 | 0018 | Carry thinking mode through the complete session pipeline | Accepted |
 | 0019 | Work panel subsystems (PTY terminal, embedded browser, git review, file browsing) | Accepted |
+- [0020 Configuration provider studio](0020-configuration-provider-studio.md)

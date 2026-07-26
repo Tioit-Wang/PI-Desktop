@@ -137,8 +137,8 @@ Each scenario is documented in this format:
 #### E2E-005: Add a provider and save API key
 
 - **Preconditions**: App running; no provider configured.
-- **Steps**: 1) Open Settings → Agent. 2) Add a provider in the Providers card. 3) Enter API key. 4) Save.
-- **Expected**: Provider appears in list; key stored securely (not in plaintext config).
+- **Steps**: 1) Open Settings → Agent. 2) Open the provider composer if collapsed. 3) Enter name, base URL, model id, and API key. 4) Save.
+- **Expected**: Provider appears as a card with secret badge; key stored securely (not in plaintext config); hero summary counts update.
 - **Specs linked**: `03-runtime/12-provider-config-schema.md`, `03-runtime/14-secrets-storage.md`
 - **Acceptance**: B (add provider, save key)
 - **Milestone**: M2
@@ -340,7 +340,7 @@ Each scenario is documented in this format:
 #### E2E-038: Settings exposes four destinations with merged sections
 
 - **Preconditions**: App running with at least one configured provider and one supported local session store.
-- **Steps**: 1) Open Settings. 2) Inspect the complete settings rail. 3) Open Basics and change the theme in its Appearance card. 4) Open Agent and inspect its Providers card. 5) Open Import and Info in order. 6) Return to the app shell and open Plugins.
+- **Steps**: 1) Open Settings. 2) Inspect the complete settings rail. 3) Open Basics and change the theme in its Appearance card. 4) Open Agent and inspect the provider studio (hero, defaults, providers cards/composer). 5) Open Import and Info in order. 6) Return to the app shell and open Plugins.
 - **Expected**: The rail contains exactly Basics, Agent, Import, and Info in that order; Appearance has no standalone destination and is usable inside Basics; Providers has no standalone destination and is usable inside Agent; Import and Info each open their intended content; Plugins is absent from Settings and remains reachable as an independent app-shell destination.
 - **Specs linked**: `04-ux/06-settings-ia.md`, `04-ux/01-ui-ia.md`, `03-runtime/11-provider-model-system.md`
 - **Acceptance**: B (model configuration), F (session import)
@@ -1273,8 +1273,9 @@ This test plan spec is accepted when:
   system/light/dark controls. Permission defaults, file-open target, language
   override, menu-bar behavior, and bottom-panel behavior are absent until
   host-backed implementations exist.
-- Agent contains default mode/model, Enter-to-send, and the
-  **Providers** card.
+- Agent contains the provider studio hero, default mode/model, Enter-to-send
+  switch, and card-based Providers management with a collapsible add-provider
+  composer.
 - Plugin load/enable/disable/uninstall remains available from the app shell's
   independent Plugins destination.
 - Dark: rail `#000`, main `#181818`, cards elevated `#212121`.
