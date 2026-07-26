@@ -61,8 +61,12 @@ async function handle(method: string, params: any): Promise<unknown> {
         modelId: string;
         apiKey: string;
         authKind?: string;
+        apiStyle?: string;
         supportsReasoning: boolean;
         supportedThinkingLevels: ThinkingLevel[];
+        contextWindow?: number;
+        maxOutputTokens?: number;
+        temperature?: number;
       };
       const provider = {
         ...providerInput,

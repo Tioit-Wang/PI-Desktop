@@ -196,6 +196,12 @@ export type ProviderPublic = {
   /** Effective capability for the provider's current default model. */
   supportsReasoning: boolean;
   supportedThinkingLevels: ThinkingLevel[];
+  /** Model context window override in tokens (runtime default when absent). */
+  contextWindow?: number;
+  /** Max output tokens override (runtime default when absent). */
+  maxOutputTokens?: number;
+  /** Sampling temperature override (provider default when absent). */
+  temperature?: number;
   createdAt: string;
   updatedAt: string;
 };
@@ -218,6 +224,12 @@ export type ProviderCreateInput = {
    * When omitted, capability resolution falls back to catalog/default sets.
    */
   supportedThinkingLevels?: ThinkingLevel[];
+  /** Context window override in tokens; on update, 0 clears the override. */
+  contextWindow?: number;
+  /** Max output tokens override; on update, 0 clears the override. */
+  maxOutputTokens?: number;
+  /** Sampling temperature override; on update, 0 clears the override. */
+  temperature?: number;
 };
 
 export type ProviderUpdateInput = Partial<ProviderCreateInput> & {

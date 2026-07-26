@@ -9,10 +9,15 @@ import {
   createModels,
   createProvider,
   Type,
+  type Api,
   type Model,
+  type ProviderStreams,
   type Usage,
 } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
+import { openAIResponsesApi } from "@earendil-works/pi-ai/api/openai-responses.lazy";
+import { anthropicMessagesApi } from "@earendil-works/pi-ai/api/anthropic-messages.lazy";
+import { googleGenerativeAIApi } from "@earendil-works/pi-ai/api/google-generative-ai.lazy";
 import type {
   AgentEventEnvelope,
   AgentStatus,
@@ -60,9 +65,57 @@ export type RuntimeProviderConfig = {
   modelId: string;
   apiKey: string;
   authKind?: string;
+  /** Wire protocol for the endpoint (provider config apiStyle). */
+  apiStyle?: string;
   supportsReasoning: boolean;
   supportedThinkingLevels: ThinkingLevel[];
+  /** Context window override in tokens. */
+  contextWindow?: number;
+  /** Max output tokens override. */
+  maxOutputTokens?: number;
+  /** Sampling temperature override; omitted keeps the provider default. */
+  temperature?: number;
 };
+
+const DEFAULT_CONTEXT_WINDOW = 128_000;
+const DEFAULT_MAX_TOKENS = 8_192;
+
+type ApiBinding = {
+  api: Api;
+  adapter: () => ProviderStreams;
+  defaultBaseUrl: string;
+};
+
+/** Map a stored provider apiStyle onto a pi-ai wire API. Unknown styles fall
+ * back to OpenAI Chat Completions, the pre-apiStyle behavior. */
+function apiBindingForStyle(apiStyle?: string): ApiBinding {
+  switch (apiStyle) {
+    case "responses":
+      return {
+        api: "openai-responses",
+        adapter: openAIResponsesApi,
+        defaultBaseUrl: "https://api.openai.com/v1",
+      };
+    case "anthropic_messages":
+      return {
+        api: "anthropic-messages",
+        adapter: anthropicMessagesApi,
+        defaultBaseUrl: "https://api.anthropic.com",
+      };
+    case "google_generative_ai":
+      return {
+        api: "google-generative-ai",
+        adapter: googleGenerativeAIApi,
+        defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta",
+      };
+    default:
+      return {
+        api: "openai-completions",
+        adapter: openAICompletionsApi,
+        defaultBaseUrl: "https://api.openai.com/v1",
+      };
+  }
+}
 
 export type PluginToolDef = {
   /** Full exposed name (`plugin_<pluginIdSafe>_<toolName>`, D015). */
@@ -178,18 +231,23 @@ export class DesktopAgentRuntime {
       auth: {
         apiKey: {
           name: `${this.provider.name} API key`,
-          resolve: async () => ({
-            auth: { headers: { Authorization: `Bearer ${runtimeApiKey}` } },
-          }),
+          // Plain apiKey semantics let each adapter emit its own auth header
+          // (Bearer for OpenAI-style APIs, x-api-key for Anthropic, …).
+          resolve: async () => ({ auth: { apiKey: runtimeApiKey } }),
         },
       },
       models: [model],
-      api: openAICompletionsApi(),
+      api: apiBindingForStyle(this.provider.apiStyle).adapter(),
     });
     models.setProvider(provider);
 
+    const temperature = this.provider.temperature;
     this.agent = new Agent({
-      streamFn: (m, context, options) => models.streamSimple(m, context, options),
+      streamFn: (m, context, options) =>
+        models.streamSimple(m, context, {
+          ...options,
+          ...(temperature !== undefined ? { temperature } : {}),
+        }),
       getApiKey: async () => runtimeApiKey,
       initialState: {
         systemPrompt:
@@ -199,6 +257,11 @@ export class DesktopAgentRuntime {
             // Work panel browser preview (D100): workspace HTML files render
             // in the embedded browser with live reload on file changes.
             "When you create or edit an HTML page in the workspace, call the BrowserPreview tool with its workspace-relative path (e.g. `index.html` or `demo/index.html`) to show it in PI-Desktop's built-in browser panel. The preview live-reloads as you keep editing, so one call per page is enough — no external browser or manual refresh needed.",
+            // Shell dialect (host-core D084): commands run through bash on
+            // every platform — Git Bash on Windows, bash on macOS/Linux.
+            process.platform === "win32"
+              ? "Shell commands run in Git Bash (POSIX bash on Windows). Always write bash/POSIX syntax with forward-slash paths — never cmd.exe or PowerShell syntax."
+              : "Shell commands run in bash. Write bash/POSIX syntax.",
           ].join("\n\n"),
         model,
         tools,
@@ -251,6 +314,10 @@ export class DesktopAgentRuntime {
       (this.provider.baseUrl ?? "") === (provider.baseUrl ?? "") &&
       this.provider.apiKey === provider.apiKey &&
       this.provider.authKind === provider.authKind &&
+      (this.provider.apiStyle ?? "") === (provider.apiStyle ?? "") &&
+      (this.provider.contextWindow ?? 0) === (provider.contextWindow ?? 0) &&
+      (this.provider.maxOutputTokens ?? 0) === (provider.maxOutputTokens ?? 0) &&
+      (this.provider.temperature ?? null) === (provider.temperature ?? null) &&
       this.provider.supportsReasoning === provider.supportsReasoning &&
       currentThinkingLevels === nextThinkingLevels &&
       this.thinkingLevel === clampThinkingLevel(provider, thinkingLevel) &&
@@ -288,7 +355,7 @@ export class DesktopAgentRuntime {
         messages.push({
           role: "assistant",
           content,
-          api: "openai-completions",
+          api: apiBindingForStyle(this.provider.apiStyle).api,
           provider: this.provider.id,
           model: this.provider.modelId,
           usage: zeroUsage,
@@ -300,7 +367,7 @@ export class DesktopAgentRuntime {
     return messages;
   }
 
-  private buildModel(): Model<"openai-completions"> {
+  private buildModel(): Model<Api> {
     const thinkingLevelMap: Partial<Record<ThinkingLevel, string | null>> = {};
     for (const level of THINKING_LEVELS) {
       if (!(this.provider.supportedThinkingLevels ?? ["off"]).includes(level)) {
@@ -311,22 +378,23 @@ export class DesktopAgentRuntime {
       }
     }
 
+    const binding = apiBindingForStyle(this.provider.apiStyle);
     return {
       id: this.provider.modelId,
       name: this.provider.modelId,
-      api: "openai-completions",
+      api: binding.api,
       provider: this.provider.id,
-      baseUrl: this.provider.baseUrl ?? "https://api.openai.com/v1",
+      baseUrl: this.provider.baseUrl ?? binding.defaultBaseUrl,
       reasoning: this.provider.supportsReasoning,
       thinkingLevelMap,
       input: ["text"],
       cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-      contextWindow: 128000,
-      maxTokens: 8192,
-      compat: {
-        supportsDeveloperRole: false,
-      },
-    };
+      contextWindow: this.provider.contextWindow || DEFAULT_CONTEXT_WINDOW,
+      maxTokens: this.provider.maxOutputTokens || DEFAULT_MAX_TOKENS,
+      ...(binding.api === "openai-completions"
+        ? { compat: { supportsDeveloperRole: false } }
+        : {}),
+    } as Model<Api>;
   }
 
   private buildTools(): AgentTool[] {
