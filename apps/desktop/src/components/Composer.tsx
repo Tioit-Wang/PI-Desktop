@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderPublic, ThinkingLevel } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
+import { BrandLogo } from "./BrandLogo";
 import {
   IconArrowUp,
   IconShield,
@@ -221,10 +222,10 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
       <div className="composer-stack">
         <div className="composer-shell">
           <div className="composer-input-wrap">
-            {/* Thread dock keeps ∞ cue; home-with-project gold has plain draft */}
+            {/* Docked threads carry the brand mark; the empty home keeps a clean draft. */}
             {variant === "docked" ? (
               <span className="composer-thread-mark" aria-hidden>
-                <span className="infinity-mark">∞</span>
+                <BrandLogo size={15} />
               </span>
             ) : null}
             <textarea

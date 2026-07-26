@@ -17,28 +17,28 @@ export function HomeSuggestions() {
 
   const items: Suggestion[] = [
     {
-      id: "codex-explore",
+      id: "pi-explore",
       titleKey: "home.suggestions.explore",
       promptKey: "home.suggestions.explorePrompt",
       tone: "blue",
       icon: <IconExplore size={16} />,
     },
     {
-      id: "codex-create",
+      id: "pi-create",
       titleKey: "home.suggestions.create",
       promptKey: "home.suggestions.createPrompt",
       tone: "purple",
       icon: <IconBuild size={16} />,
     },
     {
-      id: "codex-review",
+      id: "pi-review",
       titleKey: "home.suggestions.review",
       promptKey: "home.suggestions.reviewPrompt",
       tone: "green",
       icon: <IconReview size={16} />,
     },
     {
-      id: "codex-fix",
+      id: "pi-fix",
       titleKey: "home.suggestions.fix",
       promptKey: "home.suggestions.fixPrompt",
       tone: "orange",
