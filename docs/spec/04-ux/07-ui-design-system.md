@@ -46,6 +46,26 @@ selection is suppressed for chrome by default. The selection contract is:
 - The Electron renderer sets both `user-select` and `-webkit-user-select`;
   selection rules must not remove focus-visible rings or window drag regions.
 
+### 3.2 Product identity and marks
+
+The visible product identity is **PI-Desktop**, even where the shell borrows
+Codex as a visual reference. The identity contract is deliberately small:
+
+- The sidebar shell name, settings copy, and composer placeholder use
+  `PI-Desktop`; `Codex` is reserved for the external session-import source or
+  historical design-reference text.
+- `build/icon_1024.png` is the canonical logo. `BrandLogo` imports it through
+  Vite so the renderer bundle, development Dock, and packaged application all
+  use the same visual asset.
+- The home hero logo is 56px. Expanded/collapsed sidebar logos are 15px/18px,
+  and the docked composer logo is 15px. The image keeps its native colors in
+  both themes and is not replaced by a theme-tinted vector approximation.
+- New-session controls use the dedicated message-plus icon at 15–16px. The
+  generic plus icon remains reserved for non-session additions such as adding
+  a project.
+- Marks are decorative (`aria-hidden`); the surrounding controls provide the
+  localized accessible names and keyboard behavior.
+
 ## 4. Color tokens
 
 ### 4.1 Semantic token naming
@@ -377,7 +397,7 @@ All motion tokens must respect `prefers-reduced-motion: reduce`:
 
 ## 8.0 Home empty stack (Codex parity)
 
-Empty composer placeholder: EN `Ask Codex to do anything` / zh-CN `向 Codex 下达任意指令`.
+Empty composer placeholder: EN `Ask PI-Desktop to do anything` / zh-CN `向 PI-Desktop 下达任意指令`.
 
 Empty chat home matches Codex electron **split grow** layout inside `home-main-content`:
 
@@ -399,7 +419,7 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Empty draft row keeps **one visible line / 28px optical minimum** so the
   placeholder remains visible; it auto-grows to seven visual lines and
   scrolls internally from line eight onward
-- Left **∞** thread mark beside empty draft; light mark near primary dark ink; light placeholder ~`#525355`
+- Left **15px shared brand logo** beside an empty draft; light placeholder ~`#525355`
 - Disabled send is a **solid gray chip** (`#8e8e90` light, white arrow), not opacity-only fade
 - Floating composer plates use one solid semantic surface with no internal
   gradient: `--ds-bg-composer` in light and elevated-primary in dark. A

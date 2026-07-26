@@ -17,7 +17,8 @@ import { PluginsPage } from "./pages/PluginsPage";
 import { useAppStore } from "./stores/app-store";
 import type { ToastOptions } from "./stores/app-store";
 import { api } from "./lib/api";
-import { IconCodexHome, IconPanel } from "./components/icons";
+import { BrandLogo } from "./components/BrandLogo";
+import { IconPanel } from "./components/icons";
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
@@ -206,7 +207,7 @@ function AppShell() {
           ["user", "分组标题的字号再小一点"],
           [
             "assistant",
-            "已把分组标题从 `--text-sm` 调整为 `--text-2xs`，同时收紧了上下间距，现在与 Codex 的密度一致。",
+            "已把分组标题从 `--text-sm` 调整为 `--text-2xs`，同时收紧了上下间距，现在与 PI-Desktop 的密度一致。",
           ],
           ["user", "最后跑一遍检查"],
           [
@@ -402,7 +403,7 @@ function AppShell() {
                   <div className="home-upper-inner">
                     <div className="empty-hero">
                       <div className="empty-hero-icon" data-testid="home-icon" aria-hidden>
-                        <IconCodexHome size={56} />
+                        <BrandLogo size={56} />
                       </div>
                       <h1>
                         {heroProject ? (
