@@ -30,20 +30,29 @@ import {
 function formatUpdated(ts?: number, locale?: string, neverLabel = "—") {
   if (!ts) return neverLabel;
   try {
+    const elapsed = Date.now() - ts;
+    const minutes = Math.round(elapsed / 60_000);
+    if (minutes < 60 * 24 * 7) {
+      const rtf = new Intl.RelativeTimeFormat(locale || undefined, {
+        numeric: "auto",
+      });
+      if (minutes < 60) return rtf.format(-Math.max(minutes, 0), "minute");
+      if (minutes < 60 * 24) return rtf.format(-Math.round(minutes / 60), "hour");
+      return rtf.format(-Math.round(minutes / (60 * 24)), "day");
+    }
+    const sameYear = new Date(ts).getFullYear() === new Date().getFullYear();
     return new Intl.DateTimeFormat(locale || undefined, {
       month: "short",
       day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+      year: sameYear ? undefined : "numeric",
     }).format(new Date(ts));
   } catch {
     return neverLabel;
   }
 }
 
-function sourceLabel(path: string) {
-  const parts = path.split(/[/\\]/).filter(Boolean);
-  return parts[parts.length - 1] || path;
+function shortenPath(path: string) {
+  return path.replace(/^\/(?:Users|home)\/[^/]+/, "~");
 }
 
 export function ProjectsPage() {
@@ -278,7 +287,7 @@ export function ProjectsPage() {
               />
             </div>
             <Button
-              variant="secondary"
+              variant="ghost"
               onClick={() => setSessionArchiveVisibility(!showArchived)}
             >
               {showArchived
@@ -295,20 +304,7 @@ export function ProjectsPage() {
           </div>
         </div>
 
-        <div className="projects-table" role="table" aria-label={t("project.title")}>
-          <div className="projects-table-head" role="row">
-            <div className="projects-col name" role="columnheader">
-              {t("project.columnName")}
-            </div>
-            <div className="projects-col sources" role="columnheader">
-              {t("project.columnWorkspace")}
-            </div>
-            <div className="projects-col updated" role="columnheader">
-              {t("project.columnLastActive")}
-            </div>
-            <div className="projects-col actions" role="columnheader" />
-          </div>
-
+        <div className="projects-list" role="list" aria-label={t("project.title")}>
           {filtered.length === 0 ? (
             <div className="projects-empty">
               <div className="projects-empty-title">
@@ -354,63 +350,57 @@ export function ProjectsPage() {
               return (
                 <div
                   key={project.path}
-                  className={`projects-row-block ${active ? "active" : ""} ${archived ? "archived" : ""}`}
+                  role="listitem"
+                  className={`projects-row-block ${active ? "active" : ""} ${archived ? "archived" : ""} ${menuFor === project.path ? "menu-open" : ""}`}
                 >
-                  <div className="projects-table-row" role="row">
-                    <div className="projects-col name" role="cell">
-                      <button
-                        type="button"
-                        className="projects-expand"
-                        aria-label={t(
-                          isOpen ? "project.collapseDetails" : "project.expandDetails",
-                          { name: project.name },
-                        )}
-                        aria-expanded={isOpen}
-                        onClick={() =>
-                          setExpanded((prev) => ({ ...prev, [project.path]: !prev[project.path] }))
-                        }
-                      >
-                        {isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
-                      </button>
-                      <button
-                        type="button"
-                        className="projects-name-btn"
-                        onClick={() => void activate(project.path)}
-                        title={project.path}
-                      >
-                        <span className="projects-glyph" style={{ background: color }}>
-                          <IconFolder size={14} />
-                        </span>
-                        <span className="projects-name-copy">
-                          <span className="projects-name-title">
-                            {project.name}
-                            {project.pinned ? <span className="projects-pin-dot" /> : null}
-                            {active ? (
-                              <span className="projects-active-tag">{t("project.active")}</span>
-                            ) : null}
-                          </span>
-                          <span className="projects-name-path">{project.path}</span>
-                        </span>
-                      </button>
-                    </div>
-                    <div className="projects-col sources" role="cell">
-                      <span className="projects-source-chip" title={project.path}>
-                        {sourceLabel(project.path)}
+                  <div className="projects-row">
+                    <button
+                      type="button"
+                      className="projects-expand"
+                      aria-label={t(
+                        isOpen ? "project.collapseDetails" : "project.expandDetails",
+                        { name: project.name },
+                      )}
+                      aria-expanded={isOpen}
+                      onClick={() =>
+                        setExpanded((prev) => ({ ...prev, [project.path]: !prev[project.path] }))
+                      }
+                    >
+                      {isOpen ? <IconChevronDown size={14} /> : <IconChevronRight size={14} />}
+                    </button>
+                    <button
+                      type="button"
+                      className="projects-name-btn"
+                      onClick={() => void activate(project.path)}
+                      title={project.path}
+                    >
+                      <span className="projects-glyph" style={{ background: color }}>
+                        <IconFolder size={14} />
                       </span>
-                      {project.branch ? (
-                        <span className="projects-source-meta">{project.branch}</span>
-                      ) : null}
-                    </div>
-                    <div className="projects-col updated" role="cell">
+                      <span className="projects-name-copy">
+                        <span className="projects-name-title">
+                          {project.name}
+                          {project.pinned ? <span className="projects-pin-dot" /> : null}
+                          {active ? (
+                            <span className="projects-active-tag">{t("project.active")}</span>
+                          ) : null}
+                        </span>
+                        <span className="projects-name-path">
+                          {shortenPath(project.path)}
+                          {project.branch ? (
+                            <span className="projects-name-branch"> · {project.branch}</span>
+                          ) : null}
+                        </span>
+                      </span>
+                    </button>
+                    <span className="projects-updated">
                       {formatUpdated(
                         project.openedAt,
                         i18n.resolvedLanguage || i18n.language,
                         t("project.updatedNever"),
                       )}
-                    </div>
-                    <div className="projects-col actions" role="cell">
-                      <div className="projects-row-actions">
-                        <div className="projects-menu-wrap">
+                    </span>
+                    <div className="projects-menu-wrap">
                           <button
                             type="button"
                             className="projects-icon-btn"
@@ -482,18 +472,10 @@ export function ProjectsPage() {
                               ) : null}
                             </div>
                           ) : null}
-                        </div>
-                      </div>
                     </div>
                   </div>
                   {isOpen ? (
                     <div className="projects-row-detail">
-                      <div className="projects-detail-label">{t("project.newTask")}</div>
-                      <div className="projects-detail-actions">
-                        <Button size="sm" variant="secondary" onClick={() => void startTask(project.path)}>
-                          {t("project.newTask")}
-                        </Button>
-                      </div>
                       <div className="projects-detail-label">{t("project.sessions")}</div>
                       {related.length === 0 ? (
                         <div className="projects-detail-empty">{t("project.noSessions")}</div>
@@ -511,6 +493,15 @@ export function ProjectsPage() {
                           ))}
                         </div>
                       )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="projects-detail-new"
+                        onClick={() => void startTask(project.path)}
+                      >
+                        <IconPlus size={13} />
+                        {t("project.newTask")}
+                      </Button>
                     </div>
                   ) : null}
                 </div>
