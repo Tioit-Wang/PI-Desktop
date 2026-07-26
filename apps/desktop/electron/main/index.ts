@@ -37,6 +37,7 @@ import { Logger } from "./logger";
 import { collectWorkspaceDiff } from "./git-diff";
 import { PtyManager } from "./terminal";
 import { BrowserPane } from "./browser-view";
+import { listDir, readWorkspaceFile, resolveWithinRoot } from "./fs-panel";
 import {
   convertSession,
   scanAllSources,
@@ -1529,6 +1530,42 @@ function registerIpc() {
 
   handle(IPC.invoke.browserGetState, async () => {
     return browserPane.getState();
+  });
+
+  const requireWorkspaceRoot = async () => {
+    if (!host) throw new Error("host unavailable");
+    const res = (await host.call("workspace.get")) as {
+      workspace: { path: string } | null;
+    };
+    const root = res.workspace?.path;
+    if (!root) {
+      throw Object.assign(new Error("workspace required"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    return root;
+  };
+
+  handle(IPC.invoke.fsList, async (input: { path?: string } = {}) => {
+    const root = await requireWorkspaceRoot();
+    return { entries: await listDir(root, String(input.path ?? "")) };
+  });
+
+  handle(IPC.invoke.fsRead, async (input: { path?: string } = {}) => {
+    const root = await requireWorkspaceRoot();
+    return readWorkspaceFile(root, String(input.path ?? ""));
+  });
+
+  handle(IPC.invoke.fsReveal, async (input: { path?: string } = {}) => {
+    const root = await requireWorkspaceRoot();
+    const target = resolveWithinRoot(root, String(input.path ?? ""));
+    if (!target) {
+      throw Object.assign(new Error("path escapes workspace root"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    shell.showItemInFolder(target);
+    return { ok: true };
   });
 
 

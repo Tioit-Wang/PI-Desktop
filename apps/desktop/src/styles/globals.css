@@ -4794,3 +4794,138 @@ textarea:disabled {
   display: flex;
   background: var(--ds-bg-primary);
 }
+
+/* Work panel — files tab */
+
+.file-tree {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 6px 6px 16px;
+}
+
+.file-tree-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  padding-top: 3px;
+  padding-bottom: 3px;
+  padding-right: 8px;
+  border-radius: var(--radius-2xs);
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--ds-text-secondary);
+}
+
+.file-tree-row:hover {
+  background: var(--ds-bg-hover);
+  color: var(--ds-text-primary);
+}
+
+.file-tree-row.active {
+  background: var(--ds-bg-active);
+  color: var(--ds-text-primary);
+}
+
+.file-tree-caret {
+  display: inline-flex;
+  width: 12px;
+  flex: 0 0 auto;
+  color: var(--ds-text-muted);
+  transition: transform 120ms ease;
+}
+
+.file-tree-caret.open {
+  transform: rotate(90deg);
+}
+
+.file-tree-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-tree-note {
+  padding-top: 4px;
+  padding-bottom: 4px;
+  font-size: var(--text-sm);
+  color: var(--ds-text-muted);
+}
+
+.file-viewer {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.file-viewer-header {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--ds-border-subtle);
+}
+
+.file-viewer-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-plus);
+  color: var(--ds-text-primary);
+}
+
+.file-viewer-size {
+  flex: 0 0 auto;
+  font-size: var(--text-2xs);
+  color: var(--ds-text-muted);
+}
+
+.file-viewer-body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.file-viewer-code {
+  margin: 0;
+  padding: 10px 12px 20px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-plus);
+  line-height: var(--leading-relaxed);
+  white-space: pre;
+  min-width: max-content;
+}
+
+.file-viewer-line {
+  min-height: 1em;
+}
+
+.file-viewer-cap {
+  padding: 8px 0;
+  color: var(--ds-text-muted);
+}
+
+.file-viewer-image {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.file-viewer-image img {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius-sm);
+}

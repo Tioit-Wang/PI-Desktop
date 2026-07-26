@@ -399,6 +399,12 @@ export const en = {
     files: {
       noWorkspace: "Open a project to browse files",
       empty: "This folder is empty",
+      loading: "Loading…",
+      error: "Could not read this location",
+      back: "Back to files",
+      reveal: "Reveal in Finder",
+      binary: "Binary file — preview unavailable",
+      tooLarge: "File too large to preview",
     },
   },
   palette: {

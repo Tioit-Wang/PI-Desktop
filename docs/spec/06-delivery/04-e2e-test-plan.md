@@ -878,6 +878,26 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Draft (manual)
 
+#### E2E-060: Files tab browsing stays inside the workspace
+
+- **Preconditions**: Workspace with nested folders, a large file (>512KB), an
+  image, and a binary file.
+- **Steps**: 1) Browse the tree, expanding nested folders. 2) Open a source
+  file, the image, the binary, and the large file. 3) Use reveal-in-Finder.
+  4) Attempt a traversal read (`../outside`) via devtools IPC. 5) Switch
+  workspaces.
+- **Expected**: Directories list lazily, folders first, with `.git` /
+  `node_modules` / build outputs hidden; text renders with syntax highlight
+  (capped at 5000 lines), images preview inline, binary and oversized files
+  show fallbacks with reveal still available. Traversal attempts are
+  rejected with `INVALID_ARGUMENT`; no workspace → empty state; switching
+  workspaces resets the tree and viewer.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md` §13a, ADR 0019,
+  `03-runtime/15-workspace-ignore-rules.md`
+- **Acceptance**: D (workspace), Security
+- **Milestone**: M5
+- **Status**: Unit-covered (`fs-panel-guard.test.mjs`); full UI scenario Draft
+
 ---
 
 #### E2E-059: Transcript message plates follow WorkBuddy density
@@ -928,12 +948,12 @@ Each scenario is documented in this format:
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
 | B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055 |
 | C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-060 |
-| D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057, E2E-058 |
+| D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060 |
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040, E2E-049 |
 | F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
-| Security | E2E-028, E2E-029, E2E-030, E2E-049, E2E-059 |
+| Security | E2E-028, E2E-029, E2E-030, E2E-049, E2E-059, E2E-060 |
 | Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060 |
 
 | Milestone | Scenarios |

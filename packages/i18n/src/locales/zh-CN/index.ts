@@ -400,6 +400,12 @@ export const zhCN = {
     files: {
       noWorkspace: "打开一个项目后可浏览文件",
       empty: "此目录为空",
+      loading: "加载中…",
+      error: "无法读取该位置",
+      back: "返回文件列表",
+      reveal: "在 Finder 中显示",
+      binary: "二进制文件，无法预览",
+      tooLarge: "文件过大，无法预览",
     },
   },
   palette: {
