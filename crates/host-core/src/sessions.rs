@@ -105,6 +105,9 @@ pub struct UiMessage {
     pub provider_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<MessageUsage>,
+    /// Structured AppError for an assistant turn that failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<Value>,
     /// Stable regenerate-family key shared across rewritten user prompts.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub revision_root_id: Option<String>,
@@ -184,6 +187,9 @@ fn ui_to_storage(message: &UiMessage) -> (Option<String>, String, Option<String>
                 "totalTokens": usage.total_tokens,
             }),
         );
+    }
+    if let Some(error) = &message.error {
+        meta_obj.insert("error".into(), error.clone());
     }
     if let Some(root_id) = &message.revision_root_id {
         meta_obj.insert("revisionRootId".into(), json!(root_id));
@@ -295,6 +301,7 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             total_tokens,
         })
     });
+    let error = meta.get("error").cloned();
     let revision_root_id = meta
         .get("revisionRootId")
         .and_then(|v| v.as_str())
@@ -332,6 +339,7 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             model_id,
             provider_id,
             usage,
+            error: error.clone(),
             revision_root_id: revision_root_id.clone(),
             revision_count,
             active_revision,
@@ -374,6 +382,7 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             model_id,
             provider_id,
             usage,
+            error,
             revision_root_id: revision_root_id.clone(),
             revision_count,
             active_revision,
@@ -1109,6 +1118,7 @@ mod tests {
             model_id: None,
             provider_id: None,
             usage: None,
+            error: None,
             revision_root_id: None,
             revision_count: None,
             active_revision: None,
@@ -1322,6 +1332,7 @@ mod tests {
             model_id: None,
             provider_id: None,
             usage: None,
+            error: None,
             revision_root_id: None,
             revision_count: None,
             active_revision: None,
@@ -1386,6 +1397,7 @@ mod tests {
                 reasoning_tokens: Some(5),
                 total_tokens: 48,
             }),
+            error: None,
             revision_root_id: None,
             revision_count: None,
             active_revision: None,
@@ -1438,6 +1450,29 @@ mod tests {
         assert_eq!(usage.cache_read_tokens, Some(2));
         assert_eq!(usage.reasoning_tokens, Some(5));
         assert_eq!(usage.total_tokens, 48);
+    }
+
+    #[test]
+    fn assistant_error_roundtrips_in_message_metadata() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        let mut assistant = user_msg("assistant-error", "", "2025-05-01T00:00:01Z");
+        assistant.role = "assistant".into();
+        assistant.status = Some("error".into());
+        assistant.is_error = Some(true);
+        assistant.error = Some(json!({
+            "code": "MODEL_NOT_CONFIGURED",
+            "message": "404: model not found",
+            "retriable": false
+        }));
+
+        append_message(&db, &session.id, &assistant, None).unwrap();
+        let detail = get_session(&db, &session.id).unwrap().unwrap();
+        let restored = &detail.messages[0];
+
+        assert_eq!(restored.status.as_deref(), Some("error"));
+        assert_eq!(restored.is_error, Some(true));
+        assert_eq!(restored.error, assistant.error);
     }
 
     #[test]

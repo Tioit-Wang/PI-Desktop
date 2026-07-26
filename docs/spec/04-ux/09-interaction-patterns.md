@@ -253,12 +253,16 @@ Agent calls high-risk tool
 | Tool call failure | Error state on ToolCallCard | Context-dependent, user needs to see which tool failed |
 | Permission denial | Resolved state on PermissionCard | Already inline, part of conversation flow |
 | Stream interruption | Error state on MessageBubble | Belongs to the message that failed |
+| Provider/model turn failure | Assistant error message in transcript | Keeps summary, stable code, redacted detail, and recovery action attached to the failed turn |
 | Provider configuration validation error | Inline in settings form | User needs to see which field is wrong |
 | Composer validation (no model) | Disabled state + tooltip on send button | Immediate context |
 
 ### 6.3 Rules
 
 - Never use toast for errors that are tied to a specific message or tool call
+- Assistant error detail uses a keyboard-operable disclosure with
+  `aria-expanded` / `aria-controls`; it is open on first render so the provider
+  response is immediately discoverable, and supports copying the redacted text
 - Never use inline error for transient background operations (plugin load, connection test)
 - Toasts stack vertically, newest on top, at top-center
 - Error toasts require manual dismiss or timeout at 8s (longer than success)

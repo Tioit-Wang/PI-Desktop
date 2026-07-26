@@ -358,6 +358,9 @@ export class DesktopAgentRuntime {
         if (!(m.content || "").trim()) continue;
         messages.push({ role: "user", content: m.content, timestamp });
       } else if (m.role === "assistant") {
+        // Failed provider responses belong in the transcript for diagnosis,
+        // but must never become model context on the next turn.
+        if (m.status === "error" || m.isError || m.error) continue;
         const content = [];
         if (m.thinking?.trim()) {
           content.push({ type: "thinking" as const, thinking: m.thinking });
@@ -595,6 +598,17 @@ export class DesktopAgentRuntime {
             | undefined;
           const failed = stopReason === "error";
           const aborted = stopReason === "aborted";
+          const errorMessage =
+            failed &&
+            typeof (event.message as any).errorMessage === "string" &&
+            (event.message as any).errorMessage
+              ? ((event.message as any).errorMessage as string)
+              : failed
+                ? "provider stream failed"
+                : undefined;
+          const classifiedError = errorMessage
+            ? classifyAgentError(errorMessage)
+            : undefined;
           const nextText = content.hasText
             ? content.text
             : this.currentAssistant.content;
@@ -614,16 +628,14 @@ export class DesktopAgentRuntime {
             modelId: this.provider.modelId,
             providerId: this.provider.id,
             ...(usage ? { usage } : {}),
+            ...(classifiedError
+              ? { error: classifiedError, isError: true }
+              : {}),
           };
           this.emit({ type: "message_end", message: this.currentAssistant });
           this.currentAssistant = undefined;
-          if (failed) {
-            const errorMessage =
-              typeof (event.message as any).errorMessage === "string" &&
-              (event.message as any).errorMessage
-                ? ((event.message as any).errorMessage as string)
-                : "provider stream failed";
-            this.emit({ type: "error", error: classifyAgentError(errorMessage) });
+          if (classifiedError) {
+            this.emit({ type: "error", error: classifiedError });
           }
         }
         break;
@@ -667,9 +679,31 @@ export class DesktopAgentRuntime {
 
   /** Resolve a bubble left in "streaming" when the run dies without a
    * message_end (rejected prompt), so the transcript never sticks mid-stream. */
-  private finalizeCurrentAssistant(status: "error" | "aborted") {
-    if (!this.currentAssistant) return;
-    this.currentAssistant = { ...this.currentAssistant, status };
+  private finalizeCurrentAssistant(
+    status: "error" | "aborted",
+    error?: ReturnType<typeof classifyAgentError>,
+  ) {
+    if (!this.currentAssistant) {
+      if (status !== "error" || !error) return;
+      this.currentAssistant = {
+        id: randomUUID(),
+        role: "assistant",
+        content: "",
+        createdAt: nowIso(),
+        status,
+        modelId: this.provider.modelId,
+        providerId: this.provider.id,
+        error,
+        isError: true,
+      };
+      this.emit({ type: "message_start", message: this.currentAssistant });
+    } else {
+      this.currentAssistant = {
+        ...this.currentAssistant,
+        status,
+        ...(error ? { error, isError: true } : {}),
+      };
+    }
     this.emit({ type: "message_end", message: this.currentAssistant });
     this.currentAssistant = undefined;
   }
@@ -685,8 +719,10 @@ export class DesktopAgentRuntime {
       await this.agent.prompt(content);
       await this.agent.waitForIdle();
     } catch (err) {
+      const classifiedError = classifyAgentError(err);
       this.finalizeCurrentAssistant(
-        classifyAgentError(err).code === "TURN_ABORTED" ? "aborted" : "error",
+        classifiedError.code === "TURN_ABORTED" ? "aborted" : "error",
+        classifiedError.code === "TURN_ABORTED" ? undefined : classifiedError,
       );
       throw err;
     }

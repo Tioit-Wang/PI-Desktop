@@ -187,6 +187,7 @@ type UiMessage = {
  role: "user" | "assistant" | "system" | "tool";
  content: string;
  thinking?: string; // assistant reasoning, never folded into content
+ error?: AppError;  // structured failure owned by this assistant turn
  createdAt: string;
  // status/tool fields omitted here
 };
@@ -217,6 +218,11 @@ refreshes both sessions and the durable Projects index.
 Protocol version 2 adds `thinkingLevel`, `UiMessage.thinking`, and
 `message_update.deltaThinking`. A v1 peer must fail the version check instead
 of silently discarding these fields.
+
+`UiMessage.error` is an optional additive field. Provider failures attach the
+same normalized `AppError` carried by the lifecycle `error` event to the
+assistant message before `message_end`. Error messages persist with the
+transcript but are excluded from restored model context.
 
 ## 8. Settings / Secrets API
 

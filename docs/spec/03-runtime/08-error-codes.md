@@ -147,10 +147,17 @@ UI/host timeout emits `PERMISSION_TIMEOUT` internally, tool result presented as 
 
 | class | UI behavior |
 |---|---|
-| auth/config (`PROVIDER_SECRET_MISSING`, `MODEL_NOT_CONFIGURED`) | blocking CTA to settings |
+| auth/config (`PROVIDER_SECRET_MISSING`, `MODEL_NOT_CONFIGURED`) | assistant error message with settings CTA |
 | permission denials | inline tool card state |
-| retriable provider/network | show retry action |
+| retriable provider/network | assistant error message with retry action |
 | internal/host unavailable | degraded banner + recovery tip |
+
+Message-bound provider failures never use a toast or floating global banner.
+The assistant error message shows a localized summary and stable code, with an
+accessible details disclosure containing the redacted provider response,
+provider ID, and model ID. Provider detail is capped at 600 characters and
+common credential/header values are redacted before event emission or
+persistence.
 
 ## 6. i18n key convention
 

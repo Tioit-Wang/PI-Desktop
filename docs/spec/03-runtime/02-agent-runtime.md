@@ -69,9 +69,10 @@ interface AgentRuntime {
 9. on tool calls, delegate to Rust host bridge with the durable `sessionId`;
    host resolves the session-bound workspace root
 10. if pi finishes a message with `stopReason: "error"`, finalize any partial
-    assistant bubble as failed and emit a normalized `error` event carrying the
-    provider `AppError`; an empty failed bubble is removed while the inline
-    error remains visible
+    assistant bubble with a structured `UiMessage.error`, persist it in the
+    transcript, and emit a normalized lifecycle `error` event carrying the
+    same provider `AppError`; even a failure with no answer text remains a
+    visible assistant error message
 11. finalize and persist successful answer/thinking blocks independently
 
 ## 5b. Mode defaults
@@ -101,6 +102,8 @@ interface AgentRuntime {
   `deltaText`.
 - Restored assistant history reconstructs separate text and thinking blocks
   before the next turn.
+- Failed assistant messages remain durable diagnostic transcript entries but
+  are never restored into pi model context on a later turn.
 
 ## 6. Providers & models
 

@@ -116,6 +116,92 @@ function MessageMeta({
   );
 }
 
+function AssistantErrorMessage({ message }: { message: UiMessage }) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(true);
+  const detailsId = useId();
+  const retryLastPrompt = useAppStore((state) => state.retryLastPrompt);
+  const error = message.error;
+  if (!error) return null;
+  const localizedKey = `errors.${error.code}`;
+  const localized = t(localizedKey);
+  const summary = localized === localizedKey ? t("chat.responseFailed") : localized;
+  const configurationError = [
+    "MODEL_NOT_CONFIGURED",
+    "PROVIDER_SECRET_MISSING",
+    "PROVIDER_UNAUTHORIZED",
+  ].includes(error.code);
+
+  return (
+    <section className="message-error" aria-label={t("chat.responseError")}>
+      <div className="message-error-heading">
+        <span className="message-error-icon" aria-hidden>
+          <IconCircleAlert size={16} />
+        </span>
+        <div className="message-error-copy">
+          <strong>{summary}</strong>
+          <code>{error.code}</code>
+        </div>
+      </div>
+      <button
+        type="button"
+        className="message-error-toggle"
+        aria-expanded={open}
+        aria-controls={detailsId}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <IconChevronRight size={12} aria-hidden />
+        {open ? t("chat.hideErrorDetails") : t("chat.showErrorDetails")}
+      </button>
+      <div
+        id={detailsId}
+        className={`message-error-details ${open ? "open" : ""}`}
+        hidden={!open}
+      >
+        <dl>
+          {message.providerId ? (
+            <>
+              <dt>{t("chat.errorProvider")}</dt>
+              <dd>{message.providerId}</dd>
+            </>
+          ) : null}
+          {message.modelId ? (
+            <>
+              <dt>{t("chat.errorModel")}</dt>
+              <dd>{message.modelId}</dd>
+            </>
+          ) : null}
+        </dl>
+        <pre className="selectable">{error.message}</pre>
+        <CopyButton text={error.message} label={t("chat.copyErrorDetails")} />
+      </div>
+      <div className="message-error-actions">
+        {configurationError ? (
+          <button
+            type="button"
+            className="copy-btn"
+            onClick={() => {
+              useAppStore.getState().setSettingsTab("agent");
+              useAppStore.getState().setPage("settings");
+            }}
+          >
+            {t("errors.action.openSettings")}
+          </button>
+        ) : null}
+        {error.retriable ? (
+          <button
+            type="button"
+            className="copy-btn"
+            onClick={() => void retryLastPrompt()}
+          >
+            {t("errors.action.retry")}
+          </button>
+        ) : null}
+      </div>
+    </section>
+  );
+}
+
 const TOOL_ACTION_KEYS: Record<ToolAction, string> = {
   read: "chat.toolRead",
   list: "chat.toolListed",
@@ -644,11 +730,12 @@ const MessageRow = memo(function MessageRow({
   const deleteLabel = t("chat.deleteMessage");
   const displayed = useTypewriter(message);
   const hasAnswer = Boolean((message.content || "").trim());
+  const hasError = Boolean(message.error);
   const streaming =
     !isUser && isRunning && message.status === "streaming";
   const completeAssistant =
     !isUser && message.status !== "streaming" && hasAnswer;
-  const showAnswer = isUser || Boolean(displayed) || isRunning;
+  const showAnswer = isUser || Boolean(displayed) || isRunning || hasError;
   const showMeta = completeAssistant && Boolean(message.modelId || message.usage);
   const revisionCount = message.revisionCount ?? 0;
   const activeRevision = message.activeRevision ?? revisionCount;
@@ -668,16 +755,26 @@ const MessageRow = memo(function MessageRow({
                 <LinkifiedText text={String(message.content || "")} />
               </div>
             ) : (
-              <div className="prose-chat">
-                <Markdown source={displayed || (isRunning ? "…" : "")} />
-              </div>
+              <>
+                {displayed ? (
+                  <div className="prose-chat">
+                    <Markdown source={displayed} />
+                  </div>
+                ) : null}
+                {message.error ? <AssistantErrorMessage message={message} /> : null}
+                {!displayed && !message.error && isRunning ? (
+                  <div className="prose-chat">
+                    <Markdown source="…" />
+                  </div>
+                ) : null}
+              </>
             )}
           </div>
         ) : null}
         {showMeta ? (
           <MessageMeta modelId={message.modelId} usage={message.usage} />
         ) : null}
-        {hasAnswer || showRevisionPager ? (
+        {hasAnswer || hasError || showRevisionPager ? (
           <div className="message-actions">
             {showRevisionPager ? (
               <div className="message-revision-pager" role="group" aria-label={t("chat.revisions")}>
@@ -795,7 +892,8 @@ export function ChatTranscript({
     if (
       message.role === "assistant" &&
       !(message.content || "").trim() &&
-      !thinkingText(message)
+      !thinkingText(message) &&
+      !message.error
     )
       return false;
     return true;

@@ -565,19 +565,25 @@ Each scenario is documented in this format:
 - **Preconditions**: App launched through the normal desktop development
   command; provider configured.
 - **Steps**: 1) Select or enter a model ID that the provider rejects. 2) Send a
-  prompt. 3) Observe the transcript, composer state, and inline error. 4)
-  Repeat with an invalid provider key.
-- **Expected**: The run stops, no empty assistant bubble remains, and the chat
-  shows a readable inline error with stable `MODEL_NOT_CONFIGURED` or
-  `PROVIDER_UNAUTHORIZED` code. The composer becomes usable again. The
-  development launch must execute a sidecar rebuilt from the current runtime
-  source, not a stale ignored artifact.
+  prompt. 3) Inspect the assistant error message and its detail disclosure. 4)
+  Switch sessions and reload the failed session. 5) Repeat with an invalid
+  provider key.
+- **Expected**: The run stops and the transcript contains one durable
+  `role=assistant`, `status=error` message instead of a toast, floating banner,
+  or blank row. It shows a localized summary and stable
+  `MODEL_NOT_CONFIGURED` or `PROVIDER_UNAUTHORIZED` code. Details expose the
+  redacted provider response plus provider/model IDs and can be copied; no API
+  key or Authorization value appears. The configuration failure links to
+  settings, retriable failures offer Retry, the composer becomes usable again,
+  and reload preserves the error message. The development launch executes a
+  sidecar rebuilt from current runtime source.
 - **Specs linked**: `03-runtime/02-agent-runtime.md`,
   `03-runtime/07-process-model.md`, `03-runtime/08-error-codes.md`
 - **Acceptance**: C (failed chat settles), H (errors expose stable codes)
 - **Milestone**: M2
-- **Status**: Unit-covered (agent-runtime error event and desktop predev build
-  contract); full Electron UI scenario Draft
+- **Status**: Unit-covered (agent-runtime error message/redaction, host
+  persistence, desktop transcript contract, and predev build contract); full
+  Electron UI scenario Draft
 
 ### Hardening (M5)
 

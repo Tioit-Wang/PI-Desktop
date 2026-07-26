@@ -593,7 +593,7 @@ Single message render — either user (plaintext) or assistant (markdown streami
 | Streaming | accent left rule on the answer surface; content grows |
 | Thinking streaming | disclosure open; answer bubble omitted until answer text exists |
 | Complete | no streaming rule; full rendered markdown |
-| Error | error border; error message inline with retry prompt |
+| Error | assistant error card in transcript; localized summary + stable code; details disclosure opens to redacted provider response, provider/model IDs, and copy action; retriable failures show Retry and configuration failures show Open settings |
 
 ### 8.5 Accessibility
 
@@ -1092,7 +1092,7 @@ dismissToast(id: number); // ToastHost internal / tests
 | No caller timers | Auto-dismiss is owned by the toast system; callers must not `setTimeout`-clear |
 | i18n | Messages come from the i18n catalog (D073); raw host/provider error strings pass through unchanged |
 | Not for blocking flows | Anything needing a decision uses PermissionDialog / dialog surfaces, not a toast |
-| Not for inline validation | Field-level errors render next to the field; the chat error banner (`MODEL_NOT_CONFIGURED` etc.) stays inline |
+| Not for inline validation | Field-level errors render next to the field; message-bound provider failures render as assistant error messages in the transcript |
 | Host-pushed toasts | Plugin/main-process toasts arrive via `api.onToast` and render as `info` |
 
 ### 17.5 Behavior

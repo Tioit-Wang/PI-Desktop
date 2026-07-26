@@ -1166,15 +1166,15 @@ function persistAgentEvent(envelope: AgentEventEnvelope) {
     return;
   }
   if (event.type === "message_end" && event.message.role === "assistant") {
-    // A turn that dies before producing any text leaves an empty bubble with
-    // status error/aborted — not worth a transcript row (the error banner and
-    // turn status carry the failure).
+    // Empty aborted bubbles are not useful transcript rows. Structured
+    // provider failures remain durable assistant messages so their details
+    // stay attached to the failed turn after reload.
     const failed =
       event.message.status === "error" || event.message.status === "aborted";
     const empty =
       !(event.message.content || "").trim() &&
       !(event.message.thinking || "").trim();
-    if (failed && empty) return;
+    if (failed && empty && !event.message.error) return;
     void host
       .call("session.appendMessage", {
         sessionId: envelope.sessionId,

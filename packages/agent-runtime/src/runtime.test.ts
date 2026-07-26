@@ -188,7 +188,15 @@ describe("DesktopAgentRuntime assistant thinking events", () => {
     const events = onEvent.mock.calls.map(([envelope]) => envelope as any);
     expect(events.at(-2)?.event).toMatchObject({
       type: "message_end",
-      message: { status: "error" },
+      message: {
+        status: "error",
+        isError: true,
+        error: {
+          code: "MODEL_NOT_CONFIGURED",
+          message: '404: {"error":{"message":"model not found"}}',
+          retriable: false,
+        },
+      },
     });
     expect(events.at(-1)?.event).toMatchObject({
       type: "error",
@@ -198,6 +206,52 @@ describe("DesktopAgentRuntime assistant thinking events", () => {
       },
     });
 
+    await runtime.dispose();
+  });
+
+  it("does not restore failed assistant details into model context", async () => {
+    const runtime = createRuntime({
+      history: [
+        {
+          id: "failed-1",
+          role: "assistant",
+          content: "",
+          createdAt: new Date().toISOString(),
+          status: "error",
+          isError: true,
+          error: {
+            code: "PROVIDER_ERROR",
+            message: "upstream detail",
+            retriable: true,
+          },
+        },
+      ],
+    });
+
+    expect((runtime as any).agent.state.messages).toEqual([]);
+    await runtime.dispose();
+  });
+
+  it("creates an assistant error message when a prompt rejects before streaming", async () => {
+    const onEvent = vi.fn();
+    const runtime = createRuntime({ onEvent });
+    const error = {
+      code: "NETWORK_ERROR",
+      message: "fetch failed",
+      retriable: true,
+    };
+
+    (runtime as any).finalizeCurrentAssistant("error", error);
+
+    const events = onEvent.mock.calls.map(([envelope]) => envelope as any);
+    expect(events.at(-2)?.event).toMatchObject({
+      type: "message_start",
+      message: { role: "assistant", status: "error", error },
+    });
+    expect(events.at(-1)?.event).toMatchObject({
+      type: "message_end",
+      message: { role: "assistant", status: "error", error },
+    });
     await runtime.dispose();
   });
 });

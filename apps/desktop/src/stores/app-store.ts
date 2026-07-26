@@ -2,6 +2,7 @@ import { create } from "zustand";
 import i18n from "i18next";
 import type {
   AgentEventEnvelope,
+  AppError,
   AppSettings,
   AppVersionInfo,
   ModelInfo,
@@ -87,6 +88,36 @@ function shrinkWindowForPanel(width: number) {
   const growth = panelWindowGrowth ?? width;
   panelWindowGrowth = null;
   if (growth !== 0) void api.windowResizeBy(-growth).catch(() => {});
+}
+
+function messageErrorFromUnknown(error: unknown): AppError {
+  const value = error as {
+    code?: string;
+    message?: string;
+    retriable?: boolean;
+  };
+  return {
+    code: value?.code || "INTERNAL",
+    message:
+      error instanceof Error
+        ? error.message
+        : typeof value?.message === "string"
+          ? value.message
+          : String(error),
+    retriable: value?.retriable === true,
+  };
+}
+
+function assistantErrorMessage(error: AppError): UiMessage {
+  return {
+    id: crypto.randomUUID(),
+    role: "assistant",
+    content: "",
+    createdAt: new Date().toISOString(),
+    status: "error",
+    isError: true,
+    error,
+  };
 }
 
 function loadWorkPanelPreferences(): {
@@ -658,13 +689,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       }
       await api.prompt({ sessionId, content });
     } catch (e) {
+      const messageError = messageErrorFromUnknown(e);
       set((s) => ({
         // The user may have switched sessions while the request was in
         // flight; only reset the spinner if the failed session is visible.
         isRunning: s.activeSessionId === startedIn ? false : s.isRunning,
         runningSessions: { ...s.runningSessions, [startedIn]: false },
-        error: e instanceof Error ? e.message : String(e),
-        errorCode: (e as { code?: string })?.code ?? null,
+        ...(s.activeSessionId === startedIn
+          ? { messages: [...s.messages, assistantErrorMessage(messageError)] }
+          : {}),
       }));
     }
   },
@@ -1386,15 +1419,16 @@ export const useAppStore = create<AppState>((set, get) => ({
         break;
       case "message_end":
         set((s) => {
-          // Failed turns with no output resolve to an empty error/aborted
-          // bubble; remove it instead of leaving a blank row (main skips
-          // persisting it for the same reason).
+          // Remove only legacy failures without structured detail and empty
+          // aborts. Provider failures with AppError metadata are real
+          // assistant transcript messages.
           if (
             event.message.role === "assistant" &&
             (event.message.status === "error" ||
               event.message.status === "aborted") &&
             !event.message.content.trim() &&
-            !(event.message.thinking || "").trim()
+            !(event.message.thinking || "").trim() &&
+            !event.message.error
           ) {
             return {
               messages: s.messages.filter((m) => m.id !== event.message.id),
@@ -1476,24 +1510,19 @@ export const useAppStore = create<AppState>((set, get) => ({
       case "error": {
         // A user-initiated stop is not an error; just settle the run state.
         const aborted = event.error.code === "TURN_ABORTED";
-        set((s) => ({
-          isRunning: false,
-          ...(aborted
-            ? {}
-            : {
-                error: `${event.error.code}: ${event.error.message}`,
-                errorCode: event.error.code,
-                errorRetriable: event.error.retriable === true,
-              }),
-          messages: s.messages
+        set((s) => {
+          const last = s.messages[s.messages.length - 1];
+          const hasErrorMessage =
+            last?.role === "assistant" &&
+            (last.status === "error" || last.isError === true);
+          const messages: UiMessage[] = s.messages
             // A turn that died before producing text leaves an empty
-            // error/aborted bubble — drop it (main skips persisting it too).
+            // aborted bubble. Provider failures stay as assistant messages.
             .filter(
               (message) =>
                 !(
                   message.role === "assistant" &&
-                  (message.status === "error" ||
-                    message.status === "aborted") &&
+                  message.status === "aborted" &&
                   !message.content.trim() &&
                   !(message.thinking || "").trim()
                 ),
@@ -1502,16 +1531,29 @@ export const useAppStore = create<AppState>((set, get) => ({
               message.role === "tool" && message.toolStatus === "running"
                 ? {
                     ...message,
-                    toolStatus: "error",
-                    status: "error",
+                    toolStatus: "error" as const,
+                    status: "error" as const,
                     isError: true,
                   }
                 : message.role === "assistant" &&
                     message.status === "streaming"
-                  ? { ...message, status: aborted ? "aborted" : "error" }
+                  ? {
+                      ...message,
+                      status: aborted ? ("aborted" as const) : ("error" as const),
+                    }
                   : message,
-            ),
-        }));
+            );
+          return {
+            isRunning: false,
+            error: null,
+            errorCode: null,
+            errorRetriable: null,
+            messages:
+              aborted || hasErrorMessage
+                ? messages
+                : [...messages, assistantErrorMessage(event.error)],
+          };
+        });
         break;
       }
       default:

@@ -1,3 +1,5 @@
+import type { AppError } from "./errors.js";
+
 export type Mode = "chat" | "agent";
 export const THINKING_LEVELS = [
   "off",
@@ -42,6 +44,8 @@ export type UiMessage = {
   providerId?: string;
   /** Token usage for the assistant turn, when the provider reported it. */
   usage?: MessageUsage;
+  /** Structured failure attached to the assistant turn that failed. */
+  error?: AppError;
   /** Stable regenerate-family key shared across rewritten user prompts. */
   revisionRootId?: string;
   /** Total regenerate variants for this user root turn. */
