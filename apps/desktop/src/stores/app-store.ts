@@ -187,6 +187,7 @@ export type AppState = {
   }) => Promise<void>;
   sendPrompt: (content: string) => Promise<void>;
   retryAssistantMessage: (messageId: string) => Promise<void>;
+  activateMessageRevision: (rootUserId: string, revisionIndex: number) => Promise<void>;
   abort: () => Promise<void>;
   openProject: () => Promise<void>;
   activateProject: (path: string) => Promise<ProjectWorkspace | null>;
@@ -682,6 +683,39 @@ export const useAppStore = create<AppState>((set, get) => ({
           errorCode: (e as { code?: string })?.code ?? null,
         }));
       }
+    }
+  },
+
+  activateMessageRevision: async (rootUserId, revisionIndex) => {
+    const state = get();
+    if (state.isRunning) return;
+    const sessionId = state.activeSessionId;
+    if (!sessionId) return;
+    const rootIndex = state.messages.findIndex((message) => message.id === rootUserId);
+    if (rootIndex < 0) return;
+    const root = state.messages[rootIndex];
+    // Live regenerate prompts get new ids; the durable family key stays on
+    // revisionRootId so all variants remain one linear set.
+    const revisionFamilyId = root.revisionRootId || root.id;
+    const prefix = state.messages.slice(0, rootIndex);
+    try {
+      const result = await api.activateSessionRevision({
+        sessionId,
+        rootUserId: revisionFamilyId,
+        revisionIndex,
+        prefix,
+      });
+      set((s) => ({
+        messages:
+          s.activeSessionId === sessionId ? result.messages ?? prefix : s.messages,
+        error: null,
+        errorCode: null,
+      }));
+    } catch (e) {
+      set({
+        error: e instanceof Error ? e.message : String(e),
+        errorCode: (e as { code?: string })?.code ?? null,
+      });
     }
   },
 

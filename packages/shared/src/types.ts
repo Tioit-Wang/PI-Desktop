@@ -36,6 +36,12 @@ export type UiMessage = {
   providerId?: string;
   /** Token usage for the assistant turn, when the provider reported it. */
   usage?: MessageUsage;
+  /** Stable regenerate-family key shared across rewritten user prompts. */
+  revisionRootId?: string;
+  /** Total regenerate variants for this user root turn. */
+  revisionCount?: number;
+  /** 1-based active variant index for this user root turn. */
+  activeRevision?: number;
   toolName?: string;
   toolCallId?: string;
   toolStatus?: "running" | "success" | "error" | "denied";
@@ -63,6 +69,13 @@ export type SessionSummary = {
 
 export type SessionDetail = SessionSummary & {
   messages: UiMessage[];
+};
+
+export type MessageRevisionSummary = {
+  revisionIndex: number;
+  isActive: boolean;
+  createdAt: string;
+  messageCount: number;
 };
 
 export type AgentStatus = {

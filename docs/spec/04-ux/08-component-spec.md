@@ -475,7 +475,7 @@ responses, lightweight tool activity rows, and permission cards for a session.
 ### 7.6 MVP constraints
 
 - No message search within transcript
-- No message branching/rewind
+- No arbitrary message branching tree; regenerate variants are linear per user root turn
 - The minimap renders only when at least two visible user or assistant messages
   exist **and** the transcript content overflows one viewport (scrollHeight >
   clientHeight); tool-only rows do not create markers and a one-page transcript
@@ -534,7 +534,9 @@ Single message render — either user (plaintext) or assistant (markdown streami
   on completed assistant turns). Right-aligned for user turns, left-aligned for
   assistant turns; visible on hover/focus-within. Regenerate truncates the
   durable transcript to the nearest preceding user prompt and re-runs that turn
-  in place instead of appending a duplicate branch.
+  in place instead of appending a duplicate branch. When more than one
+  variant exists, a ChatGPT-style `current / total` pager on the root user
+  turn switches archived branches without losing history (D109).
 - Assistant meta: optional model badge + token-usage chip under the answer
   (collapsed summary with hover breakdown for input/output/cache/reasoning)
 - Gap: 10px vertical padding between consecutive message rows (denser than

@@ -80,6 +80,15 @@ pub struct UiMessage {
     pub provider_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub usage: Option<MessageUsage>,
+    /// Stable regenerate-family key shared across rewritten user prompts.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revision_root_id: Option<String>,
+    /// For user messages that own regenerate history: total revision count.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub revision_count: Option<i64>,
+    /// 1-based active revision index for the branch rooted at this user turn.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_revision: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_name: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -150,6 +159,15 @@ fn ui_to_storage(message: &UiMessage) -> (Option<String>, String, Option<String>
                 "totalTokens": usage.total_tokens,
             }),
         );
+    }
+    if let Some(root_id) = &message.revision_root_id {
+        meta_obj.insert("revisionRootId".into(), json!(root_id));
+    }
+    if let Some(count) = message.revision_count {
+        meta_obj.insert("revisionCount".into(), json!(count));
+    }
+    if let Some(active) = message.active_revision {
+        meta_obj.insert("activeRevision".into(), json!(active));
     }
     let meta = if meta_obj.is_empty() {
         None
@@ -252,6 +270,12 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             total_tokens,
         })
     });
+    let revision_root_id = meta
+        .get("revisionRootId")
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string());
+    let revision_count = meta.get("revisionCount").and_then(|v| v.as_i64());
+    let active_revision = meta.get("activeRevision").and_then(|v| v.as_i64());
     let thinking = blocks
         .iter()
         .filter_map(|b| {
@@ -283,6 +307,9 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             model_id,
             provider_id,
             usage,
+            revision_root_id: revision_root_id.clone(),
+            revision_count,
+            active_revision,
             tool_name: row.tool_name,
             tool_call_id: block
                 .get("callId")
@@ -322,6 +349,9 @@ fn row_to_ui(row: MessageRow) -> UiMessage {
             model_id,
             provider_id,
             usage,
+            revision_root_id: revision_root_id.clone(),
+            revision_count,
+            active_revision,
             tool_name: None,
             tool_call_id: None,
             tool_status: None,
@@ -653,6 +683,166 @@ pub fn replace_messages(db: &Database, session_id: &str, messages: &[UiMessage])
     Ok(())
 }
 
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MessageRevisionSummary {
+    pub revision_index: i64,
+    pub is_active: bool,
+    pub created_at: String,
+    pub message_count: i64,
+}
+
+/// Persist a discarded (or current) regenerate branch for a user root turn.
+pub fn save_message_revision(
+    db: &Database,
+    session_id: &str,
+    root_user_id: &str,
+    messages: &[UiMessage],
+    make_active: bool,
+) -> Result<MessageRevisionSummary> {
+    if root_user_id.trim().is_empty() {
+        return Err(anyhow!("rootUserId required"));
+    }
+    if messages.is_empty() {
+        return Err(anyhow!("messages required"));
+    }
+    let conn = db.conn();
+    let tx = conn.unchecked_transaction()?;
+    let next_index: i64 = tx
+        .query_row(
+            "SELECT COALESCE(MAX(revision_index), 0) + 1
+             FROM message_revisions
+             WHERE session_id = ?1 AND root_user_id = ?2",
+            params![session_id, root_user_id],
+            |row| row.get(0),
+        )
+        .unwrap_or(1);
+    if make_active {
+        tx.prepare_cached(
+            "UPDATE message_revisions
+             SET is_active = 0
+             WHERE session_id = ?1 AND root_user_id = ?2",
+        )?
+        .execute(params![session_id, root_user_id])?;
+    }
+    let id = Uuid::new_v4().to_string();
+    let created = now_ms();
+    let payload = serde_json::to_string(messages)?;
+    tx.prepare_cached(
+        "INSERT INTO message_revisions (
+            id, session_id, root_user_id, revision_index, is_active, messages_json, created_at
+         ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+    )?
+    .execute(params![
+        id,
+        session_id,
+        root_user_id,
+        next_index,
+        if make_active { 1 } else { 0 },
+        payload,
+        created
+    ])?;
+    tx.commit()?;
+    Ok(MessageRevisionSummary {
+        revision_index: next_index,
+        is_active: make_active,
+        created_at: ms_to_ts(created),
+        message_count: messages.len() as i64,
+    })
+}
+
+pub fn list_message_revisions(
+    db: &Database,
+    session_id: &str,
+    root_user_id: &str,
+) -> Result<Vec<MessageRevisionSummary>> {
+    let mut stmt = db.conn().prepare_cached(
+        "SELECT revision_index, is_active, created_at, messages_json
+         FROM message_revisions
+         WHERE session_id = ?1 AND root_user_id = ?2
+         ORDER BY revision_index ASC",
+    )?;
+    let rows = stmt.query_map(params![session_id, root_user_id], |row| {
+        let messages_json: String = row.get(3)?;
+        let count = serde_json::from_str::<Vec<Value>>(&messages_json)
+            .map(|v| v.len() as i64)
+            .unwrap_or(0);
+        Ok(MessageRevisionSummary {
+            revision_index: row.get(0)?,
+            is_active: row.get::<_, i64>(1)? != 0,
+            created_at: ms_to_ts(row.get(2)?),
+            message_count: count,
+        })
+    })?;
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
+}
+
+/// Activate a stored revision: replace the live transcript with prefix + branch.
+/// `prefix` is every message before the root user turn.
+pub fn activate_message_revision(
+    db: &Database,
+    session_id: &str,
+    root_user_id: &str,
+    revision_index: i64,
+    prefix: &[UiMessage],
+) -> Result<Vec<UiMessage>> {
+    let conn = db.conn();
+    let tx = conn.unchecked_transaction()?;
+    let messages_json: String = tx
+        .query_row(
+            "SELECT messages_json FROM message_revisions
+             WHERE session_id = ?1 AND root_user_id = ?2 AND revision_index = ?3",
+            params![session_id, root_user_id, revision_index],
+            |row| row.get(0),
+        )
+        .map_err(|_| anyhow!("revision not found"))?;
+    let branch: Vec<UiMessage> = serde_json::from_str(&messages_json)
+        .map_err(|e| anyhow!("revision payload invalid: {e}"))?;
+    tx.prepare_cached(
+        "UPDATE message_revisions
+         SET is_active = CASE WHEN revision_index = ?3 THEN 1 ELSE 0 END
+         WHERE session_id = ?1 AND root_user_id = ?2",
+    )?
+    .execute(params![session_id, root_user_id, revision_index])?;
+    // rebuild live messages = prefix + branch
+    tx.prepare_cached("DELETE FROM messages WHERE session_id = ?1")?
+        .execute(params![session_id])?;
+    let mut combined = Vec::with_capacity(prefix.len() + branch.len());
+    combined.extend_from_slice(prefix);
+    combined.extend(branch.iter().cloned());
+    // stamp revision meta on the root user message when present
+    if let Some(root) = combined.iter_mut().find(|m| m.id == root_user_id) {
+        let total: i64 = tx.query_row(
+            "SELECT COUNT(*) FROM message_revisions
+             WHERE session_id = ?1 AND root_user_id = ?2",
+            params![session_id, root_user_id],
+            |row| row.get(0),
+        )?;
+        root.revision_root_id = Some(root_user_id.to_string());
+        root.revision_count = Some(total);
+        root.active_revision = Some(revision_index);
+    }
+    for (seq, message) in combined.iter().enumerate() {
+        insert_message(
+            &tx,
+            session_id,
+            seq as i64,
+            None,
+            message,
+            ts_to_ms(&message.created_at),
+        )?;
+    }
+    tx.prepare_cached("UPDATE sessions SET last_seq = ?1, updated_at = ?2 WHERE id = ?3")?
+        .execute(params![combined.len() as i64, now_ms(), session_id])?;
+    tx.commit()?;
+    Ok(combined)
+}
+
 /// Insert a session with caller-provided timestamps and messages in one
 /// transaction. Idempotent: if a session with the same id already exists the
 /// call is a no-op and returns false.
@@ -862,6 +1052,9 @@ mod tests {
             model_id: None,
             provider_id: None,
             usage: None,
+            revision_root_id: None,
+            revision_count: None,
+            active_revision: None,
             tool_name: None,
             tool_call_id: None,
             tool_status: None,
@@ -1068,6 +1261,9 @@ mod tests {
             model_id: None,
             provider_id: None,
             usage: None,
+            revision_root_id: None,
+            revision_count: None,
+            active_revision: None,
             tool_name: Some("Write".into()),
             tool_call_id: Some("c1".into()),
             tool_status: Some("success".into()),
@@ -1129,6 +1325,9 @@ mod tests {
                 reasoning_tokens: Some(5),
                 total_tokens: 48,
             }),
+            revision_root_id: None,
+            revision_count: None,
+            active_revision: None,
             tool_name: None,
             tool_call_id: None,
             tool_status: None,
@@ -1296,5 +1495,42 @@ mod tests {
         // Deleting the session clears the index (cascade + FTS trigger).
         delete_session(&db, &session.id).unwrap();
         assert!(search_messages(&db, "数据库", 10).unwrap().is_empty());
+    }
+
+    #[test]
+    fn save_and_activate_message_revision() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        let user = user_msg("u1", "hello", "2025-05-01T00:00:00Z");
+        let mut a1 = user_msg("a1", "first", "2025-05-01T00:00:01Z");
+        a1.role = "assistant".into();
+        let mut a2 = user_msg("a2", "second", "2025-05-01T00:00:02Z");
+        a2.role = "assistant".into();
+        let branch1 = vec![user.clone(), a1.clone()];
+        let branch2 = vec![user.clone(), a2.clone()];
+        let r1 = save_message_revision(&db, &session.id, "u1", &branch1, true).unwrap();
+        assert_eq!(r1.revision_index, 1);
+        let r2 = save_message_revision(&db, &session.id, "u1", &branch2, true).unwrap();
+        assert_eq!(r2.revision_index, 2);
+        let listed = list_message_revisions(&db, &session.id, "u1").unwrap();
+        assert_eq!(listed.len(), 2);
+        assert!(listed.iter().any(|r| r.revision_index == 1 && !r.is_active));
+        assert!(listed.iter().any(|r| r.revision_index == 2 && r.is_active));
+        let activated = activate_message_revision(&db, &session.id, "u1", 1, &[]).unwrap();
+        assert_eq!(activated.len(), 2);
+        assert_eq!(activated[1].content, "first");
+        assert_eq!(activated[0].revision_root_id.as_deref(), Some("u1"));
+        assert_eq!(activated[0].active_revision, Some(1));
+        assert_eq!(activated[0].revision_count, Some(2));
+        let detail = get_session(&db, &session.id).unwrap().unwrap();
+        assert_eq!(detail.messages[1].content, "first");
+        assert_eq!(detail.messages[0].active_revision, Some(1));
+        assert_eq!(detail.messages[0].revision_count, Some(2));
+
+        // Switching forward restores the second branch and keeps the family key.
+        let activated2 = activate_message_revision(&db, &session.id, "u1", 2, &[]).unwrap();
+        assert_eq!(activated2[1].content, "second");
+        assert_eq!(activated2[0].active_revision, Some(2));
+        assert_eq!(activated2[0].revision_root_id.as_deref(), Some("u1"));
     }
 }

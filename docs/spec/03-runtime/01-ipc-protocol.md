@@ -68,6 +68,8 @@ type AppError = {
 type AgentPromptRequest = {
  sessionId: string;
  content: string;
+ /** Truncate durable transcript to N leading messages before append (regenerate). */
+ truncateBefore?: number;
 };
 
 type AgentPromptResponse = {
@@ -95,7 +97,18 @@ type SessionConfigureRequest = {
 };
 ```
 
-Image and file payloads are not part of the current prompt contract. Composer
+Image and file payloads are not part of the current prompt contract.
+
+Regenerate history (D109) also uses session channels:
+
+- `pi-desktop/session/saveRevision`
+- `pi-desktop/session/listRevisions`
+- `pi-desktop/session/activateRevision`
+
+Root user turns may include `revisionRootId`, `revisionCount`, and
+`activeRevision`. Activating a revision replaces the live tail with
+`prefix + archived branch` and disposes the session agent.
+ Composer
 attachment affordances remain hidden until main, sidecar, pi model
 capabilities, and persistence all consume the payload.
 

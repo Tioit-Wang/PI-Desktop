@@ -109,3 +109,29 @@ test("conversation minimap hides until content overflows one viewport", async ()
   assert.match(minimapSource, /window\.addEventListener\("resize", schedule\)/);
   assert.match(minimapSource, /updateOverflow/);
 });
+
+test("regenerate history pager and stable revision family are wired", async () => {
+  const storeSource = await readFile(
+    new URL("../src/stores/app-store.ts", import.meta.url),
+    "utf8",
+  );
+  const mainSource = await readFile(
+    new URL("../electron/main/index.ts", import.meta.url),
+    "utf8",
+  );
+  const sharedSource = await readFile(
+    new URL("../../../packages/shared/src/types.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(transcriptSource, /message-revision-pager/);
+  assert.match(transcriptSource, /activateMessageRevision/);
+  assert.match(transcriptSource, /chat\.revisionPager/);
+  assert.match(stylesSource, /\.message-revision-pager/);
+  assert.match(storeSource, /revisionRootId \|\| root\.id/);
+  assert.match(storeSource, /activateSessionRevision/);
+  assert.match(mainSource, /session\.saveRevision/);
+  assert.match(mainSource, /revisionRootId/);
+  assert.match(mainSource, /revisionCount: count \+ 1/);
+  assert.match(sharedSource, /revisionRootId\?: string/);
+  assert.match(sharedSource, /MessageRevisionSummary/);
+});

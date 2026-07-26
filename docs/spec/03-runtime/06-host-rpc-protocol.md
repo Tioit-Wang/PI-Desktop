@@ -140,6 +140,13 @@ Rules:
   `thinkingLevel` preserves the current value; invalid modes or levels return
   `INVALID_PARAMS`
 - `session.appendMessage`
+- `session.replaceMessages` — single-transaction transcript rewrite used by
+  regenerate/edit flows
+- `session.saveRevision` — archive a regenerate branch under
+  `(sessionId, rootUserId)`
+- `session.listRevisions` — list linear variants for a root user family
+- `session.activateRevision` — replace live transcript with `prefix + branch`
+  and stamp root pager metadata
 - `session.updateTurn`
 - `session.import` — atomically imports one converted session; a non-empty
   project path is normalized and upserted into `projects` before the session

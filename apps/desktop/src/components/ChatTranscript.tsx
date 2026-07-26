@@ -23,6 +23,7 @@ import {
   IconArrowDown,
   IconCheck,
   IconCircleAlert,
+  IconChevronLeft,
   IconChevronRight,
   IconCopy,
   IconFileText,
@@ -504,6 +505,7 @@ const MessageRow = memo(function MessageRow({
 }) {
   const { t } = useTranslation();
   const retryAssistantMessage = useAppStore((s) => s.retryAssistantMessage);
+  const activateMessageRevision = useAppStore((s) => s.activateMessageRevision);
   const isUser = message.role === "user";
   const copyLabel = t("chat.copy");
   const retryLabel = t("chat.retry");
@@ -516,6 +518,9 @@ const MessageRow = memo(function MessageRow({
     !isUser && message.status !== "streaming" && hasAnswer;
   const showAnswer = isUser || Boolean(displayed) || (!thinking && isRunning);
   const showMeta = completeAssistant && Boolean(message.modelId || message.usage);
+  const revisionCount = message.revisionCount ?? 0;
+  const activeRevision = message.activeRevision ?? revisionCount;
+  const showRevisionPager = isUser && revisionCount > 1;
   return (
     <div
       className={`message-row ${isUser ? "user" : message.role}${streaming ? " streaming" : ""}`}
@@ -533,7 +538,16 @@ const MessageRow = memo(function MessageRow({
         {showAnswer ? (
           <div className="message-bubble">
             {isUser ? (
-              <div className="message-user-text selectable">{message.content}</div>
+              <div className="message-user-text selectable">
+                {String(message.content || "")
+                  .split("\n")
+                  .map((line, index, lines) => (
+                    <span key={`user-line-${index}`}>
+                      {line}
+                      {index < lines.length - 1 ? <br /> : null}
+                    </span>
+                  ))}
+              </div>
             ) : (
               <div className="prose-chat">
                 <Markdown source={displayed || (isRunning ? "…" : "")} />
@@ -544,9 +558,44 @@ const MessageRow = memo(function MessageRow({
         {showMeta ? (
           <MessageMeta modelId={message.modelId} usage={message.usage} />
         ) : null}
-        {hasAnswer ? (
+        {hasAnswer || showRevisionPager ? (
           <div className="message-actions">
-            <CopyButton text={message.content} label={copyLabel} />
+            {showRevisionPager ? (
+              <div className="message-revision-pager" role="group" aria-label={t("chat.revisions")}>
+                <button
+                  className="copy-btn revision-nav"
+                  title={t("chat.revisionPrev")}
+                  aria-label={t("chat.revisionPrev")}
+                  disabled={isRunning || activeRevision <= 1}
+                  onClick={() =>
+                    void activateMessageRevision(message.id, Math.max(1, activeRevision - 1))
+                  }
+                >
+                  <IconChevronLeft size={13} />
+                </button>
+                <span className="message-revision-label">
+                  {t("chat.revisionPager", {
+                    current: activeRevision,
+                    total: revisionCount,
+                  })}
+                </span>
+                <button
+                  className="copy-btn revision-nav"
+                  title={t("chat.revisionNext")}
+                  aria-label={t("chat.revisionNext")}
+                  disabled={isRunning || activeRevision >= revisionCount}
+                  onClick={() =>
+                    void activateMessageRevision(
+                      message.id,
+                      Math.min(revisionCount, activeRevision + 1),
+                    )
+                  }
+                >
+                  <IconChevronRight size={13} />
+                </button>
+              </div>
+            ) : null}
+            {hasAnswer ? <CopyButton text={message.content} label={copyLabel} /> : null}
             {completeAssistant ? (
               <button
                 className="copy-btn"
@@ -565,6 +614,7 @@ const MessageRow = memo(function MessageRow({
     </div>
   );
 });
+
 
 export function ChatTranscript({
   messages,

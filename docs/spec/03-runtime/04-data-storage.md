@@ -1,4 +1,4 @@
-# 04. Data Storage (Schema v3)
+# 04. Data Storage (Schema v4)
 
 ## 0. Ownership decision
 
@@ -12,13 +12,13 @@
 
 ## 1. Goals
 
-Local-first, recoverable after restart, sensitive data isolated — plus, for v3:
+Local-first, recoverable after restart, sensitive data isolated — plus, for v4:
 
 1. **Lossless transcripts** — store the runtime message shape (content blocks),
    not the UI projection; UI shapes are derived at the RPC boundary.
 2. **High performance** — O(1) appends, covering indexes for every hot query,
    integer times, single-writer WAL, no JSON scans on hot paths.
-3. **Minimal** — one database file, 12 tables, no dead tables, every table has
+3. **Minimal** — one database file, 13 tables, no dead tables, every table has
    a current or explicitly spec'd consumer.
 4. **Extensible without migrations** where cheap (block vocabulary, kv
    namespaces, `config_json` columns), **with migrations** where structural
@@ -59,7 +59,7 @@ PRAGMA trusted_schema = ON;       -- required by the FTS triggers (§4.8); the D
 PRAGMA auto_vacuum = INCREMENTAL; -- set at creation, before any table
 ```
 
-- Schema version lives in `PRAGMA user_version` (v3 = `3`). The v1 `meta`
+- Schema version lives in `PRAGMA user_version` (v4 = `4`). The v1 `meta`
   table is gone.
 - host-core is the **single writer**; statements use `prepare_cached`; every
   multi-row write runs in one transaction.
@@ -370,7 +370,39 @@ index too; this is why `trusted_schema = ON` is part of the bootstrap. DDL
 validated end-to-end (insert/update/delete/cascade + CJK trigram match) with
 `sqlite3` 3.43+.
 
-### 4.9 artifacts — files a session produced
+### 4.9 message_revisions — regenerate history
+
+Archives discarded regenerate branches so users can page previous variants
+without stacking them in the live transcript (D105/D109). One row is one
+linear branch rooted at a user turn.
+
+```sql
+CREATE TABLE message_revisions (
+  id              TEXT PRIMARY KEY,
+  session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  root_user_id    TEXT NOT NULL,            -- wire id of the root user message
+  revision_index  INTEGER NOT NULL,         -- 1-based per (session, root)
+  is_active       INTEGER NOT NULL DEFAULT 0,
+  messages_json   TEXT NOT NULL,            -- UiMessage[] for this branch
+  created_at      INTEGER NOT NULL,
+  UNIQUE (session_id, root_user_id, revision_index)
+);
+CREATE INDEX idx_message_revisions_root
+  ON message_revisions(session_id, root_user_id, revision_index);
+```
+
+- Live transcript remains the active branch only (`messages`).
+- Switching a pager entry replaces the active tail and flips `is_active`.
+- `messages_json` is opaque to SQL queries; host code owns encode/decode.
+- Cascade on `session_id` keeps history from outliving its session.
+- `root_user_id` is the stable regenerate-family key. Live rewritten user
+  prompts may carry a new message `id`, but `meta_json.revisionRootId` keeps
+  pointing at the original family so later regenerates append to one set.
+- Root user `meta_json` also stores `revisionCount` / `activeRevision` for the
+  transcript pager; those fields are presentation metadata, not a second source
+  of truth for branch payloads.
+
+### 4.10 artifacts — files a session produced
 
 Backs the Artifacts surface (benchmark §3.7). v1 planned to derive this from
 `audit_log`, but audit payloads never recorded file paths; an explicit
@@ -392,7 +424,7 @@ Upserted by host-core in the same transaction as the `tool_execute` audit row
 whenever Write/Edit (or a plugin tool declaring file effects) succeeds —
 repeat edits update `op`/`updated_at`, keeping one row per file per session.
 
-### 4.10 scheduled_tasks + task_runs — automations
+### 4.11 scheduled_tasks + task_runs — automations
 
 Moves scheduled tasks out of Electron's `scheduled-tasks.json` (D002 fix) and
 adds the run-history the Automations page needs (定时任务 / 运行记录 tabs).
@@ -426,7 +458,7 @@ CREATE INDEX idx_task_runs ON task_runs(task_id, started_at DESC);
 A run that spawns a session gets its transcript for free via `session_id`.
 Finer schedules (cron) land in `config_json` without a migration.
 
-### 4.11 secrets_meta
+### 4.12 secrets_meta
 
 Registry of which secrets exist (blob files are sha256-named and otherwise
 unenumerable). `owner_kind/owner_id` generalizes v1's provider-only column for
@@ -446,7 +478,7 @@ CREATE TABLE secrets_meta (
 Secret *values* never enter the DB (D028/D031): OS safeStorage primary,
 AES-GCM file fallback under `secrets/`.
 
-### 4.12 audit_log
+### 4.13 audit_log
 
 Append-only; now indexed and prunable. Integer autoincrement PK replaces v1's
 random uuids (cheaper inserts, natural order).
@@ -534,7 +566,10 @@ turn's tail and the boot sweep marks that turn `aborted`.
   `sessions.thinking_level TEXT NOT NULL DEFAULT 'off'` with the canonical
   seven-value check constraint, then set `user_version = 3`. Existing
   transcripts and session bindings are unchanged.
-- Fresh installs run the full v3 DDL directly.
+- **v3 → v4** (additive, one transaction): create `message_revisions` plus
+  `idx_message_revisions_root`, then set `user_version = 4`. Existing
+  transcripts are unchanged; regenerate history starts empty.
+- Fresh installs run the full v4 DDL directly.
 
 ## 8. Retention & maintenance
 
@@ -588,3 +623,8 @@ anything the host filters, joins, sums, or indexes.
     with every existing session set to `off`
 11. Assistant thinking blocks round-trip independently from final answer text;
     the derived search text excludes thinking content
+12. Regenerated assistant variants survive restart under `message_revisions`;
+    the live root user turn reloads with `revisionCount` / `activeRevision` and
+    the pager can restore any archived branch
+13. A v3 database opens at v4 with an empty `message_revisions` table and no
+    transcript loss

@@ -2,6 +2,7 @@ import type {
   AgentEventEnvelope,
   AgentPromptRequest,
   UiMessage,
+  MessageRevisionSummary,
   AgentPromptResponse,
   AgentStatus,
   AppSettings,
@@ -158,6 +159,25 @@ export const api = {
     ),
   replaceSessionMessages: (sessionId: string, messages: UiMessage[]) =>
     invoke(IPC.invoke.sessionReplaceMessages, { sessionId, messages }),
+  saveSessionRevision: (input: {
+    sessionId: string;
+    rootUserId: string;
+    messages: UiMessage[];
+    makeActive?: boolean;
+  }) =>
+    invoke<{ revision: MessageRevisionSummary }>(IPC.invoke.sessionSaveRevision, input),
+  listSessionRevisions: (sessionId: string, rootUserId: string) =>
+    invoke<{ revisions: MessageRevisionSummary[] }>(IPC.invoke.sessionListRevisions, {
+      sessionId,
+      rootUserId,
+    }),
+  activateSessionRevision: (input: {
+    sessionId: string;
+    rootUserId: string;
+    revisionIndex: number;
+    prefix: UiMessage[];
+  }) =>
+    invoke<{ messages: UiMessage[] }>(IPC.invoke.sessionActivateRevision, input),
   prompt: (req: AgentPromptRequest) =>
     invoke<AgentPromptResponse>(IPC.invoke.agentPrompt, req),
   abort: (sessionId: string) =>

@@ -669,6 +669,83 @@ async fn handle_request(
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "ok": true }))
         }
+        "session.saveRevision" => {
+            let session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "sessionId required", "INVALID_PARAMS"))?;
+            let root_user_id = params
+                .get("rootUserId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "rootUserId required", "INVALID_PARAMS"))?;
+            let messages: Vec<UiMessage> = serde_json::from_value(
+                params
+                    .get("messages")
+                    .cloned()
+                    .ok_or_else(|| rpc_err(1002, "messages required", "INVALID_PARAMS"))?,
+            )
+            .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
+            let make_active = params
+                .get("makeActive")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false);
+            let st = state.lock().await;
+            let revision = sessions::save_message_revision(
+                &st.db,
+                session_id,
+                root_user_id,
+                &messages,
+                make_active,
+            )
+            .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "revision": revision }))
+        }
+        "session.listRevisions" => {
+            let session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "sessionId required", "INVALID_PARAMS"))?;
+            let root_user_id = params
+                .get("rootUserId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "rootUserId required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let revisions =
+                sessions::list_message_revisions(&st.db, session_id, root_user_id)
+                    .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "revisions": revisions }))
+        }
+        "session.activateRevision" => {
+            let session_id = params
+                .get("sessionId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "sessionId required", "INVALID_PARAMS"))?;
+            let root_user_id = params
+                .get("rootUserId")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| rpc_err(1002, "rootUserId required", "INVALID_PARAMS"))?;
+            let revision_index = params
+                .get("revisionIndex")
+                .and_then(|v| v.as_i64())
+                .ok_or_else(|| rpc_err(1002, "revisionIndex required", "INVALID_PARAMS"))?;
+            let prefix: Vec<UiMessage> = serde_json::from_value(
+                params
+                    .get("prefix")
+                    .cloned()
+                    .unwrap_or_else(|| json!([])),
+            )
+            .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let messages = sessions::activate_message_revision(
+                &st.db,
+                session_id,
+                root_user_id,
+                revision_index,
+                &prefix,
+            )
+            .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "messages": messages }))
+        }
 
         "session.import" => {
             let summary: sessions::SessionSummary = serde_json::from_value(

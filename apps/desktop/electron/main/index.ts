@@ -965,6 +965,71 @@ function persistAgentEvent(envelope: AgentEventEnvelope) {
   }
   if (event.type === "agent_end") {
     finishTurn(envelope.sessionId, "completed");
+    // Persist the completed branch as the active regenerate revision when the
+    // latest user turn carries revision metadata (ChatGPT-style history).
+    void (async () => {
+      try {
+        if (!host) return;
+        const detail = await host.call<{ session?: { messages?: any[] } }>(
+          "session.get",
+          { id: envelope.sessionId },
+        );
+        const messages = detail.session?.messages ?? [];
+        let rootIndex = -1;
+        for (let i = messages.length - 1; i >= 0; i -= 1) {
+          if (messages[i]?.role === "user" && messages[i]?.revisionCount) {
+            rootIndex = i;
+            break;
+          }
+        }
+        if (rootIndex < 0) return;
+        const root = messages[rootIndex];
+        const branch = messages.slice(rootIndex);
+        const stableRootUserId =
+          typeof root.revisionRootId === "string" && root.revisionRootId
+            ? root.revisionRootId
+            : root.id;
+        const saved = await host.call<{ revision?: { revisionIndex?: number } }>(
+          "session.saveRevision",
+          {
+            sessionId: envelope.sessionId,
+            rootUserId: stableRootUserId,
+            messages: branch,
+            makeActive: true,
+          },
+        );
+        const listed = await host.call<{ revisions?: Array<{ revisionIndex: number }> }>(
+          "session.listRevisions",
+          { sessionId: envelope.sessionId, rootUserId: stableRootUserId },
+        );
+        const total = listed.revisions?.length ?? Number(root.revisionCount ?? 1);
+        const active =
+          Number(saved.revision?.revisionIndex ?? root.activeRevision ?? total) || total;
+        const stamped = {
+          ...root,
+          revisionRootId: stableRootUserId,
+          revisionCount: total,
+          activeRevision: active,
+        };
+        const nextMessages = messages.map((message: any, index: number) =>
+          index === rootIndex ? stamped : message,
+        );
+        await host.call("session.replaceMessages", {
+          sessionId: envelope.sessionId,
+          messages: nextMessages,
+        });
+        sendToRenderer(IPC.event.agentMessage, {
+          sessionId: envelope.sessionId,
+          ts: Date.now(),
+          event: { type: "message_end", message: stamped },
+        } satisfies AgentEventEnvelope);
+      } catch (error) {
+        logger.app("warn", "save active regenerate branch failed", {
+          sessionId: envelope.sessionId,
+          data: String(error),
+        });
+      }
+    })();
     return;
   }
   if (event.type === "message_end" && event.message.role === "assistant") {
@@ -1194,6 +1259,56 @@ function registerIpc() {
       return host.call("session.replaceMessages", {
         sessionId,
         messages: input.messages ?? [],
+      });
+    },
+  );
+  handle(
+    IPC.invoke.sessionSaveRevision,
+    async (input: {
+      sessionId: string;
+      rootUserId: string;
+      messages: unknown[];
+      makeActive?: boolean;
+    }) => {
+      if (!host) throw new Error("host unavailable");
+      return host.call("session.saveRevision", {
+        sessionId: String(input?.sessionId || ""),
+        rootUserId: String(input?.rootUserId || ""),
+        messages: input?.messages ?? [],
+        makeActive: input?.makeActive === true,
+      });
+    },
+  );
+  handle(
+    IPC.invoke.sessionListRevisions,
+    async (input: { sessionId: string; rootUserId: string }) => {
+      if (!host) throw new Error("host unavailable");
+      return host.call("session.listRevisions", {
+        sessionId: String(input?.sessionId || ""),
+        rootUserId: String(input?.rootUserId || ""),
+      });
+    },
+  );
+  handle(
+    IPC.invoke.sessionActivateRevision,
+    async (input: {
+      sessionId: string;
+      rootUserId: string;
+      revisionIndex: number;
+      prefix?: unknown[];
+    }) => {
+      if (!host) throw new Error("host unavailable");
+      const sessionId = String(input?.sessionId || "");
+      if (sidecar) {
+        await sidecar
+          .call("agent.disposeSession", { sessionId })
+          .catch(() => undefined);
+      }
+      return host.call("session.activateRevision", {
+        sessionId,
+        rootUserId: String(input?.rootUserId || ""),
+        revisionIndex: Number(input?.revisionIndex || 0),
+        prefix: input?.prefix ?? [],
       });
     },
   );
@@ -1724,9 +1839,50 @@ function registerIpc() {
       Number.isFinite(req.truncateBefore) &&
       req.truncateBefore >= 0
     ) {
-      const kept = Array.isArray(session.messages)
-        ? session.messages.slice(0, Math.floor(req.truncateBefore))
-        : [];
+      const all = Array.isArray(session.messages) ? session.messages : [];
+      const cut = Math.floor(req.truncateBefore);
+      const kept = all.slice(0, cut);
+      const discarded = all.slice(cut);
+      // ChatGPT-style regenerate history: archive the discarded branch under
+      // its root user turn before truncating the live transcript.
+      const rootUser = discarded.find(
+        (message: any) => message?.role === "user" && message?.id,
+      );
+      if (rootUser && discarded.length > 0) {
+        try {
+          // Prefer an existing revision-family key so regenerates keep one
+          // linear variant set instead of forking a new root on every redo.
+          const stableRootUserId =
+            typeof rootUser.revisionRootId === "string" && rootUser.revisionRootId
+              ? rootUser.revisionRootId
+              : rootUser.id;
+          // Archive the discarded branch under that stable root. First
+          // regenerate stores the original tail as revision 1; later ones
+          // append the currently active discarded tail.
+          await host.call("session.saveRevision", {
+            sessionId: req.sessionId,
+            rootUserId: stableRootUserId,
+            messages: discarded,
+            makeActive: false,
+          });
+          const revisions = await host.call<{ revisions?: Array<{ revisionIndex: number }> }>(
+            "session.listRevisions",
+            { sessionId: req.sessionId, rootUserId: stableRootUserId },
+          );
+          const count = revisions.revisions?.length ?? 0;
+          // Stamp the upcoming user prompt with pager metadata after append.
+          (req as any).__revisionMeta = {
+            rootUserId: stableRootUserId,
+            revisionCount: count + 1, // +1 for the branch about to be generated
+            activeRevision: count + 1,
+          };
+        } catch (error) {
+          logger.app("warn", "save regenerate revision failed", {
+            sessionId: req.sessionId,
+            data: String(error),
+          });
+        }
+      }
       await host.call("session.replaceMessages", {
         sessionId: req.sessionId,
         messages: kept,
@@ -1791,12 +1947,26 @@ function registerIpc() {
     if (turn) activeTurns.set(req.sessionId, turn.turnId);
 
     // Persist user message
+    const revisionMeta = (req as any).__revisionMeta as
+      | {
+          rootUserId?: string;
+          revisionCount?: number;
+          activeRevision?: number;
+        }
+      | undefined;
     const userMessage = {
       id: crypto.randomUUID(),
       role: "user" as const,
       content: req.content,
       createdAt: new Date().toISOString(),
       status: "complete" as const,
+      ...(revisionMeta?.revisionCount
+        ? {
+            revisionRootId: revisionMeta.rootUserId,
+            revisionCount: revisionMeta.revisionCount,
+            activeRevision: revisionMeta.activeRevision,
+          }
+        : {}),
     };
     await host.call("session.appendMessage", {
       sessionId: req.sessionId,

@@ -4,11 +4,11 @@ use serde::Serialize;
 use serde_json::Value;
 use std::path::Path;
 
-/// Storage schema v3 (docs/spec/03-runtime/04-data-storage.md, D086).
+/// Storage schema v4 (docs/spec/03-runtime/04-data-storage.md).
 ///
-/// v3 adds the persisted per-session thinking level.  The migration is
-/// deliberately additive so existing v2 transcripts remain readable.
-pub const SCHEMA_VERSION: i64 = 3;
+/// v3 added per-session thinking levels.  v4 adds durable regenerate history
+/// so discarded assistant/tool tails can be browsed like ChatGPT variants.
+pub const SCHEMA_VERSION: i64 = 4;
 
 /// Audit rows older than this are pruned at boot.
 const AUDIT_RETENTION_MS: i64 = 90 * 24 * 3600 * 1000;
@@ -82,7 +82,7 @@ fn upsert_project_row(conn: &Connection, raw: &str, touch: bool) -> Result<Optio
     Ok(Some(id))
 }
 
-const SCHEMA_V3: &str = r#"
+const SCHEMA_LATEST: &str = r#"
 CREATE TABLE kv (
   ns         TEXT NOT NULL,
   key        TEXT NOT NULL,
@@ -208,6 +208,19 @@ CREATE TABLE artifacts (
 ) WITHOUT ROWID;
 CREATE INDEX idx_artifacts_time ON artifacts(updated_at DESC);
 
+CREATE TABLE message_revisions (
+  id              TEXT PRIMARY KEY,
+  session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  root_user_id    TEXT NOT NULL,
+  revision_index  INTEGER NOT NULL,
+  is_active       INTEGER NOT NULL DEFAULT 0,
+  messages_json   TEXT NOT NULL,
+  created_at      INTEGER NOT NULL,
+  UNIQUE (session_id, root_user_id, revision_index)
+);
+CREATE INDEX idx_message_revisions_root
+  ON message_revisions(session_id, root_user_id, revision_index);
+
 CREATE TABLE scheduled_tasks (
   id          TEXT PRIMARY KEY,
   title       TEXT NOT NULL,
@@ -322,15 +335,13 @@ impl Database {
                 // auto_vacuum must be set before the first table exists.
                 conn.execute_batch("PRAGMA auto_vacuum = INCREMENTAL;")?;
                 let tx = conn.unchecked_transaction()?;
-                tx.execute_batch(SCHEMA_V3)?;
+                tx.execute_batch(SCHEMA_LATEST)?;
                 tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
                 tx.commit()?;
             }
             2 => {
-                // Keep this migration in its own transaction.  SQLite rolls
-                // back both the ALTER and user_version update if either
-                // statement fails, so a crash cannot leave a half-migrated
-                // database claiming to be v3.
+                // Keep additive migrations transactional so a crash cannot
+                // leave a half-migrated database claiming a newer version.
                 let tx = conn.unchecked_transaction()?;
                 tx.execute_batch(
                     "ALTER TABLE sessions
@@ -338,11 +349,15 @@ impl Database {
                      CHECK (thinking_level IN
                        ('off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'));",
                 )?;
-                tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+                tx.pragma_update(None, "user_version", 3)?;
                 tx.commit()?;
+                migrate_to_v4(&conn)?;
+            }
+            3 => {
+                migrate_to_v4(&conn)?;
             }
             SCHEMA_VERSION => {}
-            // Future migrations chain here (4, 5, …) once they exist.
+            // Future migrations chain here (5, 6, …) once they exist.
             other => {
                 return Err(anyhow!(
                     "database schema version {other} is newer than supported {SCHEMA_VERSION}"
@@ -467,6 +482,31 @@ impl Database {
         })?;
         Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
     }
+}
+
+// ---- additive schema migrations -----------------------------------------
+
+fn migrate_to_v4(conn: &Connection) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS message_revisions (
+          id              TEXT PRIMARY KEY,
+          session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+          root_user_id    TEXT NOT NULL,
+          revision_index  INTEGER NOT NULL,
+          is_active       INTEGER NOT NULL DEFAULT 0,
+          messages_json   TEXT NOT NULL,
+          created_at      INTEGER NOT NULL,
+          UNIQUE (session_id, root_user_id, revision_index)
+        );
+        CREATE INDEX IF NOT EXISTS idx_message_revisions_root
+          ON message_revisions(session_id, root_user_id, revision_index);
+        "#,
+    )?;
+    tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    tx.commit()?;
+    Ok(())
 }
 
 // ---- legacy v1 → latest schema migration ------------------------------------
@@ -804,7 +844,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn fresh_open_creates_v3_schema() {
+    fn fresh_open_creates_latest_schema() {
         let dir = tempfile::tempdir().unwrap();
         let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
         let version: i64 = db
@@ -820,6 +860,7 @@ mod tests {
             "sessions",
             "turns",
             "messages",
+            "message_revisions",
             "artifacts",
             "scheduled_tasks",
             "task_runs",
@@ -853,8 +894,23 @@ mod tests {
                 CHECK (thinking_level IN ('off', 'minimal', 'low', 'medium',
                                           'high', 'xhigh', 'max')),
 "#;
-        let schema_v2 = SCHEMA_V3.replace(v2_column, "");
-        assert_ne!(schema_v2, SCHEMA_V3, "v2 fixture must omit thinking_level");
+        let v4_table = r#"CREATE TABLE message_revisions (
+  id              TEXT PRIMARY KEY,
+  session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  root_user_id    TEXT NOT NULL,
+  revision_index  INTEGER NOT NULL,
+  is_active       INTEGER NOT NULL DEFAULT 0,
+  messages_json   TEXT NOT NULL,
+  created_at      INTEGER NOT NULL,
+  UNIQUE (session_id, root_user_id, revision_index)
+);
+CREATE INDEX idx_message_revisions_root
+  ON message_revisions(session_id, root_user_id, revision_index);
+
+"#;
+        let schema_v2 = SCHEMA_LATEST.replace(v2_column, "").replace(v4_table, "");
+        assert_ne!(schema_v2, SCHEMA_LATEST, "v2 fixture must omit thinking_level");
+        assert!(!schema_v2.contains("message_revisions"));
         {
             let conn = Connection::open(&path).unwrap();
             conn.execute_batch(&schema_v2).unwrap();
@@ -901,6 +957,66 @@ mod tests {
     }
 
     #[test]
+    fn migrates_v3_to_v4_message_revisions() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pi.sqlite");
+
+        let v4_table = r#"CREATE TABLE message_revisions (
+  id              TEXT PRIMARY KEY,
+  session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  root_user_id    TEXT NOT NULL,
+  revision_index  INTEGER NOT NULL,
+  is_active       INTEGER NOT NULL DEFAULT 0,
+  messages_json   TEXT NOT NULL,
+  created_at      INTEGER NOT NULL,
+  UNIQUE (session_id, root_user_id, revision_index)
+);
+CREATE INDEX idx_message_revisions_root
+  ON message_revisions(session_id, root_user_id, revision_index);
+
+"#;
+        let schema_v3 = SCHEMA_LATEST.replace(v4_table, "");
+        assert_ne!(schema_v3, SCHEMA_LATEST, "v3 fixture must omit message_revisions");
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch(&schema_v3).unwrap();
+            conn.pragma_update(None, "user_version", 3).unwrap();
+            conn.execute(
+                "INSERT INTO sessions
+                    (id, title, mode, thinking_level, created_at, updated_at)
+                 VALUES ('legacy', 'Legacy', 'chat', 'off', 1, 2)",
+                [],
+            )
+            .unwrap();
+        }
+
+        let db = Database::open(&path).unwrap();
+        let version: i64 = db
+            .conn()
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, SCHEMA_VERSION);
+        assert!(table_exists(db.conn(), "message_revisions").unwrap());
+
+        // FK cascade: deleting the parent session clears revisions.
+        db.conn()
+            .execute(
+                "INSERT INTO message_revisions
+                    (id, session_id, root_user_id, revision_index, is_active, messages_json, created_at)
+                 VALUES ('r1', 'legacy', 'u1', 1, 1, '[]', 3)",
+                [],
+            )
+            .unwrap();
+        db.conn()
+            .execute("DELETE FROM sessions WHERE id = 'legacy'", [])
+            .unwrap();
+        let remaining: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM message_revisions", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(remaining, 0);
+    }
+
     fn kv_roundtrip_and_delete() {
         let dir = tempfile::tempdir().unwrap();
         let db = Database::open(&dir.path().join("pi.sqlite")).unwrap();
