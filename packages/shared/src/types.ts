@@ -11,6 +11,12 @@ export const THINKING_LEVELS = [
 export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 export type Risk = "low" | "medium" | "high";
 export type PermissionDecision = "allow-once" | "allow-session" | "deny";
+/** Permission mode (D115): how high-risk tool calls are approved.
+ * `inherit` (sessions only) falls back to the global default. */
+export const PERMISSION_MODES = ["inherit", "ask", "accept-edits", "auto"] as const;
+export type PermissionMode = (typeof PERMISSION_MODES)[number];
+/** Global default: `inherit` is not meaningful at the settings level. */
+export type GlobalPermissionMode = Exclude<PermissionMode, "inherit">;
 
 export type UiMessageRole = "user" | "assistant" | "system" | "tool";
 
@@ -60,6 +66,8 @@ export type SessionSummary = {
   providerId?: string;
   mode: Mode;
   thinkingLevel: ThinkingLevel;
+  /** Per-session permission mode; `inherit` follows the global default (D115). */
+  permissionMode: PermissionMode;
   /** Effective capability for this session's exact provider/model pair. */
   supportsReasoning?: boolean;
   supportedThinkingLevels?: ThinkingLevel[];
@@ -251,6 +259,8 @@ export type AppSettings = {
   defaultProviderId?: string;
   defaultModelId?: string;
   defaultMode: Mode;
+  /** Global permission mode default; sessions with `inherit` follow this. */
+  defaultPermissionMode?: GlobalPermissionMode;
   theme: "system" | "light" | "dark";
   enterToSend: boolean;
   onboardingDismissed: boolean;

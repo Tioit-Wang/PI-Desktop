@@ -1463,6 +1463,7 @@ function registerIpc() {
         providerId?: string;
         modelId?: string;
         thinkingLevel?: ThinkingLevel;
+        permissionMode?: "inherit" | "ask" | "accept-edits" | "auto";
       },
     ) => {
       if (!host) throw new Error("host unavailable");

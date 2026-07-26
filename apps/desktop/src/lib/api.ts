@@ -97,10 +97,8 @@ export const api = {
     invoke(IPC.invoke.sessionRename, id, title),
   configureSession: (
     id: string,
-    config: Pick<
-      SessionSummary,
-      "mode" | "providerId" | "modelId" | "thinkingLevel"
-    >,
+    config: Pick<SessionSummary, "mode" | "providerId" | "modelId"> &
+      Partial<Pick<SessionSummary, "thinkingLevel" | "permissionMode">>,
   ) =>
     invoke<{ session: SessionSummary }>(
       IPC.invoke.sessionConfigure,
