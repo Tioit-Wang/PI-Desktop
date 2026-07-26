@@ -90,7 +90,7 @@ jobs:
         run: pnpm build:js
 
       - name: Package installers (${{ matrix.dist }})
-        run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }}
+        run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --publish never
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -123,6 +123,14 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/*.dmg
+          # D010 scope: only macOS ships from tag builds for now. The zip,
+          # blockmap and latest-mac.yml are the electron-updater feed — the
+          # in-app updater reads latest-mac.yml from the latest release.
+          # Widen to dist/* once Windows/Linux are in scope.
+          files: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.blockmap
+            dist/latest-mac.yml
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
