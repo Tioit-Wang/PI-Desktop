@@ -90,7 +90,9 @@ jobs:
         run: pnpm build:js
 
       - name: Package installers (${{ matrix.dist }})
-        run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }} -- --publish never
+        # The dist scripts pass --publish never themselves: electron-builder
+        # must not self-publish on tag builds (no token; softprops owns it).
+        run: pnpm --filter @pi-desktop/desktop run ${{ matrix.dist }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -99,6 +101,7 @@ jobs:
           if-no-files-found: error
           path: |
             apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
             apps/desktop/release/*.exe
             apps/desktop/release/*.AppImage
             apps/desktop/release/*.deb
@@ -125,7 +128,7 @@ jobs:
         with:
           # D010 scope: only macOS ships from tag builds for now. The zip,
           # blockmap and latest-mac.yml are the electron-updater feed — the
-          # in-app updater reads latest-mac.yml from the latest release.
+          # update checker reads latest-mac.yml from the latest release.
           # Widen to dist/* once Windows/Linux are in scope.
           files: |
             dist/*.dmg
