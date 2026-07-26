@@ -63,6 +63,8 @@ export const en = {
     running: "Working…",
     copy: "Copy",
     copied: "Copied",
+    previewFile: "Preview file in the side panel",
+    previewUrl: "Open in the side panel browser",
     retry: "Regenerate",
     deleteMessage: "Delete message",
     revisions: "Response versions",

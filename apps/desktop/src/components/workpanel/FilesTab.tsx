@@ -126,9 +126,14 @@ function HighlightedText({ path, content }: { path: string; content: string }) {
 
 type DirState = { entries: FsEntry[]; error?: boolean };
 
+// Module-level so a chat preview request fires once, not again on every
+// files-tab remount (the tab unmounts when another tool is selected).
+let handledFileRequestSeq = 0;
+
 export function FilesTab() {
   const { t } = useTranslation();
   const workspace = useAppStore((s) => s.workspace);
+  const fileRequest = useAppStore((s) => s.workPanelFileRequest);
   const root = workspace?.path ?? null;
 
   const [dirs, setDirs] = useState<Record<string, DirState>>({});
@@ -189,6 +194,24 @@ export function FilesTab() {
       setFileError(true);
     }
   }, []);
+
+  // Chat-initiated previews: open the file and expand its ancestor folders
+  // so "back" lands on a tree that reveals it.
+  useEffect(() => {
+    if (!fileRequest || !root) return;
+    if (fileRequest.seq === handledFileRequestSeq) return;
+    handledFileRequestSeq = fileRequest.seq;
+    const parts = fileRequest.path.split("/").slice(0, -1);
+    const ancestors: string[] = [];
+    let acc = "";
+    for (const part of parts) {
+      acc = acc ? `${acc}/${part}` : part;
+      ancestors.push(acc);
+    }
+    setExpanded((prev) => new Set([...prev, ...ancestors]));
+    for (const dir of ancestors) void loadDir(dir);
+    void openFile(fileRequest.path);
+  }, [fileRequest, root, loadDir, openFile]);
 
   const renderDir = (rel: string, depth: number): React.ReactNode => {
     const state = dirs[rel];

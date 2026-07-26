@@ -5831,3 +5831,77 @@ textarea:disabled {
     grid-column: auto;
   }
 }
+
+/* ---------- chat → work-panel preview links ---------- */
+
+/* Inline-code file/URL refs: keep the code-chip look, add link affordance. */
+.chat-code-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+.chat-code-link code {
+  text-decoration: underline dotted
+    color-mix(in oklab, var(--ds-text-muted) 70%, transparent);
+  text-underline-offset: 2px;
+}
+.chat-code-link:hover code,
+.chat-code-link:focus-visible code {
+  color: var(--ds-accent);
+  text-decoration-color: var(--ds-accent);
+}
+
+/* Path/URL tokens inside plain user-message text. */
+.chat-text-link {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-decoration: underline dotted;
+  text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+}
+.chat-text-link:hover,
+.chat-text-link:focus-visible {
+  color: var(--ds-accent);
+}
+
+/* Tool-row summaries that resolve to a previewable file/URL. */
+.tool-row-summary.linked {
+  cursor: pointer;
+}
+.tool-row-summary.linked:hover {
+  color: var(--ds-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Local image references render as a chip opening the files-tab viewer. */
+.chat-image-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font: inherit;
+  font-size: var(--text-sm);
+  color: var(--ds-text-primary);
+  background: color-mix(in oklab, var(--ds-text-primary) 4%, transparent);
+  border: 1px solid var(--ds-border-default);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.chat-image-chip:hover {
+  color: var(--ds-accent);
+  border-color: color-mix(in oklab, var(--ds-accent) 45%, transparent);
+}
+
+.chat-image-remote {
+  cursor: pointer;
+}

@@ -273,10 +273,16 @@ export type AppState = {
   workPanelWidth: number;
   /** Bumped on agent Write/Edit/Bash completion; review tab refetches. */
   reviewRev: number;
+  /** Chat-initiated "preview this file" request consumed by the files tab. */
+  workPanelFileRequest: { path: string; seq: number } | null;
   toggleWorkPanel: () => void;
   setWorkPanelOpen: (open: boolean) => void;
   setWorkPanelTab: (tab: WorkPanelTab) => void;
   setWorkPanelWidth: (width: number) => void;
+  /** Open a workspace-relative file in the work panel files viewer. */
+  openFileInWorkPanel: (path: string) => void;
+  /** Open a URL in the work panel browser tab. */
+  openUrlInWorkPanel: (url: string) => void;
 };
 
 const initialSidebarPreferences = loadSidebarPreferences();
@@ -372,6 +378,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   workPanelTab: initialWorkPanelPreferences.tab,
   workPanelWidth: initialWorkPanelPreferences.width,
   reviewRev: 0,
+  workPanelFileRequest: null,
   projectSort: initialSidebarPreferences.projectSort,
   messages: [],
   isRunning: false,
@@ -1626,6 +1633,22 @@ export const useAppStore = create<AppState>((set, get) => ({
         () => {},
       );
     }
+  },
+
+  openFileInWorkPanel: (path) => {
+    get().setWorkPanelTab("files");
+    set((s) => ({
+      workPanelFileRequest: {
+        path,
+        seq: (s.workPanelFileRequest?.seq ?? 0) + 1,
+      },
+    }));
+  },
+  openUrlInWorkPanel: (url) => {
+    get().setWorkPanelTab("browser");
+    // The browser view lives in main; it pushes navigation state back to
+    // whichever BrowserTab is (or becomes) mounted.
+    void api.browserNavigate(url).catch(() => {});
   },
 
   prefillComposer: (text) => set({ composerPrefill: text }),

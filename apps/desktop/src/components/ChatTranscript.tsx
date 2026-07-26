@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   useSyncExternalStore,
@@ -19,6 +20,11 @@ import {
   getToolSummary,
   type ToolAction,
 } from "../lib/tool-display";
+import {
+  getToolPreviewTarget,
+  splitChatText,
+  type ChatPreviewTarget,
+} from "../lib/chat-links";
 import {
   IconArrowDown,
   IconCheck,
@@ -180,9 +186,57 @@ function ToolSection({
   );
 }
 
+/** Actions whose path/url argument makes sense to preview in the panel. */
+const PREVIEWABLE_ACTIONS = new Set<ToolAction>(["read", "write", "edit", "fetch"]);
+
+function useOpenPreviewTarget() {
+  const openFile = useAppStore((s) => s.openFileInWorkPanel);
+  const openUrl = useAppStore((s) => s.openUrlInWorkPanel);
+  return useCallback(
+    (target: ChatPreviewTarget) => {
+      if (target.kind === "file") openFile(target.path);
+      else openUrl(target.url);
+    },
+    [openFile, openUrl],
+  );
+}
+
+/** Plain user text with file paths and URLs linkified to the work panel. */
+function LinkifiedText({ text }: { text: string }) {
+  const { t } = useTranslation();
+  const root = useAppStore((s) => s.workspace?.path);
+  const openTarget = useOpenPreviewTarget();
+  const segments = useMemo(() => splitChatText(text, root), [text, root]);
+  return (
+    <>
+      {segments.map((segment, index) =>
+        segment.kind === "text" ? (
+          <span key={index}>{segment.text}</span>
+        ) : (
+          <button
+            key={index}
+            type="button"
+            className="chat-text-link"
+            title={
+              segment.target.kind === "file"
+                ? t("chat.previewFile")
+                : t("chat.previewUrl")
+            }
+            onClick={() => openTarget(segment.target)}
+          >
+            {segment.text}
+          </button>
+        ),
+      )}
+    </>
+  );
+}
+
 function ToolRow({ message }: { message: UiMessage }) {
   const { t } = useTranslation();
   const detailsId = useId();
+  const root = useAppStore((s) => s.workspace?.path);
+  const openTarget = useOpenPreviewTarget();
   const status = message.toolStatus;
   const [open, setOpen] = useState(status === "error");
   const action = getToolAction(message.toolName);
@@ -191,6 +245,9 @@ function ToolRow({ message }: { message: UiMessage }) {
   );
   const rawName = getToolDisplayName(message.toolName) || t("chat.tool");
   const summary = getToolSummary(message.toolName, message.toolArgs);
+  const previewTarget = PREVIEWABLE_ACTIONS.has(action)
+    ? getToolPreviewTarget(message.toolArgs, root)
+    : null;
   const { input, output } = getToolSections(message);
   const hasDetails = Boolean(input || output);
   const statusLabel =
@@ -226,7 +283,29 @@ function ToolRow({ message }: { message: UiMessage }) {
         <span className={`tool-row-name ${status === "running" ? "running" : ""}`}>
           {actionLabel}
         </span>
-        {summary ? <span className="tool-row-summary">{summary}</span> : null}
+        {summary ? (
+          <span
+            className={`tool-row-summary${previewTarget ? " linked" : ""}`}
+            title={
+              previewTarget
+                ? previewTarget.kind === "file"
+                  ? t("chat.previewFile")
+                  : t("chat.previewUrl")
+                : undefined
+            }
+            onClick={
+              previewTarget
+                ? (e) => {
+                    // Preview instead of toggling the surrounding header.
+                    e.stopPropagation();
+                    openTarget(previewTarget);
+                  }
+                : undefined
+            }
+          >
+            {summary}
+          </span>
+        ) : null}
         {status === "running" ? (
           <span className="tool-spinner" aria-label={t("chat.running")} />
         ) : status === "error" ? (
@@ -542,7 +621,7 @@ const MessageRow = memo(function MessageRow({
           <div className="message-bubble">
             {isUser ? (
               <div className="message-user-text selectable">
-                {String(message.content || "")}
+                <LinkifiedText text={String(message.content || "")} />
               </div>
             ) : (
               <div className="prose-chat">

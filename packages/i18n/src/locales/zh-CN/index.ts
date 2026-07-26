@@ -66,6 +66,8 @@ export const zhCN = {
     running: "处理中…",
     copy: "复制",
     copied: "已复制",
+    previewFile: "在侧边面板预览文件",
+    previewUrl: "在侧边浏览器中打开",
     retry: "重新生成",
     deleteMessage: "删除消息",
     revisions: "回复版本",
