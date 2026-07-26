@@ -1,6 +1,6 @@
 # 03. Tools and Permissions
 
-> Decisions applied: D003, D004, D005, D006, D013, D015, D093, D114
+> Decisions applied: D003, D004, D005, D006, D013, D015, D093, D114, D115
 
 ## 0. Frozen policy summary
 
@@ -143,6 +143,39 @@ Initial denylist (extensible):
 May be added later:
 - `allow-always-for-tool`
 - `allow-always-for-command-pattern`
+
+### Permission Modes (D115)
+
+How high-risk tool calls get approved is governed by a **permission mode**:
+
+| Mode | Write/Edit | Bash / plugin tools |
+|---|---|---|
+| `ask` (default) | confirm | confirm |
+| `accept-edits` | auto-allow | confirm |
+| `auto` | auto-allow | auto-allow |
+
+Resolution order per tool call (host-core `tools.execute`):
+
+1. Session's persisted `permission_mode`, unless it is `inherit`
+2. Global `defaultPermissionMode` from app settings (`ask` / `accept-edits` / `auto`)
+3. `ask`
+
+Rules:
+
+- The session value is stored in `sessions.permission_mode`
+  (`inherit | ask | accept-edits | auto`, default `inherit`, schema v5) and
+  set via `session.configure` `permissionMode`.
+- **Chat mode's hard deny wins over every permission mode** — `auto` cannot
+  re-enable Write/Edit/Bash in chat (D004 unchanged).
+- Low-risk tools (`Read`/`Glob`/`Grep`) auto-allow in every mode, as before.
+- `allow-session` grants continue to work under `ask` and stay scoped to the
+  session; under `accept-edits`/`auto` they are simply never needed.
+- Scratch-directory writes (D114) stay prompt-free in every mode.
+- UI: Settings → segmented global default; composer shows a per-session chip
+  (agent mode only) whose menu offers inherit-default plus the three
+  overrides. The chip displays the effective mode.
+- Enforcement lives in host-core only; the sidecar/model is never told the
+  mode and cannot influence it.
 
 ## 7. Permission Flow
 

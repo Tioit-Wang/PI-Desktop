@@ -1,4 +1,4 @@
-# 04. Data Storage (Schema v4)
+# 04. Data Storage (Schema v5)
 
 ## 0. Ownership decision
 
@@ -228,6 +228,8 @@ CREATE TABLE sessions (
   thinking_level TEXT NOT NULL DEFAULT 'off'
                 CHECK (thinking_level IN ('off', 'minimal', 'low', 'medium',
                                           'high', 'xhigh', 'max')),
+  permission_mode TEXT NOT NULL DEFAULT 'inherit' -- D115: inherit follows settings
+                CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
   source      TEXT,                            -- import origin: claude-code | codex | opencode | pi
   pinned      INTEGER NOT NULL DEFAULT 0,
   last_seq    INTEGER NOT NULL DEFAULT 0,      -- message ordinal allocator
@@ -573,7 +575,11 @@ turn's tail and the boot sweep marks that turn `aborted`.
 - **v3 → v4** (additive, one transaction): create `message_revisions` plus
   `idx_message_revisions_root`, then set `user_version = 4`. Existing
   transcripts are unchanged; regenerate history starts empty.
-- Fresh installs run the full v4 DDL directly.
+- **v4 → v5** (additive, one transaction): add `sessions.permission_mode
+  TEXT NOT NULL DEFAULT 'inherit'` with the four-value check constraint
+  (D115), then set `user_version = 5`. Existing sessions inherit the global
+  default, matching prior behavior (`ask`).
+- Fresh installs run the full v5 DDL directly.
 
 ## 8. Retention & maintenance
 

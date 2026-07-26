@@ -318,6 +318,16 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Automated (host-core unit tests)
 
+#### E2E-019c: Permission modes govern high-risk approval (D115)
+
+- **Preconditions**: Agent mode; project open; global default `ask`.
+- **Steps**: 1) With the session on inherit, ask the agent to write a workspace file — expect a permission card. 2) Switch the session chip to Accept edits; repeat — expect no card for Write/Edit but still a card for Bash. 3) Switch to Auto — expect no card for Bash either. 4) Set the global default to Accept edits in Settings and reset the session to inherit — expect Write/Edit auto-allowed. 5) Switch the session to Chat mode with Auto set — expect Write denied (`WRITE_DISABLED_IN_CHAT`).
+- **Expected**: Effective mode = session override → global default → ask; chat-mode hard deny outranks every mode; the composer chip always displays the effective mode.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md §6`, `03-runtime/04-data-storage.md`
+- **Acceptance**: E (permission modes resolve and enforce host-side)
+- **Milestone**: M5
+- **Status**: Partially automated (host-core unit tests: evaluate matrix, chat-deny precedence, session grants under ask)
+
 ### Session Persistence
 
 #### E2E-020: Session survives restart
