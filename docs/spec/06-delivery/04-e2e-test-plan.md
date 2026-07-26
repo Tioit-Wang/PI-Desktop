@@ -633,10 +633,13 @@ Each scenario is documented in this format:
 - **Preconditions**: Projects A and B each have at least one durable session;
   neither path is archived; a Temporary session also exists.
 - **Steps**: 1) Open project A from Projects. 2) Open project B without closing
-  A. 3) Collapse A and activate B. 4) Select A's conversation. 5) Close B. 6)
+  A. 3) Click A's directory title to collapse it, then click again to expand
+  it; use B's directory title to activate and collapse B. 4) Select A's
+  conversation. 5) Close B. 6)
   Restart the app. 7) Reopen B from Projects.
-- **Expected**: A and B render as separate exact-path sidebar groups; collapse
-  affects only A and survives restart; activating a group or its conversation
+- **Expected**: A and B render as separate exact-path sidebar groups in a
+  compact continuous list; directory-title and disclosure clicks both toggle
+  only A, and collapse survives restart; activating a group or its conversation
   clears the previous visible transcript, updates the selected workspace and
   session binding, and then loads only the selected project's conversation;
   Temporary remains separate; closing B removes only its retained tab and

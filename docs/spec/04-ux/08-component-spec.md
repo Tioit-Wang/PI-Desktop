@@ -165,8 +165,8 @@ Collapsed (48px):
 
 ### 3.4 Interactions
 
-- Click project identity/switch action: activate its path through the existing
-  `project.set` bridge and retain the other project groups
+- Click project identity: activate its path when necessary, then toggle only
+  that project's conversation group; retain the other project groups
 - Click project disclosure: expand/collapse only that group
 - Click session: activate its bound project when necessary, switch the active
   session, and scroll to the last message
@@ -180,6 +180,9 @@ Collapsed (48px):
 - Sort menu: Recently updated, Created date, Oldest first, and Name; pinned
   rows stay ahead of unpinned rows. A stored `manual` compatibility value
   requires no drag-reorder UI.
+- Project groups use compact vertical spacing so adjacent directories and
+  conversation rows read as one dense navigation list rather than detached
+  cards.
 - Sidebar toggle: Topbar hamburger + keyboard shortcut
 
 ### 3.5 Accessibility

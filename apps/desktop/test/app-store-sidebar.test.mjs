@@ -39,6 +39,15 @@ test("project session creation stops when project activation fails", () => {
   assert.match(sidebarSource, /return Boolean\(await activateProject\(path\)\)/);
 });
 
+test("project title toggles its conversation group without forcing it open", () => {
+  const projectTitleBlock = sidebarSource.match(
+    /className="sidebar-session-group-title project-toggle"[\s\S]*?<IconFolder/,
+  )?.[0] ?? "";
+  assert.match(projectTitleBlock, /aria-expanded=\{!collapsedProject\}/);
+  assert.match(projectTitleBlock, /setCollapsed\(entry\.path, !collapsedProject\)/);
+  assert.doesNotMatch(projectTitleBlock, /setCollapsed\(entry\.path, false\)/);
+});
+
 test("manual ordering stays a persistence-only compatibility value", () => {
   assert.doesNotMatch(sidebarSource, /data-sort=["']manual["']/);
   for (const value of ["recent", "created", "oldest", "name"]) {

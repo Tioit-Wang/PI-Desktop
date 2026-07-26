@@ -736,6 +736,7 @@ export function Sidebar({
                 : t("project.collapseDetails", { name: entry.name })
             }
             aria-expanded={!collapsedProject}
+            aria-controls={`${projectId}-sessions`}
             data-action="toggle-project-collapse"
             onClick={() => setCollapsed(entry.path, !collapsedProject)}
           >
@@ -746,12 +747,12 @@ export function Sidebar({
             id={projectId}
             className="sidebar-session-group-title project-toggle"
             title={entry.path}
-            onClick={() => void selectProject(entry.path).then((ok) => {
-              if (ok) {
-                setCollapsed(entry.path, false);
-                focusComposer();
-              }
-            })}
+            aria-expanded={!collapsedProject}
+            aria-controls={`${projectId}-sessions`}
+            onClick={() => void (async () => {
+              if (!entry.active && !(await selectProject(entry.path))) return;
+              setCollapsed(entry.path, !collapsedProject);
+            })()}
           >
             <IconFolder size={13} />
             <span>{entry.name}</span>
@@ -791,7 +792,7 @@ export function Sidebar({
           </div>
         </div>
         {!collapsedProject ? (
-          <div className="sidebar-session-group-body project">
+          <div id={`${projectId}-sessions`} className="sidebar-session-group-body project">
             {entry.sessions.length > 0 ? renderSessionRows(entry.sessions, { projectPath: entry.path }) : (
               <div className="sidebar-session-empty">{t("nav.noProjectSessions")}</div>
             )}
