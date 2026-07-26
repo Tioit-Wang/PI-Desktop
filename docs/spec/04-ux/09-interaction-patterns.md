@@ -60,10 +60,12 @@ the visible shell context.
    bridge. Its path then drives topbar identity, active workspace state, and
    new-task scope.
 3. **Collapse** — disclosure state belongs to each project path. Collapsing
-   hides children only; it neither changes the selected project/session nor
-   stops a run. The directory identity is also a disclosure target: selecting
-   an inactive directory activates it first, and every directory-title click
-   toggles that group's children without changing any other group's state.
+   hides children only; it neither changes the selected session nor stops a
+   run. The directory row is one full-width disclosure target containing its
+   chevron, folder, and label: selecting an inactive directory activates it
+   first, and every directory-row click toggles that group's children without
+   changing any other group's state. Project actions are separate sibling
+   controls and never toggle the directory.
 4. **Close** — closing removes only the retained tab. If it was active, the
    last remaining tab is selected or the visible workspace is cleared. Durable
    projects, sessions, and transcripts remain.
@@ -100,8 +102,8 @@ the visible shell context.
 
 #### Focus and semantics
 
-- Project disclosure and directory-title controls expose matching
-  `aria-expanded` and `aria-controls` state; sort/archive menu choices expose
+- Project and Temporary directory rows expose `aria-expanded` and
+  `aria-controls`; sort/archive menu choices expose
   their checked state. Active session rows retain `aria-current`.
 - Toggling disclosure or a menu action keeps focus on its control. Selecting a
   project/session returns focus to the composer after loading.

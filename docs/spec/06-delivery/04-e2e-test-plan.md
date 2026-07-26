@@ -633,13 +633,16 @@ Each scenario is documented in this format:
 - **Preconditions**: Projects A and B each have at least one durable session;
   neither path is archived; a Temporary session also exists.
 - **Steps**: 1) Open project A from Projects. 2) Open project B without closing
-  A. 3) Click A's directory title to collapse it, then click again to expand
-  it; use B's directory title to activate and collapse B. 4) Select A's
-  conversation. 5) Close B. 6)
+  A. 3) Click A's directory row on its chevron, folder, label, and trailing
+  disclosure hit area in turn to collapse/expand it; use B's directory row to
+  activate and collapse B; verify `+` and overflow do not toggle B. 4) Select
+  A's conversation. 5) Close B. 6)
   Restart the app. 7) Reopen B from Projects.
 - **Expected**: A and B render as separate exact-path sidebar groups in a
-  compact continuous list; directory-title and disclosure clicks both toggle
-  only A, and collapse survives restart; activating a group or its conversation
+  compact continuous list with one keyboard stop per directory disclosure;
+  every non-action point in A's row toggles only A, project actions appear on
+  hover/focus without shifting labels, and collapse survives restart;
+  activating a group or its conversation
   clears the previous visible transcript, updates the selected workspace and
   session binding, and then loads only the selected project's conversation;
   Temporary remains separate; closing B removes only its retained tab and
@@ -1430,8 +1433,11 @@ This test plan spec is accepted when:
 ### US-UI-57 Multi-project sidebar groups
 - Open projects A and B without closing either.
 - Expect one path-keyed group per retained project, an active-state marker on
-  exactly one group, and a separate Temporary sessions group.
-- Collapse A, activate B, then return to A. Only A's child rows collapse; the
+  exactly one group, and a separate Temporary sessions group. Adjacent groups
+  read as a compact continuous tree without detached card spacing.
+- Collapse A by clicking its directory label, expand it from the chevron area,
+  then activate B and return to A. Only A's child rows collapse; project `+`
+  and overflow actions do not toggle it; the
   active project, topbar path, and transcript switch together; the composer
   remains free of workspace identity chrome.
 - Close B and reopen it from Projects. Closing removes only the sidebar tab;

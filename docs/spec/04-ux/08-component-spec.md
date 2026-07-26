@@ -129,7 +129,7 @@ Expanded (~275px, D034/D070):
 | [π] PI-Desktop            |
 | [message+ New Chat] button |
 | Projects / Plugins        |
-| project-A      [v] [+] … |
+| [v] project-A      [+] … |
 |   • Project session      |
 | project-B      [>] [+] … |
 | Temporary sessions   [+] |
@@ -165,9 +165,9 @@ Collapsed (48px):
 
 ### 3.4 Interactions
 
-- Click project identity: activate its path when necessary, then toggle only
+- Click the project directory row (chevron, folder, label, or remaining
+  disclosure hit area): activate its path when necessary, then toggle only
   that project's conversation group; retain the other project groups
-- Click project disclosure: expand/collapse only that group
 - Click session: activate its bound project when necessary, switch the active
   session, and scroll to the last message
 - Click the message-plus New Chat control: create/reuse a draft in the current workspace scope
@@ -182,7 +182,8 @@ Collapsed (48px):
   requires no drag-reorder UI.
 - Project groups use compact vertical spacing so adjacent directories and
   conversation rows read as one dense navigation list rather than detached
-  cards.
+  cards. Directory `+` and overflow actions remain hidden until hover or
+  keyboard focus.
 - Sidebar toggle: Topbar hamburger + keyboard shortcut
 
 ### 3.5 Accessibility
@@ -191,8 +192,8 @@ Collapsed (48px):
   has a scope-specific accessible name
 - Session groups use semantic `section` containers
 - Active session: `aria-current="true"`
-- Project disclosure: `aria-expanded`; menu check/radio items expose
-  `aria-checked`
+- Project and Temporary directory rows expose `aria-expanded` and
+  `aria-controls`; menu check/radio items expose `aria-checked`
 - Collapsed state: each icon has `aria-label` with session title
 - Keyboard: arrow keys navigate session list
 
@@ -212,7 +213,8 @@ Collapsed (48px):
 
 ### 3.7 MVP constraints
 
-- No sidebar search (deferred per [01-ui-ia.md](01-ui-ia.md))
+- Expanded sidebar search filters the visible session tree in place; the
+  collapsed rail continues to use the global command palette
 - No drag-to-reorder contract; `manual` is a persisted compatibility value
 - Project tabs do not create another host workspace or a second main pane
 
@@ -225,7 +227,7 @@ controls.
 | Element | Contract |
 |---|---|
 | Group root | localized project name; full path in tooltip/accessible description |
-| Disclosure | independent `aria-expanded`; toggling never activates or archives |
+| Directory disclosure | single full-row target with `aria-expanded` / `aria-controls`; may activate an inactive project before toggling, but never archives |
 | Project pin | presentation priority only; no host row deletion/move |
 | Project archive | omitted from default view; restorable from archived view |
 | Project close | removes retained tab only; durable project/sessions remain |

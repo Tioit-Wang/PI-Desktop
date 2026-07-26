@@ -136,11 +136,14 @@ tab (no cloud storage in scope).
 ### 3.8 Workspace-scoped session tree (from 空间)
 WorkBuddy nests tasks under the folder-bound Space they ran in, with `+`
 (new task here) on hover and status badges (running dot / failure mark) per
-task. **Adopted in D088**: PI-Desktop replaces Recents with exactly one
-current-project group plus a Temporary sessions group for path-less sessions.
-The current project exposes `+` to start a pre-bound task and its path in a
-tooltip. Other projects stay in the Projects index; the home sidebar is not a
-multi-project tree.
+task. **Adopted and extended in D093**: PI-Desktop renders every retained,
+path-keyed project as a compact, independently collapsible group, followed by
+a Temporary sessions group for path-less sessions. Each directory title is
+the single disclosure target (chevron, folder, label, and remaining row hit
+area), while `+` and overflow actions appear on hover/focus. The active project
+is still the only selected host workspace; retained groups do not create
+parallel workspace singletons. This supersedes D088's one-current-project
+sidebar limitation while preserving its exact-path and Temporary boundaries.
 
 ## 3.9 Transcript density and user-plate alignment
 WorkBuddy's task transcript keeps user turns as compact right-side plates and

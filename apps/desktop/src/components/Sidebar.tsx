@@ -509,6 +509,11 @@ export function Sidebar({
     closeMenus();
   };
 
+  const toggleSearch = () => {
+    if (searchOpen) setQuery("");
+    setSearchOpen((value) => !value);
+  };
+
   const toggleSessionPin = (session: SessionSummary) => {
     toggleSessionPinned(session.id);
     closeMenus();
@@ -729,31 +734,21 @@ export function Sidebar({
         <div className="sidebar-session-group-header">
           <button
             type="button"
-            className="project-collapse-toggle"
-            aria-label={
-              collapsedProject
-                ? t("project.expandDetails", { name: entry.name })
-                : t("project.collapseDetails", { name: entry.name })
-            }
-            aria-expanded={!collapsedProject}
-            aria-controls={`${projectId}-sessions`}
-            data-action="toggle-project-collapse"
-            onClick={() => setCollapsed(entry.path, !collapsedProject)}
-          >
-            <IconChevronDown size={13} className={collapsedProject ? "collapsed" : ""} />
-          </button>
-          <button
-            type="button"
             id={projectId}
             className="sidebar-session-group-title project-toggle"
             title={entry.path}
             aria-expanded={!collapsedProject}
             aria-controls={`${projectId}-sessions`}
+            data-action="toggle-project-collapse"
             onClick={() => void (async () => {
               if (!entry.active && !(await selectProject(entry.path))) return;
               setCollapsed(entry.path, !collapsedProject);
             })()}
           >
+            <IconChevronDown
+              size={13}
+              className={`sidebar-disclosure-icon ${collapsedProject ? "collapsed" : ""}`}
+            />
             <IconFolder size={13} />
             <span>{entry.name}</span>
             {entry.active ? <span className="sidebar-project-active-dot" aria-label={t("project.active", { defaultValue: "Active" })} /> : null}
@@ -810,10 +805,14 @@ export function Sidebar({
           id="sidebar-temporary-group-label"
           className="sidebar-session-group-title project-toggle static"
           aria-expanded={!temporaryCollapsed}
+          aria-controls="sidebar-temporary-sessions"
           data-action="toggle-temporary-collapse"
           onClick={() => setTemporaryCollapsed((value) => !value)}
         >
-          <IconChevronDown size={13} className={temporaryCollapsed ? "collapsed" : ""} />
+          <IconChevronDown
+            size={13}
+            className={`sidebar-disclosure-icon ${temporaryCollapsed ? "collapsed" : ""}`}
+          />
           <IconPanel size={13} />
           <span>{t("nav.temporarySessions")}</span>
         </button>
@@ -828,7 +827,7 @@ export function Sidebar({
         </button>
       </div>
       {!temporaryCollapsed ? (
-        <div className="sidebar-session-group-body temporary">
+        <div id="sidebar-temporary-sessions" className="sidebar-session-group-body temporary">
           {temporarySessions.length > 0 ? renderSessionRows(temporarySessions, { temporary: true }) : (
             <div className="sidebar-session-empty">{t("nav.noTemporarySessions")}</div>
           )}
@@ -1013,7 +1012,14 @@ export function Sidebar({
             <BrandLogo size={15} />
             <span>{t("app.shellName")}</span>
           </div>
-          <button className={`icon-btn ${searchOpen ? "active" : ""}`} title={t("nav.search")} onClick={() => { setSearchOpen((value) => !value); onOpenPalette(); }}>
+          <button
+            className={`icon-btn ${searchOpen ? "active" : ""}`}
+            title={t("nav.search")}
+            aria-label={t("nav.search")}
+            aria-expanded={searchOpen}
+            aria-controls="sidebar-session-search"
+            onClick={toggleSearch}
+          >
             <IconSearch size={15} />
           </button>
         </div>
@@ -1035,8 +1041,17 @@ export function Sidebar({
         </nav>
 
         {searchOpen ? (
-          <div className="mb-2 px-1">
-            <input className="field-input" placeholder={t("nav.search")} value={query} onChange={(event) => setQuery(event.target.value)} autoFocus />
+          <div className="sidebar-search-wrap">
+            <IconSearch size={13} aria-hidden />
+            <input
+              id="sidebar-session-search"
+              className="sidebar-search-input"
+              aria-label={t("nav.search")}
+              placeholder={t("nav.search")}
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              autoFocus
+            />
           </div>
         ) : null}
 

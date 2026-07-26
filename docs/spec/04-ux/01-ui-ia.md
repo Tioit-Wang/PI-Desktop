@@ -80,7 +80,9 @@ Other retained tabs stay open.
 - **Identity**: each group is keyed by the normalized full project path, never
   by a potentially ambiguous folder basename.
 - **Header**: project name/path, active state, disclosure, new-task action,
-  and an overflow menu. Collapse/expand affects only child visibility.
+  and an overflow menu. The directory title is one full-row disclosure target;
+  collapse/expand affects only child visibility, and adjacent groups form one
+  dense tree rather than detached cards.
 - **Project actions**: pin/unpin changes presentation priority;
   archive/restore hides or restores the group in the default view; close
   removes the retained tab without deleting or archiving project/session data.

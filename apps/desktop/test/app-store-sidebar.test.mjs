@@ -44,8 +44,24 @@ test("project title toggles its conversation group without forcing it open", () 
     /className="sidebar-session-group-title project-toggle"[\s\S]*?<IconFolder/,
   )?.[0] ?? "";
   assert.match(projectTitleBlock, /aria-expanded=\{!collapsedProject\}/);
+  assert.match(projectTitleBlock, /data-action="toggle-project-collapse"/);
+  assert.match(projectTitleBlock, /sidebar-disclosure-icon/);
   assert.match(projectTitleBlock, /setCollapsed\(entry\.path, !collapsedProject\)/);
   assert.doesNotMatch(projectTitleBlock, /setCollapsed\(entry\.path, false\)/);
+  assert.doesNotMatch(sidebarSource, /className="project-collapse-toggle"/);
+});
+
+test("expanded sidebar search filters sessions without opening a second surface", () => {
+  const searchButtonBlock = sidebarSource.match(
+    /aria-controls="sidebar-session-search"[\s\S]*?<\/button>/,
+  )?.[0] ?? "";
+  assert.match(searchButtonBlock, /toggleSearch/);
+  assert.doesNotMatch(searchButtonBlock, /onOpenPalette/);
+  assert.match(sidebarSource, /id="sidebar-session-search"/);
+  assert.match(
+    sidebarSource,
+    /const toggleSearch[\s\S]*?if \(searchOpen\) setQuery\(""\)/,
+  );
 });
 
 test("manual ordering stays a persistence-only compatibility value", () => {
