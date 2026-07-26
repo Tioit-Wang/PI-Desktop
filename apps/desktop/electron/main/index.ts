@@ -565,6 +565,33 @@ async function createWindow() {
             } catch {
               // fixtures optional
             }
+            // Provider fixture so settings/model-picker scenes have content.
+            try {
+              const existing = await host?.call<{ providers?: unknown[] }>(
+                "providers.list",
+                { includeDisabled: true },
+              );
+              if (host && (existing?.providers?.length ?? 0) === 0) {
+                await host.call("providers.create", {
+                  name: "OJ Gateway",
+                  vendorKey: "custom",
+                  type: "openai_compatible",
+                  protocol: "openai_compatible",
+                  baseUrl: "https://api.oj.ink/v1",
+                  authKind: "api_key_and_base_url",
+                  defaultModelId: "mimo-v2.5",
+                  secretValue: "sk-capture-fixture",
+                  apiStyle: "chat_completions",
+                  supportsReasoning: true,
+                });
+                await mainWindow!.webContents.executeJavaScript(
+                  `void window.__PI_DESKTOP__?.refreshProviders?.()`,
+                );
+                await new Promise((r) => setTimeout(r, 300));
+              }
+            } catch {
+              // provider fixture optional
+            }
             await new Promise((r) => setTimeout(r, 500));
             // Prefer a titled empty recent (Codex gold selects a real title, not "New task").
             try {

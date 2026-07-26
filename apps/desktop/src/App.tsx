@@ -179,6 +179,7 @@ function AppShell() {
   useEffect(() => {
     (window as any).__PI_DESKTOP__ = {
       setPage: (page: string) => useAppStore.getState().setPage(page as any),
+      refreshProviders: () => useAppStore.getState().refreshProviders(),
       selectSession: (id: string) => useAppStore.getState().selectSession(id),
       setSettingsTab: (tab: string) => useAppStore.getState().setSettingsTab(tab as any),
       setThemeAttr: (theme: "light" | "dark") => {
