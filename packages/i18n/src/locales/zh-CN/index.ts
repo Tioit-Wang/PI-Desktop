@@ -99,6 +99,7 @@ export const zhCN = {
     thinkingShow: "显示思考过程",
     thinkingHide: "隐藏思考过程",
     thinkingUnavailable: "当前模型不支持思考模式。",
+    thinkingEnable: "启用思考",
     untitledTask: "新建任务",
   },
   onboarding: {

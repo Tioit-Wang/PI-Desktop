@@ -378,8 +378,9 @@ responses, lightweight tool activity rows, and permission cards for a session.
 - `role="log"` container
 - `aria-live="polite"` for new content announcements
 - Each message: `role="article"` with `aria-label` describing sender
-- Thinking uses native `details`/`summary`; the localized summary label
-  distinguishes Show thinking from Hide thinking
+- Thinking uses a button disclosure with `aria-expanded` and `aria-controls`;
+  the localized label distinguishes Show thinking from Hide thinking, and the
+  collapsed panel is hidden from accessibility and focus traversal
 - The minimap is a localized navigation landmark; every marker is a button
   labeled with its message sender
 - The marker nearest the reading position exposes `aria-current="true"` and
@@ -431,8 +432,10 @@ Single message render — either user (plaintext) or assistant (markdown streami
 - Max width: 720px
 - User: bg-secondary background, left-aligned
 - Assistant: bg-primary (transparent), left-aligned, markdown rendered
-- Thinking: separate inset disclosure above the answer; subtle border and
-  secondary text. It is never concatenated into answer markdown.
+- Thinking: separate lightweight disclosure above the answer with no card
+  background or outer border. Its Sparkles/chevron trigger uses secondary text,
+  and the expanded markdown is indented by a subtle theme-token left rule. It
+  is never concatenated into answer markdown.
 - Gap: space-3 between consecutive messages
 - Font: text-base (14px) for body; text-sm (13px) mono for code
 
@@ -449,7 +452,8 @@ Single message render — either user (plaintext) or assistant (markdown streami
 
 - User: `aria-label="User message"`
 - Assistant: `aria-label="Assistant message"`
-- Thinking summary exposes localized Show/Hide thinking labels
+- Thinking trigger exposes localized Show/Hide labels, `aria-expanded`, and an
+  `aria-controls` relationship to the reasoning panel
 - Timestamps: `aria-label` with full time string, visual shows relative time
 
 ### 8.6 MVP constraints
@@ -687,9 +691,14 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 - Chat / Agent and provider/model changes update the active session, not the
   app default. They are disabled while a turn runs.
 - The model menu lists only enabled, runnable providers with a default model.
-- For the exact active provider/model, the same menu shows Thinking only when
-  reasoning is supported. It lists only the model's supported levels in
-  canonical order and persists selection with the complete session config.
+- The model menu always shows a dedicated Thinking section and current level.
+  For the exact active provider/model, it renders only supported levels in a
+  compact grid, canonical order, and persists a selection with the complete
+  session config without closing the menu.
+- Unknown Custom/OpenAI-compatible models can enable an explicit reasoning
+  override from the same section. The provider refreshes, the session selects
+  the supported level nearest `medium`, and known non-reasoning models remain
+  unavailable rather than receiving an override.
 - Switching provider preserves an available level, otherwise uses the nearest
   supported level (upward first, then downward); a non-reasoning provider
   persists `off`.
@@ -700,6 +709,8 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 - Send button: `aria-label="Send message"`
 - Abort button: `aria-label="Abort active turn"`
 - Disabled send: `aria-disabled="true"` with tooltip explanation
+- Thinking levels use radio-menu semantics inside a localized Thinking group;
+  the selected level exposes `aria-checked="true"`
 
 ### 11.7 MVP constraints
 

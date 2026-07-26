@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderPublic, ThinkingLevel } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
+import { api } from "../lib/api";
 import { BrandLogo } from "./BrandLogo";
 import {
   IconArrowUp,
@@ -98,6 +99,7 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   const sessions = useAppStore((s) => s.sessions);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const providers = useAppStore((s) => s.providers);
+  const refreshProviders = useAppStore((s) => s.refreshProviders);
   const configureActiveSession = useAppStore((s) => s.configureActiveSession);
   const showToast = useAppStore((s) => s.showToast);
   const composerPrefill = useAppStore((s) => s.composerPrefill);
@@ -191,6 +193,13 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
     ? sessionThinkingLevel
     : "off";
   const availableThinkingLevels = providerThinkingLevels(thinkingProvider);
+  const canEnableThinkingOverride =
+    !!provider &&
+    !!modelId &&
+    !thinkingProvider?.supportsReasoning &&
+    (provider.vendorKey === "custom" ||
+      provider.type === "custom" ||
+      provider.type === "openai_compatible");
   const thinkingLevel = thinkingLevelForProvider(
     thinkingProvider,
     configuredThinkingLevel,
@@ -210,6 +219,30 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
     !!modelId &&
     (provider.hasSecret || provider.authKind === "none");
   const enterToSend = settings?.enterToSend ?? true;
+  const enableThinkingOverride = async () => {
+    if (!provider || !modelId || !canEnableThinkingOverride) return;
+    try {
+      await api.updateProvider({
+        id: provider.id,
+        supportsReasoning: true,
+      });
+      await refreshProviders();
+      const updatedProvider = useAppStore
+        .getState()
+        .providers.find((candidate) => candidate.id === provider.id);
+      const nextLevel = thinkingLevelForProvider(updatedProvider, "medium");
+      await configureActiveSession({
+        mode,
+        providerId: provider.id,
+        modelId,
+        thinkingLevel: nextLevel,
+      });
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), {
+        variant: "error",
+      });
+    }
+  };
   const submit = async () => {
     const content = value.trim();
     if (!content || isRunning || !modelReady) return;
@@ -306,6 +339,73 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                       </div>
                     </div>
                     <div className="composer-plus-sep" />
+                    <div
+                      className="composer-thinking-section"
+                      role="group"
+                      aria-label={t("chat.thinking", {
+                        defaultValue: "Thinking",
+                      })}
+                    >
+                      <div className="composer-thinking-heading">
+                        <span>
+                          {t("chat.thinking", { defaultValue: "Thinking" })}
+                        </span>
+                        <span className="composer-thinking-value">
+                          {thinkingLabel}
+                        </span>
+                      </div>
+                      {thinkingProvider?.supportsReasoning &&
+                      availableThinkingLevels.length ? (
+                        <div className="composer-thinking-levels">
+                          {availableThinkingLevels.map((level) => (
+                            <button
+                              key={level}
+                              type="button"
+                              className={`composer-thinking-level ${
+                                thinkingLevel === level ? "active" : ""
+                              }`}
+                              role="menuitemradio"
+                              aria-checked={thinkingLevel === level}
+                              onClick={async () => {
+                                try {
+                                  await configureActiveSession({
+                                    mode,
+                                    providerId: thinkingProvider.id,
+                                    modelId,
+                                    thinkingLevel: level,
+                                  });
+                                } catch (error) {
+                                  showToast(
+                                    error instanceof Error
+                                      ? error.message
+                                      : String(error),
+                                    { variant: "error" },
+                                  );
+                                }
+                              }}
+                            >
+                              {t(THINKING_LEVEL_I18N_KEYS[level], {
+                                defaultValue: THINKING_LEVEL_LABELS[level],
+                              })}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="composer-thinking-unavailable">
+                          <span>{t("chat.thinkingUnavailable")}</span>
+                          {canEnableThinkingOverride ? (
+                            <button
+                              type="button"
+                              className="composer-thinking-enable"
+                              onClick={() => void enableThinkingOverride()}
+                            >
+                              {t("chat.thinkingEnable")}
+                            </button>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    <div className="composer-plus-sep" />
                     {providers
                       .filter(
                         (candidate) =>
@@ -354,48 +454,6 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                         </span>
                       </button>
                     ))}
-                    {thinkingProvider?.supportsReasoning && availableThinkingLevels.length ? (
-                      <>
-                        <div className="composer-plus-sep" />
-                        <div className="composer-model-heading">
-                          <div className="truncate text-xs-plus font-medium text-text-secondary">
-                            {t("chat.thinking", { defaultValue: "Thinking" })}
-                          </div>
-                        </div>
-                        {availableThinkingLevels.map((level) => (
-                          <button
-                            key={level}
-                            className={`composer-plus-item ${
-                              thinkingLevel === level ? "active" : ""
-                            }`}
-                            role="menuitemradio"
-                            aria-checked={thinkingLevel === level}
-                            onClick={async () => {
-                              try {
-                                await configureActiveSession({
-                                  mode,
-                                  providerId: thinkingProvider.id,
-                                  modelId,
-                                  thinkingLevel: level,
-                                });
-                                setModelOpen(false);
-                              } catch (e) {
-                                showToast(
-                                  e instanceof Error ? e.message : String(e),
-                                  { variant: "error" },
-                                );
-                              }
-                            }}
-                          >
-                            <span>
-                              {t(THINKING_LEVEL_I18N_KEYS[level], {
-                                defaultValue: THINKING_LEVEL_LABELS[level],
-                              })}
-                            </span>
-                          </button>
-                        ))}
-                      </>
-                    ) : null}
                     <div className="composer-plus-sep" />
                     <button
                       className="composer-plus-item"

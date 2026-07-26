@@ -18,6 +18,10 @@ const mainSource = await readFile(
   new URL("../electron/main/index.ts", import.meta.url),
   "utf8",
 );
+const stylesSource = await readFile(
+  new URL("../src/styles/globals.css", import.meta.url),
+  "utf8",
+);
 
 test("composer exposes the runtime thinking level order and provider filtering", () => {
   for (const level of ["off", "minimal", "low", "medium", "high", "xhigh", "max"]) {
@@ -27,6 +31,15 @@ test("composer exposes the runtime thinking level order and provider filtering",
   assert.match(composerSource, /supportsReasoning/);
   assert.match(composerSource, /thinkingLevelForProvider/);
   assert.match(composerSource, /thinkingLevel:\s*level/);
+  assert.match(composerSource, /composer-thinking-levels/);
+  assert.match(composerSource, /composer-thinking-section[\s\S]*providers/);
+});
+
+test("compatible providers can enable thinking from the model menu", () => {
+  assert.match(composerSource, /canEnableThinkingOverride/);
+  assert.match(composerSource, /supportsReasoning:\s*true/);
+  assert.match(composerSource, /chat\.thinkingEnable/);
+  assert.match(composerSource, /await refreshProviders\(\)/);
 });
 
 test("switching to a provider without reasoning resets the session level", () => {
@@ -46,12 +59,18 @@ test("main resolves reasoning from each session's exact selected model", () => {
 });
 
 test("transcript keeps assistant thinking in a separate disclosure", () => {
-  assert.match(transcriptSource, /<details[\s\S]*<summary/);
+  assert.match(transcriptSource, /className="thinking-disclosure-header"/);
+  assert.match(transcriptSource, /aria-expanded=\{open\}/);
+  assert.match(transcriptSource, /aria-hidden=\{!open\}/);
+  assert.match(transcriptSource, /inert=\{!open\}/);
+  assert.match(transcriptSource, /IconSparkles/);
   assert.match(transcriptSource, /message\.thinking/);
   assert.match(transcriptSource, /Markdown source=\{thinking\}/);
   assert.match(transcriptSource, /CopyButton text=\{message\.content\}/);
   assert.match(transcriptSource, /!thinkingText\(message\)/);
   assert.match(transcriptSource, /thinkingText\(lastVisibleMessage\)/);
+  assert.match(stylesSource, /\.thinking-disclosure-body[\s\S]*border-left/);
+  assert.match(stylesSource, /\.thinking-prose/);
 });
 
 test("thinking-only assistant streams open the transcript surface", () => {

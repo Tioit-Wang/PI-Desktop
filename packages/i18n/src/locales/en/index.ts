@@ -96,6 +96,7 @@ export const en = {
     thinkingShow: "Show thinking",
     thinkingHide: "Hide thinking",
     thinkingUnavailable: "Thinking is unavailable for this model.",
+    thinkingEnable: "Enable thinking",
     untitledTask: "New task",
   },
   onboarding: {

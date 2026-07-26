@@ -603,13 +603,16 @@ Each scenario is documented in this format:
 
 - **Preconditions**: One catalogued reasoning model, one non-reasoning model,
   and a custom provider with an explicit reasoning override.
-- **Steps**: 1) Select each provider/model in turn. 2) Open the model menu. 3)
-  Toggle the custom override from enabled to disabled. 4) Refresh model data.
-- **Expected**: Thinking appears only for the exact selected reasoning model;
-  levels match its sparse supported set in canonical order; explicit `false`
-  removes stale reasoning tags and resets the effective level to `off`; old
-  providers with missing capability fields load as non-reasoning without a
-  crash.
+- **Steps**: 1) Select each provider/model in turn. 2) Open the model menu and
+  inspect its Thinking section. 3) Choose multiple supported levels without
+  reopening the menu. 4) Use Enable thinking on the unknown custom provider.
+  5) Disable its override in Configuration and refresh model data.
+- **Expected**: The menu always shows the current Thinking state; reasoning
+  models expose only their sparse supported levels in canonical order and keep
+  the menu open after selection. The custom action persists `supportsReasoning`
+  and selects the supported level nearest `medium`; explicit `false` removes
+  stale reasoning tags and resets the effective level to `off`; known
+  non-reasoning and legacy providers remain unavailable without a crash.
 - **Specs linked**: `03-runtime/11-provider-model-system.md`,
   `03-runtime/12-provider-config-schema.md`,
   `03-runtime/13-model-catalog-and-selection.md`, ADR 0018
@@ -651,11 +654,15 @@ Each scenario is documented in this format:
 
 - **Preconditions**: Provider emits thinking deltas before and between answer
   deltas.
-- **Steps**: 1) Start a turn. 2) Observe a thinking-only phase. 3) Let the
-  answer complete. 4) toggle the disclosure and use Copy answer.
+- **Steps**: 1) Start a turn in both light and dark themes. 2) Observe a
+  thinking-only phase. 3) Let the answer complete. 4) Toggle the disclosure,
+  test keyboard focus, enable reduced motion, and use Copy answer.
 - **Expected**: The transcript opens during thinking-only streaming; one open
   Thinking disclosure updates without an empty answer bubble or duplicate
-  Working indicator; final answer markdown renders separately; Copy answer
+  Working indicator. The disclosure uses the transcript surface, theme tokens,
+  a Sparkles/chevron trigger, and a left rule instead of an inset card;
+  collapsed content leaves focus traversal and reduced motion disables shimmer
+  and transitions. Final answer markdown renders separately; Copy answer
   contains no thinking text.
 - **Specs linked**: `03-runtime/01-ipc-protocol.md`,
   `04-ux/07-ui-design-system.md`, `04-ux/08-component-spec.md`, ADR 0018
@@ -851,8 +858,10 @@ This test plan spec is accepted when:
 ### US-UI-18 Composer has no inert actions
 - On chat home and a docked thread, inspect every composer control.
 - Expect no file, photo, or appshot controls while those payloads are
-  unsupported by the pi runtime. Thinking levels appear only for an exact
-  reasoning-capable provider/model and update the durable session.
+  unsupported by the pi runtime. The model menu always identifies the current
+  Thinking state; exact reasoning-capable models expose their supported levels,
+  unknown compatible models can explicitly enable thinking, and changes update
+  the durable session.
 - Project name opens the project picker; Local and branch render as status text,
   not clickable buttons.
 

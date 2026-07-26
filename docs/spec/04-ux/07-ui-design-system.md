@@ -447,20 +447,27 @@ The composer renders only controls connected to the active pi session:
 - Both controls are disabled while the active session is running.
 - File, photo, and appshot controls remain hidden until their payload contracts
   are implemented end to end.
-- Thinking level appears inside the model menu only when the exact selected
-  provider/model advertises reasoning. It uses the model's sparse supported
-  level set in canonical order; changing provider clamps or resets the durable
-  session value before the next turn.
+- The model menu always exposes a dedicated Thinking section with the current
+  level. Reasoning-capable models render their sparse supported level set in a
+  compact selector and persist changes without closing the menu. Unknown
+  Custom/OpenAI-compatible models expose an explicit Enable thinking action;
+  known non-reasoning models remain unavailable. Changing provider clamps or
+  resets the durable session value before the next turn.
 - Local and branch context are non-interactive status labels; the project name
   remains an action because it opens the project picker.
 
 ## 8.3 Thinking disclosure
 
-- Assistant thinking renders before the final answer in a native disclosure,
-  using the inset surface, subtle border, secondary text, and normal focus
-  ring tokens.
+- Assistant thinking renders before the final answer as a lightweight inline
+  disclosure aligned with tool activity rows: transparent transcript surface,
+  Sparkles cue, rotating chevron, secondary text, and a subtle left rule only
+  around expanded reasoning. It uses semantic theme and focus-ring tokens in
+  light and dark modes; it must not introduce a separate inset card.
 - The disclosure is open while a thinking-only response is streaming and may
   be toggled independently afterward.
+- The trigger is a button with `aria-expanded`, `aria-controls`, and localized
+  Show/Hide labels. Collapsed reasoning is hidden from focus and accessibility
+  traversal; reduced-motion mode disables shimmer and disclosure transitions.
 - Thinking never enters the answer bubble, answer copy action, transcript
   minimap excerpt, or searchable answer text.
 - A thinking-only stream opens the transcript surface without an empty answer

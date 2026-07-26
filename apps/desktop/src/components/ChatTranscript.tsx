@@ -329,6 +329,7 @@ function ThinkingDisclosure({
   streaming: boolean;
 }) {
   const { t } = useTranslation();
+  const contentId = useId();
   const [open, setOpen] = useState(streaming);
 
   useEffect(() => {
@@ -336,23 +337,42 @@ function ThinkingDisclosure({
   }, [streaming]);
 
   return (
-    <details
-      className="mb-3 max-w-full rounded-md-plus border border-border-subtle bg-bg-inset px-3 py-2 text-text-secondary"
-      open={open}
-      onToggle={(event) => setOpen(event.currentTarget.open)}
+    <div
+      className={`thinking-disclosure ${open ? "open" : ""} ${streaming ? "streaming" : ""}`}
     >
-      <summary
-        className="cursor-pointer select-none text-sm-plus font-medium text-text-secondary"
+      <button
+        type="button"
+        className="thinking-disclosure-header"
+        aria-expanded={open}
+        aria-controls={contentId}
         aria-label={t(open ? "chat.thinkingHide" : "chat.thinkingShow")}
+        onClick={() => setOpen((value) => !value)}
       >
-        {t("chat.thinking", { defaultValue: "Thinking" })}
-      </summary>
-      <div className="mt-2 border-t border-border-subtle pt-2">
-        <div className="prose-chat text-text-secondary">
-          <Markdown source={thinking} />
+        <span className="thinking-disclosure-icon" aria-hidden>
+          <IconSparkles size={14} />
+        </span>
+        <span className={`thinking-disclosure-label ${streaming ? "running" : ""}`}>
+          {t("chat.thinking", { defaultValue: "Thinking" })}
+        </span>
+        <span className="thinking-disclosure-caret" aria-hidden>
+          <IconChevronRight size={12} />
+        </span>
+      </button>
+      <div
+        className="thinking-disclosure-collapse"
+        id={contentId}
+        aria-hidden={!open}
+        inert={!open}
+      >
+        <div className="thinking-disclosure-collapse-inner">
+          <div className="thinking-disclosure-body">
+            <div className="prose-chat thinking-prose">
+              <Markdown source={thinking} />
+            </div>
+          </div>
         </div>
       </div>
-    </details>
+    </div>
   );
 }
 
