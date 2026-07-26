@@ -85,8 +85,12 @@ type RuntimeProvider = {
   defaultModelId?: string;
   apiKey?: string;
   authKind?: string;
+  apiStyle?: string;
   hasSecret?: boolean;
   enabled?: boolean;
+  contextWindow?: number;
+  maxOutputTokens?: number;
+  temperature?: number;
   /** Host may return an explicit override; effective values are enriched below. */
   supportsReasoning?: boolean;
   /** Optional sparse override from provider config_json.compatibility. */
@@ -2117,9 +2121,13 @@ function registerIpc() {
             modelId,
             apiKey: secret.value || "",
             authKind: provider.authKind,
+            apiStyle: provider.apiStyle,
             supportsReasoning: thinkingCapabilities.supportsReasoning,
             supportedThinkingLevels:
               thinkingCapabilities.supportedThinkingLevels,
+            contextWindow: provider.contextWindow,
+            maxOutputTokens: provider.maxOutputTokens,
+            temperature: provider.temperature,
           },
           // Registered plugin agent tools join the model's toolset; execution
           // round-trips host -> main (plugins.execute) -> plugin JS.
