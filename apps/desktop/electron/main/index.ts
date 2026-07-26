@@ -36,6 +36,7 @@ import { PluginRuntime } from "./plugin-runtime";
 import { Logger } from "./logger";
 import { collectWorkspaceDiff } from "./git-diff";
 import { PtyManager } from "./terminal";
+import { BrowserPane } from "./browser-view";
 import {
   convertSession,
   scanAllSources,
@@ -54,6 +55,9 @@ const ptys = new PtyManager({
   onExit: (termId, exitCode) =>
     sendToRenderer(IPC.event.terminalExit, { termId, exitCode }),
 });
+const browserPane = new BrowserPane((state) =>
+  sendToRenderer(IPC.event.browserState, state),
+);
 let scannedImportSessions = new Map<string, ExternalSessionSummary>();
 
 const IMPORT_SOURCES = new Set<ExternalSource>([
@@ -326,6 +330,9 @@ async function createWindow() {
     void shell.openExternal(url);
     return { action: "deny" };
   });
+
+  browserPane.setWindow(mainWindow);
+  mainWindow.on("closed", () => browserPane.setWindow(null));
 
   // Block navigation away from the app shell (dev server origin or local file).
   mainWindow.webContents.on("will-navigate", (event, url) => {
@@ -1485,6 +1492,45 @@ function registerIpc() {
     return { ok: true };
   });
 
+  handle(IPC.invoke.browserNavigate, async (input: { url?: string } = {}) => {
+    return browserPane.navigate(String(input.url ?? ""));
+  });
+
+  handle(IPC.invoke.browserAction, async (input: { action?: string } = {}) => {
+    const action = String(input.action ?? "");
+    if (
+      action === "back" ||
+      action === "forward" ||
+      action === "reload" ||
+      action === "stop"
+    ) {
+      browserPane.action(action);
+    }
+    return { ok: true };
+  });
+
+  handle(
+    IPC.invoke.browserSetBounds,
+    async (bounds: { x: number; y: number; width: number; height: number }) => {
+      browserPane.setBounds(bounds ?? { x: 0, y: 0, width: 0, height: 0 });
+      return { ok: true };
+    },
+  );
+
+  handle(IPC.invoke.browserSetVisible, async (input: { visible?: boolean } = {}) => {
+    browserPane.setVisible(input.visible === true);
+    return { ok: true };
+  });
+
+  handle(IPC.invoke.browserOpenExternal, async () => {
+    browserPane.openExternal();
+    return { ok: true };
+  });
+
+  handle(IPC.invoke.browserGetState, async () => {
+    return browserPane.getState();
+  });
+
 
   handle(IPC.invoke.pullsList, async () => {
     if (!host) throw new Error("host unavailable");
@@ -1933,6 +1979,7 @@ app.on("before-quit", () => {
   quitting = true;
   logger.app("info", "app shutdown");
   ptys.disposeAll();
+  browserPane.dispose();
   void host?.dispose();
   void sidecar?.dispose();
 });

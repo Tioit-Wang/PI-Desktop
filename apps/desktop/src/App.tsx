@@ -77,6 +77,7 @@ function AppShell() {
   const openProject = useAppStore((s) => s.openProject);
   const workPanelOpen = useAppStore((s) => s.workPanelOpen);
   const toggleWorkPanel = useAppStore((s) => s.toggleWorkPanel);
+  const permission = useAppStore((s) => s.permission);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -479,7 +480,9 @@ function AppShell() {
         )}
       </section>
 
-      {workPanelOpen && <WorkPanel />}
+      {workPanelOpen && (
+        <WorkPanel browserBlocked={paletteOpen || Boolean(permission)} />
+      )}
 
       <PermissionDialog />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />

@@ -856,6 +856,28 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Draft (manual)
 
+#### E2E-059: Embedded browser preview isolation and overlays
+
+- **Preconditions**: A local dev server is running; work panel open.
+- **Steps**: 1) Enter `localhost:<port>` without a scheme and submit.
+  2) Navigate site links; use back/forward/reload/stop. 3) Trigger a
+  `window.open` popup and a permission-requesting page (e.g. notification
+  prompt). 4) Open the command palette, then a tool permission dialog, then
+  Settings. 5) Switch to another panel tab and back; close the panel.
+  6) Use open-external.
+- **Expected**: Scheme-less input normalizes to http; nav state (URL bar,
+  back/forward enablement, load spinner) mirrors the page. Popups open in
+  the default browser (never in-app); permission requests are denied;
+  non-http(s) navigation is blocked. The preview hides under every blocking
+  overlay and while unmounted, reappearing with correct bounds afterwards;
+  resize/drag keeps the view aligned with the placeholder rect.
+  Open-external launches the current URL in the default browser. The view
+  uses an isolated persist partition (no session bleed from the app shell).
+- **Specs linked**: `03-runtime/01-ipc-protocol.md` §13a, ADR 0019
+- **Acceptance**: Quality, Security
+- **Milestone**: M5
+- **Status**: Draft (manual)
+
 ---
 
 #### E2E-059: Transcript message plates follow WorkBuddy density
@@ -911,7 +933,7 @@ Each scenario is documented in this format:
 | F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
-| Security | E2E-028, E2E-029, E2E-030, E2E-049 |
+| Security | E2E-028, E2E-029, E2E-030, E2E-049, E2E-059 |
 | Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060 |
 
 | Milestone | Scenarios |

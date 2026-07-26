@@ -22,7 +22,7 @@ function clampWidth(width: number) {
   return Math.max(WORK_PANEL_MIN_WIDTH, Math.min(max, width));
 }
 
-export function WorkPanel() {
+export function WorkPanel({ browserBlocked = false }: { browserBlocked?: boolean }) {
   const { t } = useTranslation();
   const tab = useAppStore((s) => s.workPanelTab);
   const width = useAppStore((s) => s.workPanelWidth);
@@ -128,7 +128,7 @@ export function WorkPanel() {
         <div className={cx("work-panel-tabpane", tab !== "terminal" && "is-hidden")}>
           <TerminalTab active={tab === "terminal"} />
         </div>
-        {tab === "browser" && <BrowserTab />}
+        {tab === "browser" && <BrowserTab blocked={browserBlocked} />}
         {tab === "files" && <FilesTab />}
       </div>
     </aside>

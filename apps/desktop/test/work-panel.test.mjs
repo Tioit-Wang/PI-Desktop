@@ -31,7 +31,7 @@ test("work panel replaces the context panel overlay", async () => {
 
 test("work panel docks as an app-shell column, not a main-pane overlay", () => {
   // Rendered after the main pane closes, as a shell sibling.
-  assert.match(appSource, /<\/section>\s*\{workPanelOpen && <WorkPanel \/>\}/);
+  assert.match(appSource, /<\/section>\s*\{workPanelOpen && \(?\s*<WorkPanel/);
   // Docked column participates in flex layout instead of overlaying.
   assert.match(globalStyles, /\.work-panel \{[^}]*flex: 0 0 auto/s);
   assert.doesNotMatch(
