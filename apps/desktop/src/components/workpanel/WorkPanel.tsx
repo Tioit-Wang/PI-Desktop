@@ -113,20 +113,21 @@ export function WorkPanel({ browserBlocked = false }: { browserBlocked?: boolean
     [setWidth],
   );
 
-  // Re-clamp the persisted width when the window shrinks under it.
+  // The persisted width is a preference, not a guarantee: window growth on
+  // open can be denied (maximized / screen edge), so clamp the rendered width
+  // to what actually fits and re-clamp whenever the window resizes.
+  const [, bumpViewport] = useState(0);
   useEffect(() => {
-    const onWindowResize = () => {
-      const clamped = clampWidth(width);
-      if (clamped !== width) setWidth(clamped);
-    };
+    const onWindowResize = () => bumpViewport((v) => v + 1);
     window.addEventListener("resize", onWindowResize);
     return () => window.removeEventListener("resize", onWindowResize);
-  }, [width, setWidth]);
+  }, []);
+  const renderWidth = clampWidth(dragWidth ?? width);
 
   return (
     <aside
       className="work-panel"
-      style={{ width: dragWidth ?? width }}
+      style={{ width: renderWidth }}
       data-testid="work-panel"
     >
       <div

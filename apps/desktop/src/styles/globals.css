@@ -202,6 +202,12 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  /*
+    App shell, not a document: panes scroll internally. Without this, any
+    transient overflow (work panel opening before the OS window finishes
+    growing, or a denied grow when maximized) puts a scrollbar on the page.
+  */
+  overflow: hidden;
   background: var(--ds-bg-primary);
   color: var(--ds-text-primary);
   font-family: var(--font-sans);
