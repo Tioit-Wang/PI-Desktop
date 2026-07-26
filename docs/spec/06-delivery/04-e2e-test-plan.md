@@ -298,6 +298,26 @@ Each scenario is documented in this format:
 - **Milestone**: M3
 - **Status**: Automated (protocol smoke: PATH_OUTSIDE_WORKSPACE)
 
+#### E2E-019a: Scratch-directory writes stay out of the workspace (D114)
+
+- **Preconditions**: Agent mode; project open; session started.
+- **Steps**: 1) Ask the agent to produce a temporary/intermediate file (e.g. a one-off script). 2) Observe where it writes and whether a permission card appears. 3) Check `git status` in the project and the work panel Files tab. 4) Delete the session and check `<data_dir>/scratch/`.
+- **Expected**: The file lands under `<data_dir>/scratch/<sessionId>/` without a permission card; project `git status` stays clean; the Files tab lists no scratch entries; deleting the session removes the scratch directory.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md §4b`, `03-runtime/04-data-storage.md`
+- **Acceptance**: E (temp files isolated from workspace)
+- **Milestone**: M5
+- **Status**: Partially automated (host-core unit tests: dual-root resolve, scratch write/read, PI_SCRATCH_DIR, sweep)
+
+#### E2E-019b: Scratch containment matches workspace defenses (D114)
+
+- **Preconditions**: Agent mode; project open.
+- **Steps**: 1) Attempt Write with `..` traversal from the scratch root. 2) Attempt Write through a symlink planted inside scratch pointing outside. 3) Attempt scratch writes in Chat mode.
+- **Expected**: Both escapes return `PATH_OUTSIDE_WORKSPACE`; Chat mode still returns `WRITE_DISABLED_IN_CHAT` even for scratch paths.
+- **Specs linked**: `03-runtime/03-tools-and-permissions.md §4b`
+- **Acceptance**: E (scratch root cannot be escaped)
+- **Milestone**: M5
+- **Status**: Automated (host-core unit tests)
+
 ### Session Persistence
 
 #### E2E-020: Session survives restart

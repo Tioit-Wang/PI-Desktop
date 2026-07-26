@@ -347,7 +347,7 @@ async fn tool_bash(
         .kill_on_drop(true);
     if let Some(scratch_dir) = scratch {
         // Shell commands drop temp files via $PI_SCRATCH_DIR instead of the
-        // workspace (D101); the dir was created by execute_tool above.
+        // workspace (D114); the dir was created by execute_tool above.
         cmd.env("PI_SCRATCH_DIR", scratch_dir);
     }
     #[cfg(windows)]

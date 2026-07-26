@@ -1,4 +1,4 @@
-//! Per-session scratch directories (D101).
+//! Per-session scratch directories (D114).
 //!
 //! Temporary files an agent turn produces (intermediate scripts, downloaded
 //! data, drafts) live under `<data_dir>/scratch/<session_id>/` instead of the

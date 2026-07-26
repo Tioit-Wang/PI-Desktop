@@ -173,6 +173,11 @@ Gold source: local Codex electron captures; latest row wins where rows conflict.
 | D112 | Readable chat beside the work panel | **Work-panel resizing keeps MainChat at least 360px wide by refining D097's upper clamp to `min(720px, 60vw, viewport − visible sidebar − 360px)`. The panel welcome chooser centers vertically when space allows and safely top-aligns with scrolling at short heights.** | A panel-only width cap could leave roughly 109–205px for chat at supported window sizes, and the new welcome chooser otherwise anchored incorrectly to the top |
 | D113 | WorkBuddy-inspired local profile footer | **The expanded sidebar ends in a transparent 58px footer. Its 44px profile trigger contains a 30px circular local-user glyph, two-line `Custom` + `Local profile` / `本地配置` identity, and a chevron; a separate 32px Help shortcut opens Settings → Info. The 280px profile menu opens 8px above the footer with a repeated identity header, divider, and Settings / Logs / Theme actions, preserving Escape, outside-click, arrow-key, and focus-restore behavior. This supersedes D041; no cloud account, notification, share, or update capability is implied.** | Adapt WorkBuddy's avatar-and-actions footer grammar to PI-Desktop's truthful local-only capabilities while improving identity hierarchy and eliminating the stale cloud stand-in |
 
+## M. Agent runtime decisions
+
+| ID | Topic | Decision | Rationale |
+|---|---|---|---|
+| D114 | Per-session scratch directory for agent temp files | **Each session gets `<data_dir>/scratch/<sessionId>/` as a second containment root for `Read`/`Write`/`Edit` (absolute paths only; relative paths stay workspace-bound). The path is advertised in the system prompt and as `PI_SCRATCH_DIR` in Bash. Scratch writes auto-allow without a permission card and are excluded from the artifacts table. Scratch is created lazily, deleted with the session, and swept at startup (orphans, >7 days stale). Glob/Grep/BrowserPreview remain workspace-only; chat mode stays read-only.** | Temp/intermediate files (one-off scripts, downloaded data, drafts) were dirtying the user's project and git status; a host-owned root with identical lexical + symlink defenses keeps the sandbox model intact while giving the model a legitimate place for scratch work |
 
 ## J. Still deferred
 

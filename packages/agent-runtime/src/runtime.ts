@@ -138,7 +138,7 @@ export type AgentRuntimeOptions = {
   history?: UiMessage[];
   /** Plugin agent tools to expose to the model this session. */
   pluginTools?: PluginToolDef[];
-  /** Absolute per-session scratch directory for temporary files (D101).
+  /** Absolute per-session scratch directory for temporary files (D114).
    * Advertised to the model in the system prompt; host-core enforces it as
    * a second containment root. */
   scratchDir?: string;
@@ -269,7 +269,7 @@ export class DesktopAgentRuntime {
             process.platform === "win32"
               ? "Shell commands run in Git Bash (POSIX bash on Windows). Always write bash/POSIX syntax with forward-slash paths — never cmd.exe or PowerShell syntax."
               : "Shell commands run in bash. Write bash/POSIX syntax.",
-            // Session scratch directory (D101): temp files must not dirty
+            // Session scratch directory (D114): temp files must not dirty
             // the user's workspace or its git status.
             ...(this.scratchDir
               ? [
@@ -413,7 +413,7 @@ export class DesktopAgentRuntime {
 
   private buildTools(): AgentTool[] {
     // With a scratch dir provisioned, file tools accept absolute paths into
-    // it as a second root (D101); keep the wording in sync with host-core.
+    // it as a second root (D114); keep the wording in sync with host-core.
     const scratchPathHint = this.scratchDir
       ? " `path` is workspace-relative, or an absolute path inside the session scratch directory."
       : "";

@@ -973,7 +973,7 @@ async fn handle_request(
                 let ws = resolve_tool_workspace(&st, &p.session_id)?;
                 let scratch = scratch::session_dir(&st.data_dir, &p.session_id);
                 // Write/Edit targeting the session scratch dir never touch
-                // the user's project — skip the prompt (D101). The lexical
+                // the user's project — skip the prompt (D114). The lexical
                 // pre-check only decides prompting; execution still goes
                 // through the symlink-aware resolver, so it cannot be used
                 // to escape containment. Chat mode already resolved to Deny
@@ -1105,7 +1105,7 @@ async fn handle_request(
             let st = state.lock().await;
             // Scratch files are temp by definition: keep them out of the
             // artifacts table so the work panel file list only shows
-            // workspace deliverables (D101).
+            // workspace deliverables (D114).
             let in_scratch =
                 result.content.get("root").and_then(|v| v.as_str()) == Some("scratch");
             if result.ok && !in_scratch && matches!(p.tool_name.as_str(), "Write" | "Edit") {

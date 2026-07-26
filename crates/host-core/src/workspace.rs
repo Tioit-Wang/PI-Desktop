@@ -122,7 +122,7 @@ pub fn resolve_in_workspace(workspace_root: &Path, input: &str) -> Result<PathBu
 }
 
 /// Resolve a tool path against the workspace root, falling back to the
-/// session scratch root (D101). Relative paths always resolve against the
+/// session scratch root (D114). Relative paths always resolve against the
 /// workspace; the scratch directory is addressed by absolute path only (the
 /// model learns it from the system prompt / `PI_SCRATCH_DIR`). Both roots get
 /// the same lexical + symlink containment defense.

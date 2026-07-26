@@ -34,7 +34,9 @@ Local-first, recoverable after restart, sensitive data isolated — plus, for v4
  ├── attachments/         # content-addressed blobs (sha256 name), refs from messages
  ├── plugins/             # code + data + registry.json (unchanged, spec 07-11)
  ├── logs/                # NDJSON app/host/agent logs (D082)
- └── cache/               # disposable caches
+ ├── cache/               # disposable caches
+ └── scratch/<sessionId>/ # per-session agent temp files (D114) — deleted with
+                          # the session; startup sweep removes orphans/stale
 ```
 
 Supersedes the v1 sketch of split `settings.sqlite` / `sessions.sqlite`: a
@@ -423,6 +425,8 @@ CREATE INDEX idx_artifacts_time ON artifacts(updated_at DESC);
 Upserted by host-core in the same transaction as the `tool_execute` audit row
 whenever Write/Edit (or a plugin tool declaring file effects) succeeds —
 repeat edits update `op`/`updated_at`, keeping one row per file per session.
+Writes into the session scratch directory (D114) are excluded: artifacts list
+workspace deliverables only.
 
 ### 4.11 scheduled_tasks + task_runs — automations
 
