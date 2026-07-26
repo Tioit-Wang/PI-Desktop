@@ -248,3 +248,88 @@ export type ScheduledTask = {
   updatedAt: string;
   lastRunAt?: string;
 };
+
+// --- Work panel (review / terminal / browser / files) ---
+
+export type DiffLineType = "add" | "del" | "context";
+
+export type DiffLine = {
+  type: DiffLineType;
+  text: string;
+};
+
+export type DiffHunk = {
+  /** Raw `@@ -a,b +c,d @@ …` header line. */
+  header: string;
+  lines: DiffLine[];
+};
+
+export type DiffFileStatus =
+  | "added"
+  | "modified"
+  | "deleted"
+  | "renamed"
+  | "untracked";
+
+export type DiffFile = {
+  path: string;
+  oldPath?: string;
+  status: DiffFileStatus;
+  additions: number;
+  deletions: number;
+  binary?: boolean;
+  /** Patch exceeded the per-file cap; hunks are omitted. */
+  tooLarge?: boolean;
+  hunks: DiffHunk[];
+};
+
+export type WorkspaceDiff = {
+  /** Workspace root is a git work tree. */
+  repo: boolean;
+  /** No pending changes (only meaningful when repo). */
+  clean: boolean;
+  files: DiffFile[];
+  /** File list hit the cap; more changes exist than listed. */
+  truncated?: boolean;
+};
+
+export type TerminalCreateResult = {
+  termId: string;
+  /** Recent output replayed so a reopened panel restores scrollback. */
+  replay: string;
+};
+
+export type TerminalDataEvent = {
+  termId: string;
+  data: string;
+};
+
+export type TerminalExitEvent = {
+  termId: string;
+  exitCode: number | null;
+};
+
+export type BrowserAction = "back" | "forward" | "reload" | "stop";
+
+export type BrowserState = {
+  url: string;
+  title: string;
+  isLoading: boolean;
+  canGoBack: boolean;
+  canGoForward: boolean;
+};
+
+export type FsEntry = {
+  name: string;
+  kind: "dir" | "file";
+  size: number;
+};
+
+export type FsReadResult = {
+  kind: "text" | "image" | "binary" | "tooLarge";
+  /** UTF-8 file content when kind is "text". */
+  content?: string;
+  /** Base64 data URL when kind is "image". */
+  dataUrl?: string;
+  size: number;
+};
