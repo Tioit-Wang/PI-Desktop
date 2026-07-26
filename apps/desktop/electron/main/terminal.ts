@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { accessSync, constants, statSync } from "node:fs";
+import { delimiter, join } from "node:path";
 import type { IPty } from "node-pty";
 
 /**
@@ -8,7 +10,79 @@ import type { IPty } from "node-pty";
  * Sessions survive panel close / tab switches; a bounded replay buffer
  * restores scrollback when the renderer reattaches. Everything dies with
  * the app via disposeAll().
+ *
+ * Shell policy mirrors the agent's Bash tool (host-core D084): bash on
+ * every platform so the panel and the agent share one command dialect —
+ * macOS/Linux run bash directly, Windows runs the bash.exe shipped with
+ * Git for Windows. `PI_DESKTOP_BASH` overrides on any platform.
  */
+
+function isExecutable(path: string): boolean {
+  try {
+    if (!statSync(path).isFile()) return false;
+    if (process.platform === "win32") return /\.exe$/i.test(path);
+    accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function searchPath(
+  name: string,
+  accept: (path: string) => boolean = () => true,
+): string | null {
+  for (const dir of (process.env.PATH ?? "").split(delimiter)) {
+    if (!dir) continue;
+    const candidate = join(dir, name);
+    if (isExecutable(candidate) && accept(candidate)) return candidate;
+  }
+  return null;
+}
+
+/** Git for Windows bash: next to git.exe, then standard install dirs, then
+ * a PATH scan that skips the WSL launcher in System32. */
+function findWindowsGitBash(): string | null {
+  const git = searchPath("git.exe");
+  if (git) {
+    const root = join(git, "..", "..");
+    for (const rel of [join("bin", "bash.exe"), join("usr", "bin", "bash.exe")]) {
+      const candidate = join(root, rel);
+      if (isExecutable(candidate)) return candidate;
+    }
+  }
+  for (const base of ["ProgramFiles", "ProgramFiles(x86)", "LocalAppData"]) {
+    const dir = process.env[base];
+    if (!dir) continue;
+    const root = base === "LocalAppData" ? join(dir, "Programs") : dir;
+    const candidate = join(root, "Git", "bin", "bash.exe");
+    if (isExecutable(candidate)) return candidate;
+  }
+  return searchPath("bash.exe", (p) => !/\bsystem32\b/i.test(p));
+}
+
+export function resolveShell(): { shell: string; args: string[] } {
+  const override = process.env.PI_DESKTOP_BASH;
+  if (override && isExecutable(override)) {
+    return { shell: override, args: ["-l"] };
+  }
+  if (process.platform === "win32") {
+    const gitBash = findWindowsGitBash();
+    // Interactive login shell: users expect their aliases; slow Git Bash
+    // profiles are acceptable for a terminal (unlike per-command tool runs).
+    if (gitBash) return { shell: gitBash, args: ["-l", "-i"] };
+    // Degraded fallback so the panel still opens without Git for Windows.
+    return { shell: process.env.COMSPEC || "cmd.exe", args: [] };
+  }
+  const candidates = [
+    "/bin/bash",
+    "/usr/bin/bash",
+    "/usr/local/bin/bash",
+    "/opt/homebrew/bin/bash",
+  ];
+  const bash = candidates.find(isExecutable) ?? searchPath("bash");
+  return { shell: bash ?? process.env.SHELL ?? "/bin/sh", args: ["-l"] };
+}
 
 const REPLAY_LIMIT_BYTES = 128 * 1024;
 const DEFAULT_COLS = 80;
@@ -53,9 +127,9 @@ export class PtyManager {
     // Deferred import: node-pty is a native module; loading it lazily keeps
     // app boot resilient if the binary is missing or incompatible.
     const { spawn } = await import("node-pty");
-    const shell = process.env.SHELL || "/bin/zsh";
+    const { shell, args } = resolveShell();
     const termId = randomUUID();
-    const pty = spawn(shell, ["-l"], {
+    const pty = spawn(shell, args, {
       name: "xterm-256color",
       cwd: input.cwd,
       cols: input.cols ?? DEFAULT_COLS,
