@@ -295,7 +295,7 @@ async function readWindowState(): Promise<WindowState | null> {
       height: Number(raw.height),
     };
     if (![s.x, s.y, s.width, s.height].every(Number.isFinite)) return null;
-    if (s.width < 960 || s.height < 640) return null;
+    if (s.width < 1040 || s.height < 700) return null;
     return s;
   } catch {
     return null;
@@ -318,8 +318,10 @@ async function createWindow() {
   const savedState = await readWindowState();
   mainWindow = new BrowserWindow({
     ...(savedState ?? { width: 1200, height: 800 }),
-    minWidth: 960,
-    minHeight: 640,
+    // Fits the full three-column layout at comfortable widths without
+    // squishing: sidebar (240) + chat (≥400) + work panel (default 420).
+    minWidth: 1040,
+    minHeight: 700,
     title: APP_NAME,
     backgroundColor: nativeTheme.shouldUseDarkColors ? "#181818" : "#ffffff",
     show: false,
@@ -408,7 +410,7 @@ async function createWindow() {
     boundsGuard = true;
     try {
       if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.setMinimumSize(960, 640);
+      mainWindow.setMinimumSize(1040, 700);
       // Prefer normal layer so CG helpers and Stage Manager stay stable.
       mainWindow.setAlwaysOnTop(false);
       mainWindow.show();
@@ -465,7 +467,7 @@ async function createWindow() {
       if (!mainWindow || mainWindow.isDestroyed() || boundsGuard) return;
       if (mainWindow.isMinimized() || mainWindow.isFullScreen()) return;
       const b = mainWindow.getBounds();
-      if (b.width >= 960 && b.height >= 640) writeWindowState(b);
+      if (b.width >= 1040 && b.height >= 700) writeWindowState(b);
     }, 600);
   };
   mainWindow.on("resize", scheduleStateSave);
@@ -1927,7 +1929,7 @@ function registerIpc() {
       const bounds = mainWindow.getBounds();
       const workArea = screen.getDisplayMatching(bounds).workArea;
       const [minWidth] = mainWindow.getMinimumSize();
-      let width = Math.max(minWidth || 960, bounds.width + delta);
+      let width = Math.max(minWidth || 1040, bounds.width + delta);
       let x = bounds.x;
       const workRight = workArea.x + workArea.width;
       if (x + width > workRight) {
