@@ -66,11 +66,42 @@ impl PermissionManager {
         mode: &str,
         session_grants: &HashMap<String, Vec<String>>,
     ) -> Option<PermissionDecision> {
+        self.evaluate_auto_with_permission_mode(
+            session_id,
+            tool_name,
+            mode,
+            "ask",
+            session_grants,
+        )
+    }
+
+    /// Auto-decision with an effective permission mode (D115).
+    ///
+    /// `permission_mode` is the already-resolved effective mode — the
+    /// caller collapses `inherit` against the global default before calling.
+    /// Chat mode's hard deny for mutating tools stays above every permission
+    /// mode: `auto` cannot re-enable Write/Edit/Bash in chat.
+    pub fn evaluate_auto_with_permission_mode(
+        &self,
+        session_id: &str,
+        tool_name: &str,
+        mode: &str,
+        permission_mode: &str,
+        session_grants: &HashMap<String, Vec<String>>,
+    ) -> Option<PermissionDecision> {
         if mode == "chat" && !Self::chat_mode_allows(tool_name) {
             return Some(PermissionDecision::Deny);
         }
         let risk = Self::tool_risk(tool_name);
         if matches!(risk, Risk::Low) {
+            return Some(PermissionDecision::AllowOnce);
+        }
+        let mode_allows = match permission_mode {
+            "auto" => true,
+            "accept-edits" => matches!(tool_name, "Write" | "Edit"),
+            _ => false,
+        };
+        if mode_allows {
             return Some(PermissionDecision::AllowOnce);
         }
         if session_grants
@@ -152,5 +183,85 @@ impl PermissionManager {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn no_grants() -> HashMap<String, Vec<String>> {
+        HashMap::new()
+    }
+
+    #[test]
+    fn ask_mode_prompts_for_high_risk() {
+        let pm = PermissionManager::default();
+        for tool in ["Write", "Edit", "Bash"] {
+            let d = pm.evaluate_auto_with_permission_mode("s", tool, "agent", "ask", &no_grants());
+            assert!(d.is_none(), "{tool} should prompt under ask");
+        }
+    }
+
+    #[test]
+    fn accept_edits_allows_file_tools_only() {
+        let pm = PermissionManager::default();
+        for tool in ["Write", "Edit"] {
+            let d = pm.evaluate_auto_with_permission_mode(
+                "s",
+                tool,
+                "agent",
+                "accept-edits",
+                &no_grants(),
+            );
+            assert_eq!(d, Some(PermissionDecision::AllowOnce), "{tool}");
+        }
+        let bash = pm.evaluate_auto_with_permission_mode(
+            "s",
+            "Bash",
+            "agent",
+            "accept-edits",
+            &no_grants(),
+        );
+        assert!(bash.is_none(), "Bash still prompts under accept-edits");
+    }
+
+    #[test]
+    fn auto_allows_all_high_risk_in_agent_mode() {
+        let pm = PermissionManager::default();
+        for tool in ["Write", "Edit", "Bash", "plugin_x_run"] {
+            let d = pm.evaluate_auto_with_permission_mode("s", tool, "agent", "auto", &no_grants());
+            assert!(
+                matches!(d, Some(PermissionDecision::AllowOnce)),
+                "{tool} should auto-allow"
+            );
+        }
+    }
+
+    #[test]
+    fn chat_mode_denies_regardless_of_permission_mode() {
+        let pm = PermissionManager::default();
+        for mode in ["ask", "accept-edits", "auto"] {
+            let d = pm.evaluate_auto_with_permission_mode("s", "Write", "chat", mode, &no_grants());
+            assert_eq!(d, Some(PermissionDecision::Deny), "chat + {mode}");
+        }
+    }
+
+    #[test]
+    fn low_risk_auto_allows_in_every_mode() {
+        let pm = PermissionManager::default();
+        for mode in ["ask", "accept-edits", "auto"] {
+            let d = pm.evaluate_auto_with_permission_mode("s", "Read", "agent", mode, &no_grants());
+            assert_eq!(d, Some(PermissionDecision::AllowOnce), "Read + {mode}");
+        }
+    }
+
+    #[test]
+    fn session_grants_still_apply_under_ask() {
+        let pm = PermissionManager::default();
+        let mut grants = HashMap::new();
+        grants.insert("s".to_string(), vec!["Bash".to_string()]);
+        let d = pm.evaluate_auto_with_permission_mode("s", "Bash", "agent", "ask", &grants);
+        assert_eq!(d, Some(PermissionDecision::AllowSession));
     }
 }

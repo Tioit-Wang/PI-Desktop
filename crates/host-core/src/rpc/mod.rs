@@ -604,6 +604,7 @@ async fn handle_request(
                 params.get("providerId").and_then(|v| v.as_str()),
                 params.get("modelId").and_then(|v| v.as_str()),
                 thinking_level.as_deref(),
+                params.get("permissionMode").and_then(|v| v.as_str()),
             )
             .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?
             .ok_or_else(|| rpc_err(1007, "session not found", "NOT_FOUND"))?;
@@ -959,10 +960,33 @@ async fn handle_request(
             let (auto_decision, workspace_path, scratch_path, pending_rx, request_opt) = {
                 let mut st = state.lock().await;
                 st.permissions.expire_stale();
-                let mut auto = st.permissions.evaluate_auto(
+                // Effective permission mode (D115): per-session override
+                // unless it is `inherit`, then the global settings default,
+                // then `ask`. Unknown sessions (legacy callers) resolve to
+                // the global default too.
+                let session_pm = sessions::session_permission_mode(&st.db, &p.session_id)
+                    .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?
+                    .filter(|m| m != "inherit");
+                let effective_pm = match session_pm {
+                    Some(m) => m,
+                    None => st
+                        .db
+                        .get_setting("app")
+                        .ok()
+                        .flatten()
+                        .and_then(|s| {
+                            s.get("defaultPermissionMode")
+                                .and_then(|v| v.as_str())
+                                .map(str::to_string)
+                        })
+                        .filter(|m| sessions::is_valid_permission_mode(m) && m != "inherit")
+                        .unwrap_or_else(|| "ask".to_string()),
+                };
+                let mut auto = st.permissions.evaluate_auto_with_permission_mode(
                     &p.session_id,
                     &p.tool_name,
                     &p.mode,
+                    &effective_pm,
                     &st.session_grants,
                 );
                 // Resolve the tool root from the persisted session instead of

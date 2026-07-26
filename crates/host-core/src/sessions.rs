@@ -19,6 +19,29 @@ fn default_thinking_level() -> String {
     "off".to_string()
 }
 
+/// Per-session permission mode (D115). `inherit` defers to the global
+/// default in settings; the rest override it for this session only.
+pub const PERMISSION_MODES: [&str; 4] = ["inherit", "ask", "accept-edits", "auto"];
+
+pub fn is_valid_permission_mode(mode: &str) -> bool {
+    PERMISSION_MODES.contains(&mode)
+}
+
+fn default_permission_mode() -> String {
+    "inherit".to_string()
+}
+
+fn validate_permission_mode(mode: &str) -> Result<()> {
+    if is_valid_permission_mode(mode) {
+        Ok(())
+    } else {
+        Err(anyhow!(
+            "permissionMode must be one of {}",
+            PERMISSION_MODES.join(", ")
+        ))
+    }
+}
+
 fn validate_thinking_level(level: &str) -> Result<()> {
     if is_valid_thinking_level(level) {
         Ok(())
@@ -45,6 +68,8 @@ pub struct SessionSummary {
     pub mode: String,
     #[serde(default = "default_thinking_level")]
     pub thinking_level: String,
+    #[serde(default = "default_permission_mode")]
+    pub permission_mode: String,
     pub updated_at: String,
     pub created_at: String,
 }
@@ -400,7 +425,7 @@ fn insert_message(
 }
 
 const SUMMARY_SELECT: &str = "SELECT s.id, s.title, p.path, s.model_id, s.provider_id, s.mode,
-            s.thinking_level, s.updated_at, s.created_at
+            s.thinking_level, s.permission_mode, s.updated_at, s.created_at
      FROM sessions s LEFT JOIN projects p ON p.id = s.project_id";
 
 fn summary_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionSummary> {
@@ -412,8 +437,9 @@ fn summary_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<SessionSummary>
         provider_id: row.get(4)?,
         mode: row.get(5)?,
         thinking_level: row.get(6)?,
-        updated_at: ms_to_ts(row.get(7)?),
-        created_at: ms_to_ts(row.get(8)?),
+        permission_mode: row.get(7)?,
+        updated_at: ms_to_ts(row.get(8)?),
+        created_at: ms_to_ts(row.get(9)?),
     })
 }
 
@@ -526,9 +552,19 @@ pub fn create_session_with_thinking(
         provider_id,
         mode,
         thinking_level,
+        permission_mode: default_permission_mode(),
         updated_at: ms_to_ts(now),
         created_at: ms_to_ts(now),
     })
+}
+
+/// The persisted per-session permission mode, or None for unknown sessions.
+pub fn session_permission_mode(db: &Database, id: &str) -> Result<Option<String>> {
+    Ok(db
+        .conn()
+        .prepare_cached("SELECT permission_mode FROM sessions WHERE id = ?1")?
+        .query_row(params![id], |row| row.get(0))
+        .optional()?)
 }
 
 pub fn get_session(db: &Database, id: &str) -> Result<Option<SessionDetail>> {
@@ -576,9 +612,10 @@ pub fn configure_session(
     provider_id: Option<&str>,
     model_id: Option<&str>,
 ) -> Result<Option<SessionSummary>> {
-    configure_session_with_thinking(db, id, mode, provider_id, model_id, None)
+    configure_session_with_thinking(db, id, mode, provider_id, model_id, None, None)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn configure_session_with_thinking(
     db: &Database,
     id: &str,
@@ -586,6 +623,7 @@ pub fn configure_session_with_thinking(
     provider_id: Option<&str>,
     model_id: Option<&str>,
     thinking_level: Option<&str>,
+    permission_mode: Option<&str>,
 ) -> Result<Option<SessionSummary>> {
     if !matches!(mode, "chat" | "agent") {
         return Err(anyhow!("mode must be chat or agent"));
@@ -593,12 +631,16 @@ pub fn configure_session_with_thinking(
     if let Some(level) = thinking_level {
         validate_thinking_level(level)?;
     }
+    if let Some(mode) = permission_mode {
+        validate_permission_mode(mode)?;
+    }
     let changed = db
         .conn()
         .prepare_cached(
             "UPDATE sessions
              SET mode = ?2, provider_id = ?3, model_id = ?4,
-                 thinking_level = COALESCE(?5, thinking_level), updated_at = ?6
+                 thinking_level = COALESCE(?5, thinking_level),
+                 permission_mode = COALESCE(?6, permission_mode), updated_at = ?7
              WHERE id = ?1",
         )?
         .execute(params![
@@ -607,6 +649,7 @@ pub fn configure_session_with_thinking(
             provider_id,
             model_id,
             thinking_level,
+            permission_mode,
             now_ms()
         ])?;
     if changed == 0 {
@@ -1106,6 +1149,7 @@ mod tests {
             Some("provider-1"),
             Some("model-1"),
             Some("high"),
+            None,
         )
         .unwrap()
         .unwrap();
@@ -1127,7 +1171,8 @@ mod tests {
             "chat",
             None,
             None,
-            Some("turbo")
+            Some("turbo"),
+            None,
         )
         .is_err());
     }
@@ -1178,6 +1223,7 @@ mod tests {
             provider_id: None,
             mode: "agent".into(),
             thinking_level: "off".into(),
+            permission_mode: "inherit".into(),
             created_at: "2025-01-01T00:00:00Z".into(),
             updated_at: "2025-01-02T00:00:00Z".into(),
         };
@@ -1226,6 +1272,7 @@ mod tests {
             provider_id: None,
             mode: "agent".into(),
             thinking_level: "off".into(),
+            permission_mode: "inherit".into(),
             created_at: "2025-01-01T00:00:00Z".into(),
             updated_at: "2025-01-01T00:00:00Z".into(),
         };
@@ -1404,6 +1451,7 @@ mod tests {
             provider_id: None,
             mode: "agent".into(),
             thinking_level: "medium".into(),
+            permission_mode: "inherit".into(),
             created_at: "2025-01-01T00:00:00Z".into(),
             updated_at: "2025-01-01T00:00:00Z".into(),
         };

@@ -8,7 +8,7 @@ use std::path::Path;
 ///
 /// v3 added per-session thinking levels.  v4 adds durable regenerate history
 /// so discarded assistant/tool tails can be browsed like ChatGPT variants.
-pub const SCHEMA_VERSION: i64 = 4;
+pub const SCHEMA_VERSION: i64 = 5;
 
 /// Audit rows older than this are pruned at boot.
 const AUDIT_RETENTION_MS: i64 = 90 * 24 * 3600 * 1000;
@@ -140,6 +140,8 @@ CREATE TABLE sessions (
   thinking_level TEXT NOT NULL DEFAULT 'off'
                 CHECK (thinking_level IN ('off', 'minimal', 'low', 'medium',
                                           'high', 'xhigh', 'max')),
+  permission_mode TEXT NOT NULL DEFAULT 'inherit'
+                CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
   source      TEXT,
   pinned      INTEGER NOT NULL DEFAULT 0,
   last_seq    INTEGER NOT NULL DEFAULT 0,
@@ -352,9 +354,14 @@ impl Database {
                 tx.pragma_update(None, "user_version", 3)?;
                 tx.commit()?;
                 migrate_to_v4(&conn)?;
+                migrate_to_v5(&conn)?;
             }
             3 => {
                 migrate_to_v4(&conn)?;
+                migrate_to_v5(&conn)?;
+            }
+            4 => {
+                migrate_to_v5(&conn)?;
             }
             SCHEMA_VERSION => {}
             // Future migrations chain here (5, 6, …) once they exist.
@@ -504,7 +511,21 @@ fn migrate_to_v4(conn: &Connection) -> Result<()> {
           ON message_revisions(session_id, root_user_id, revision_index);
         "#,
     )?;
-    tx.pragma_update(None, "user_version", SCHEMA_VERSION)?;
+    // Fixed target, not SCHEMA_VERSION: this step only brings the file to v4;
+    // later migrations chain after it.
+    tx.pragma_update(None, "user_version", 4)?;
+    tx.commit()?;
+    Ok(())
+}
+
+fn migrate_to_v5(conn: &Connection) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute_batch(
+        "ALTER TABLE sessions
+         ADD COLUMN permission_mode TEXT NOT NULL DEFAULT 'inherit'
+         CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto'));",
+    )?;
+    tx.pragma_update(None, "user_version", 5)?;
     tx.commit()?;
     Ok(())
 }
@@ -894,6 +915,9 @@ mod tests {
                 CHECK (thinking_level IN ('off', 'minimal', 'low', 'medium',
                                           'high', 'xhigh', 'max')),
 "#;
+        let v5_column = r#"  permission_mode TEXT NOT NULL DEFAULT 'inherit'
+                CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
+"#;
         let v4_table = r#"CREATE TABLE message_revisions (
   id              TEXT PRIMARY KEY,
   session_id      TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
@@ -908,9 +932,13 @@ CREATE INDEX idx_message_revisions_root
   ON message_revisions(session_id, root_user_id, revision_index);
 
 "#;
-        let schema_v2 = SCHEMA_LATEST.replace(v2_column, "").replace(v4_table, "");
+        let schema_v2 = SCHEMA_LATEST
+            .replace(v2_column, "")
+            .replace(v4_table, "")
+            .replace(v5_column, "");
         assert_ne!(schema_v2, SCHEMA_LATEST, "v2 fixture must omit thinking_level");
         assert!(!schema_v2.contains("message_revisions"));
+        assert!(!schema_v2.contains("permission_mode"));
         {
             let conn = Connection::open(&path).unwrap();
             conn.execute_batch(&schema_v2).unwrap();
@@ -975,8 +1003,12 @@ CREATE INDEX idx_message_revisions_root
   ON message_revisions(session_id, root_user_id, revision_index);
 
 "#;
-        let schema_v3 = SCHEMA_LATEST.replace(v4_table, "");
+        let v5_column = r#"  permission_mode TEXT NOT NULL DEFAULT 'inherit'
+                CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
+"#;
+        let schema_v3 = SCHEMA_LATEST.replace(v4_table, "").replace(v5_column, "");
         assert_ne!(schema_v3, SCHEMA_LATEST, "v3 fixture must omit message_revisions");
+        assert!(!schema_v3.contains("permission_mode"));
         {
             let conn = Connection::open(&path).unwrap();
             conn.execute_batch(&schema_v3).unwrap();
