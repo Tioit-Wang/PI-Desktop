@@ -4057,6 +4057,98 @@ textarea:disabled {
   line-height: var(--leading-body);
 }
 
+/* Plugins index */
+.plugins-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.plugins-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 8px 12px;
+  border-radius: var(--radius-lg);
+  transition: background 120ms ease;
+}
+
+.plugins-row:hover,
+.plugins-row:focus-within {
+  background: var(--ds-bg-hover);
+}
+
+.plugins-glyph {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--ds-accent) 14%, transparent);
+  color: var(--ds-accent);
+  flex: 0 0 auto;
+}
+
+.plugins-copy {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.plugins-name {
+  color: var(--ds-text-primary);
+  font-size: var(--text-md-plus);
+  font-weight: var(--font-weight-medium-plus);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugins-meta {
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs-plus);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plugins-row.off .plugins-glyph {
+  background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
+  color: var(--ds-text-muted);
+}
+
+.plugins-row.off .plugins-name {
+  color: var(--ds-text-secondary);
+}
+
+.plugins-uninstall {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: 0 0 auto;
+  border-radius: var(--radius-sm);
+  padding: 5px 9px;
+  color: var(--ds-text-muted);
+  font-size: var(--text-sm);
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.plugins-row:hover .plugins-uninstall,
+.plugins-row:focus-within .plugins-uninstall {
+  opacity: 1;
+}
+
+.plugins-uninstall:hover {
+  background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
+  color: var(--ds-error);
+}
+
 /* Session import (settings) */
 .import-toolbar {
   display: flex;

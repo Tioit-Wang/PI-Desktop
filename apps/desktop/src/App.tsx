@@ -239,6 +239,42 @@ function AppShell() {
         );
         useAppStore.setState({ messages });
       },
+      seedPlugins: (count = 3) => {
+        // Capture-only plugins fixture (plugins index scenes); count 0 clears.
+        if (!(window as any).__PI_CAPTURE__) return;
+        if (count <= 0) {
+          useAppStore.setState({ plugins: [] });
+          return;
+        }
+        const samples = [
+          {
+            id: "pi.git-insights",
+            name: "Git Insights",
+            version: "1.4.2",
+            enabled: true,
+          },
+          {
+            id: "pi.markdown-tools",
+            name: "Markdown Tools",
+            version: "0.9.0",
+            enabled: true,
+          },
+          {
+            id: "pi.deploy-preview",
+            name: "Deploy Preview",
+            version: "dev",
+            enabled: false,
+          },
+        ];
+        useAppStore.setState({
+          plugins: samples.slice(0, count).map((sample) => ({
+            ...sample,
+            source: "dev" as const,
+            status: sample.enabled ? ("ready" as const) : ("disabled" as const),
+            permissions: [],
+          })),
+        });
+      },
       ensureVisualFixtures: async () => {
         // Destructive fixture seeding is capture-rig only; the rig sets
         // __PI_CAPTURE__ before invoking (see electron/main capture suite).

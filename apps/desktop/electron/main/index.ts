@@ -697,9 +697,15 @@ async function createWindow() {
             await setPage("scheduled");
             await new Promise((r) => setTimeout(r, 350));
             await shot("pi-scheduled-live");
+            await mainWindow!.webContents.executeJavaScript(
+              `window.__PI_DESKTOP__?.seedPlugins?.(3)`,
+            );
             await setPage("plugins");
             await new Promise((r) => setTimeout(r, 350));
             await shot("pi-plugins-live");
+            await mainWindow!.webContents.executeJavaScript(
+              `window.__PI_DESKTOP__?.seedPlugins?.(0)`,
+            );
             await setPage("settings");
             await new Promise((r) => setTimeout(r, 350));
             await shot("pi-settings-live");
