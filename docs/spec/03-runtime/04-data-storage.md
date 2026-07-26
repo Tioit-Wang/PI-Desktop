@@ -1,4 +1,4 @@
-# 04. Data Storage (Schema v5)
+# 04. Data Storage (Schema v6)
 
 ## 0. Ownership decision
 
@@ -7,19 +7,21 @@
 - Node pi sidecar does not open the DB directly
 - Electron main does not write DB files directly
 - All persistent app data — sessions, settings, providers, scheduled tasks,
-  artifacts, audit — goes through host RPC. (v1 violation fixed: scheduled
-  tasks previously lived in an Electron-owned `scheduled-tasks.json`.)
+  artifacts, notifications, audit — goes through host RPC. (v1 violation
+  fixed: scheduled tasks previously lived in an Electron-owned
+  `scheduled-tasks.json`.)
 
 ## 1. Goals
 
-Local-first, recoverable after restart, sensitive data isolated — plus, for v4:
+Local-first, recoverable after restart, sensitive data isolated — plus, for v6:
 
 1. **Lossless transcripts** — store the runtime message shape (content blocks),
    not the UI projection; UI shapes are derived at the RPC boundary.
 2. **High performance** — O(1) appends, covering indexes for every hot query,
    integer times, single-writer WAL, no JSON scans on hot paths.
-3. **Minimal** — one database file, 13 tables, no dead tables, every table has
-   a current or explicitly spec'd consumer.
+3. **Minimal** — one database file, 14 ordinary tables plus one FTS virtual
+   table, no dead relations, every relation has a current or explicitly
+   spec'd consumer.
 4. **Extensible without migrations** where cheap (block vocabulary, kv
    namespaces, `config_json` columns), **with migrations** where structural
    (new entities), versioned by `PRAGMA user_version`.
@@ -61,7 +63,7 @@ PRAGMA trusted_schema = ON;       -- required by the FTS triggers (§4.8); the D
 PRAGMA auto_vacuum = INCREMENTAL; -- set at creation, before any table
 ```
 
-- Schema version lives in `PRAGMA user_version` (v4 = `4`). The v1 `meta`
+- Schema version lives in `PRAGMA user_version` (v6 = `6`). The v1 `meta`
   table is gone.
 - host-core is the **single writer**; statements use `prepare_cached`; every
   multi-row write runs in one transaction.
@@ -502,6 +504,48 @@ CREATE INDEX idx_audit_session ON audit_log(session_id, ts)
   WHERE session_id IS NOT NULL;
 ```
 
+### 4.14 notifications — durable local inbox (D117)
+
+One row records one terminal agent-turn outcome. It stores structured source
+data only; renderer and Electron derive localized title/body strings at the
+presentation boundary.
+
+```sql
+CREATE TABLE notifications (
+  id            TEXT PRIMARY KEY,
+  kind          TEXT NOT NULL
+                  CHECK (kind IN ('task.completed', 'task.failed')),
+  session_id    TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  session_title TEXT NOT NULL,              -- snapshot at terminal transition
+  turn_id       TEXT NOT NULL UNIQUE,       -- exactly one inbox row per turn
+  error_code    TEXT,                       -- populated for task.failed when known
+  created_at    INTEGER NOT NULL,
+  read_at       INTEGER
+);
+CREATE INDEX idx_notifications_created
+  ON notifications(created_at DESC);
+CREATE INDEX idx_notifications_unread
+  ON notifications(created_at DESC) WHERE read_at IS NULL;
+```
+
+- `session.endTurn` updates the turn and, in the **same transaction**, inserts
+  `task.completed` for `completed` or `task.failed` for `error`. `aborted`
+  never inserts a row.
+- Repeating a terminal update cannot duplicate a notification because
+  `turn_id` is unique. The RPC result includes the record only when this call
+  inserted it; otherwise the `notification` field is omitted.
+- `session_title` is the stable session-name snapshot at notification creation,
+  not a localized notification title/body. An empty title remains valid and
+  receives a localized “Untitled task” fallback only at presentation time.
+- No title/body prose is stored. Permission requests, scheduled reminders,
+  plugin notices, and aborted turns are not notification sources.
+- After an insert, the same transaction prunes all but the newest 200 rows by
+  `(created_at DESC, id DESC)`. This is a global cap; session deletion also
+  cascades its rows.
+- Mark-read updates are idempotent (`read_at` changes only from null), mark all
+  read is one indexed update, and clear deletes notification rows only. None of
+  these operations changes sessions, turns, or transcripts.
+
 ### Dropped from v1
 
 | v1 table | v2 home |
@@ -522,7 +566,7 @@ streaming deltas never touch the DB.
 | prompt accepted | insert user message (seq via `last_seq` RETURNING) + insert `turns(running)` + touch `sessions.updated_at` |
 | assistant/tool message end | insert message row (+ meta) + touch session |
 | tool succeeded (Write/Edit) | upsert `artifacts` + `audit_log` row, same tx as result persistence |
-| turn terminal | update `turns` status/usage/ended_at |
+| turn terminal via `session.endTurn` | update `turns` status/usage/ended_at; for completed/error insert one notification and prune to 200 in the same tx; aborted inserts none |
 | compaction / edit (`session.replaceMessages`) | single tx: delete stream, bulk insert, reset `last_seq` |
 | import | one tx per session; `seq` = enumeration order; `source` set; projects upserted |
 
@@ -542,6 +586,8 @@ turn's tail and the boot sweep marks that turn `aborted`.
   - artifacts by session → PK; global recent artifacts → `idx_artifacts_time`
   - run history → `idx_task_runs`
   - audit forensics/pruning → `idx_audit_session` / `idx_audit_ts`
+  - notification inbox → `idx_notifications_created`; unread filter/count →
+    `idx_notifications_unread`
 - O(1) `seq` allocation; no `MAX()+1` scans anywhere.
 - `prepare_cached` on all statements; batch inserts inside one tx (import,
   replace).
@@ -579,13 +625,20 @@ turn's tail and the boot sweep marks that turn `aborted`.
   TEXT NOT NULL DEFAULT 'inherit'` with the four-value check constraint
   (D115), then set `user_version = 5`. Existing sessions inherit the global
   default, matching prior behavior (`ask`).
-- Fresh installs run the full v5 DDL directly.
+- **v5 → v6** (additive, one transaction): create `notifications`,
+  `idx_notifications_created`, and `idx_notifications_unread`, then set
+  `user_version = 6`. Existing notification history starts empty; sessions,
+  turns, and transcripts are unchanged.
+- Fresh installs run the full v6 DDL directly.
 
 ## 8. Retention & maintenance
 
 - audit_log: prune rows older than 90 days (configurable) at boot;
   `incremental_vacuum` afterwards.
 - task_runs: keep last 100 per task (prune with the same boot pass).
+- notifications: enforce the newest-200 global cap after every insert and at
+  boot as a defensive repair; rows otherwise survive restart until cleared,
+  pruned, or cascade-deleted with their session.
 - logs rotate at the file layer (D082); sessions are never auto-deleted.
 - Attachment GC (later): sweep `attachments/` for hashes unreferenced by any
   `content_json`.
@@ -638,3 +691,11 @@ anything the host filters, joins, sums, or indexes.
     the pager can restore any archived branch
 13. A v3 database opens at v4 with an empty `message_revisions` table and no
     transcript loss
+14. A v5 database opens at v6 with an empty notification inbox and no session,
+    turn, or transcript loss
+15. Completed and failed turns atomically create one durable notification;
+    repeated terminal updates do not duplicate it, aborted turns create none,
+    and the newest-200 cap survives restart
+16. Notification list/unread, mark-read, mark-all-read, clear, and session
+    cascade deletion use the documented indexes/transactions without changing
+    turn or transcript data

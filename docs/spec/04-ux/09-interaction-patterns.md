@@ -128,6 +128,42 @@ the visible shell context.
 - Collapsing the sidebar closes the menu and restores the collapsed rail's
   normal navigation state.
 
+### 1.6 Notification inbox (D117)
+
+#### Event-to-surface flow
+
+1. A turn reaches `completed` or `error`; the `session.endTurn` host
+   transaction returns the newly inserted durable notification. An `aborted`
+   turn returns no notification.
+2. Electron emits `notification.changed` to every live renderer so the bell
+   badge and currently open inbox refresh.
+3. If the main window is focused, no other surface appears. If it is
+   unfocused and native notifications are supported, Electron shows one
+   platform notification derived from the event kind and session title.
+4. Clicking the native notification shows/restores and focuses the main
+   window, then emits `notification.activated { sessionId }`.
+5. Renderer activation selects the bound project when present, loads the
+   session, and focuses the transcript/composer using the same path as an inbox
+   row click. Native and in-app activation must not diverge.
+
+#### Popover behavior
+
+- Bell click toggles the non-modal popover; a second click, Escape, or outside
+  press closes it. Escape restores focus to the bell.
+- Opening preserves the most recently selected `All` / `Unread` filter for the
+  current renderer lifetime and never marks rows read implicitly.
+- Arrow keys move through rows with wrap disabled; `Home` / `End` jump to the
+  first/last row; Enter/Space marks the row read and activates its session.
+- Mark all read updates every unread row in one host transaction. Clear
+  removes all inbox rows in one host transaction. Both operations are
+  idempotent, refresh the exact unread count, and leave sessions/turns intact.
+- The renderer does not synthesize notification records from stream events.
+  Host-core's unique `turn_id` is the exactly-once boundary across repeated
+  terminal updates, renderer reloads, and process restarts.
+- All visible event labels and native title/body strings are localized at the
+  presentation boundary from structured fields; persisted rows never contain
+  localized prose.
+
 ## 2. Streaming message behavior
 
 ### 2.1 Token rendering
@@ -288,6 +324,8 @@ Agent calls high-risk tool
 | Abort completed | Composer textarea |
 | Command palette closed | Previously focused element |
 | Dialog closed | Previously focused element |
+| Notification popover closed with Escape | Notification bell |
+| Notification row/native notification activated | Activated session composer after transcript load |
 
 ### 7.3 Focus trap
 
@@ -402,6 +440,7 @@ This does not prevent state changes — it makes them instant.
 | Scroll-to-bottom button fade-in | 150ms opacity | instant appear |
 | Toast slide-in | 200ms slide | instant appear |
 | Modal/dialog enter | 300ms fade+scale | instant appear |
+| Notification popover enter | menu-scale/fade token | instant appear |
 
 ## 11. Acceptance criteria
 
@@ -424,3 +463,9 @@ This does not prevent state changes — it makes them instant.
     shell workspace without redirecting background session tool roots
 15. Drag/manual reorder is not implemented; `manual` remains a compatibility
     value and future drag patterns follow §8
+16. Completed and failed turns appear exactly once in the durable inbox;
+    aborted turns never appear
+17. All/Unread, mark-all-read, clear, row activation, Escape/focus restore, and
+    arrow/Home/End keyboard navigation behave as documented in §1.6
+18. Native notifications appear only while the main window is unfocused and
+    their activation focuses the window and opens the corresponding session

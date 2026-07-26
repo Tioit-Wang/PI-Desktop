@@ -70,7 +70,8 @@ Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize
 
 ### 2.1 Purpose
 
-Global controls bar: project identity, model selection, mode indicator, abort button, settings entry.
+Global controls bar: project identity, model selection, mode indicator, abort
+button, durable notification inbox entry, and settings entry.
 
 ### 2.2 Anatomy
 
@@ -96,6 +97,7 @@ Global controls bar: project identity, model selection, mode indicator, abort bu
 | Mode badge | "Agent" or "Chat" badge | same | same | same |
 | Abort button | hidden | visible, accent-hover pulse | hidden | hidden |
 | Project name | workspace folder name | same | same | "No project" muted |
+| Notification bell | visible; no badge at zero unread | same; badge may update for any completed background turn | same | visible |
 
 ### 2.5 Accessibility
 
@@ -106,7 +108,9 @@ Global controls bar: project identity, model selection, mode indicator, abort bu
 ### 2.6 MVP constraints
 
 - No search field in topbar (deferred)
-- No notification indicator (deferred)
+- Notification history is the bounded D117 inbox; scheduled reminders,
+  permission-request notifications, and notification preferences remain out of
+  scope
 
 ---
 
@@ -1212,7 +1216,100 @@ Modern model-configuration surface for adding OpenAI-compatible providers, revie
 
 ---
 
-## 20. Acceptance criteria (all components)
+## 20. NotificationInbox (D117)
+
+### 20.1 Purpose
+
+Expose the bounded, host-owned history of task completion and failure events
+without turning transient toasts into history. The inbox is local-only and
+durable across app restarts.
+
+### 20.2 Anatomy
+
+```text
+Titlebar                                               Popover (360px max)
+[Bell (12)]  ->  [Notifications]       [All | Unread] [Mark all read] [Clear]
+                 ------------------------------------------------------------
+                 [unread dot] [check] Task completed              2m
+                                      Session title
+                 ------------------------------------------------------------
+                              [x]     Task failed                  9m
+                                      Session title · ERROR_CODE
+```
+
+- Trigger: 32px Lucide `Bell` icon button in the right titlebar actions. A
+  compact badge renders `1`–`99` and `99+`; its accessible label retains the
+  exact count (the durable store is capped at 200).
+- Popover: width `min(360px, calc(100vw - 24px))`, no taller than the available
+  window below the 46px titlebar, with one internally scrollable row list.
+- Header: localized title, `All` / `Unread` segmented filter, Lucide
+  `CheckCheck` mark-all-read button, and Lucide `Trash2` clear button. Icon-only
+  actions carry localized tooltips and accessible names.
+- Row: unread dot, semantic completion/failure icon, localized event label,
+  snapshotted session title, optional stable failure code, and localized
+  relative time. Rows are dense list items separated by hairlines, not cards.
+- Display title/body are derived at render time from `kind`, `sessionTitle`,
+  and optional `errorCode`; no localized title/body string is persisted.
+
+### 20.3 States
+
+| State | Behavior |
+|---|---|
+| No unread | Bell has no badge; Mark all read is disabled |
+| Unread | Badge shows count; unread rows carry dot and stronger label weight |
+| All empty | Centered compact “No notifications” empty state; list actions disabled |
+| Unread empty | “You're all caught up”; All filter remains available |
+| Loading/refresh | Preserve current rows and filter; disable mutations until refresh settles |
+| Mutation failure | Keep the existing list and announce an error toast; do not optimistically lose rows |
+
+### 20.4 Interactions
+
+- Bell toggles the popover. Opening does not implicitly mark anything read.
+- `All` shows the newest retained rows; `Unread` filters to `readAt == null`.
+- Selecting a row first calls `notification.markRead`, closes the popover, then
+  activates the row's durable session (including its project when applicable)
+  and scrolls the transcript to its latest content.
+- Mark all read is idempotent and preserves rows. Clear deletes every inbox
+  row but never deletes a session, transcript, or turn.
+- `notification.changed` updates the visible list and badge. Opening the
+  popover also refreshes the bounded list from host-core. A
+  `notification.activated` event from Electron follows the same session
+  activation path as a row click.
+- Completion/failure always enters the durable inbox. Electron shows an
+  additional native system notification only while the app window is
+  unfocused. Clicking it restores/shows and focuses the main window before
+  emitting `notification.activated` for the matching session.
+- A focused window never receives the duplicate native surface. Aborted turns,
+  permission requests, scheduled reminders, and plugin notifications do not
+  enter this inbox.
+
+### 20.5 Accessibility
+
+- Popover is a labelled, non-modal `role="dialog"`; the row collection is a
+  semantic list and every row is one button with a complete localized name.
+- Opening focuses the first unread row, otherwise the first row, otherwise the
+  `All` filter. `ArrowUp` / `ArrowDown`, `Home`, and `End` move among rows;
+  `Enter` / `Space` activate the focused row.
+- `Tab` follows DOM order through filters, header actions, and rows without a
+  focus trap. `Escape` or outside press closes the popover; Escape restores
+  focus to the bell.
+- Badge changes are announced through one polite status region using the exact
+  unread count. Completion/failure meaning uses icon, text, and accessible
+  name, never color alone.
+- Native notification accessibility and activation semantics use the platform
+  API; the renderer does not recreate native banners.
+
+### 20.6 Constraints
+
+- The list contains only `task.completed` and `task.failed` records produced
+  from terminal agent turns. `aborted` is intentionally silent.
+- At most 200 newest rows are retained globally. There is no pagination,
+  scheduled notification source, permission-notification source, preferences
+  page, notification permission prompt, or cloud sync.
+
+---
+
+## 21. Acceptance criteria (all components)
 
 1. All components use semantic color tokens from [07-ui-design-system.md](07-ui-design-system.md) — no raw hex
 2. All interactive elements have visible focus rings (2px accent, offset 2px)
@@ -1233,3 +1330,6 @@ Modern model-configuration surface for adding OpenAI-compatible providers, revie
 14. Session import defaults to source grouping, offers project-path grouping, collapses all groups after scan/group changes, and exposes accessible group disclosure state per §18
 15. Imported project paths materialize exactly once in the durable Projects index; path-less imports remain Temporary sessions and no filesystem directory is created
 16. ProviderStudio shows hero summary + add dialog + provider cards; secrets never render raw; test/default/delete remain keyboard reachable
+17. NotificationInbox exposes All/Unread views, exact unread badge semantics,
+    row activation, mark-all-read and clear actions; it is keyboard-operable
+    and never treats an aborted turn as a notification

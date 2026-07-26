@@ -3,6 +3,7 @@ import i18n from "i18next";
 import type {
   AgentEventEnvelope,
   AppError,
+  AppNotification,
   AppSettings,
   AppVersionInfo,
   ModelInfo,
@@ -228,6 +229,8 @@ export type AppState = {
   plugins: PluginSummary[];
   permission?: ToolPermissionRequest | null;
   toasts: ToastItem[];
+  notifications: AppNotification[];
+  unreadNotificationCount: number;
   page: "chat" | "projects" | "pulls" | "scheduled" | "plugins" | "settings";
   settingsTab: "general" | "agent" | "import" | "about";
   navStack: Array<{ page: AppState["page"]; sessionId?: string }>;
@@ -286,6 +289,12 @@ export type AppState = {
   /** Load a provider's model list into the cache (no-op when cached). */
   loadProviderModels: (providerId: string) => Promise<void>;
   refreshPlugins: () => Promise<void>;
+  refreshNotifications: () => Promise<void>;
+  receiveNotification: (notification: AppNotification) => void;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  clearNotifications: () => Promise<void>;
+  openNotification: (id: string) => Promise<void>;
   handleAgentEvent: (envelope: AgentEventEnvelope) => void;
   setPage: (page: AppState["page"], opts?: { record?: boolean }) => void;
   setSettingsTab: (tab: AppState["settingsTab"]) => void;
@@ -428,6 +437,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   navStack: [{ page: "chat" }],
   navIndex: 0,
   toasts: [],
+  notifications: [],
+  unreadNotificationCount: 0,
   composerPrefill: null,
   error: null,
   errorCode: null,
@@ -435,7 +446,17 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   bootstrap: async () => {
     try {
-      const [version, health, settingsRaw, sessions, providers, project, onboarding, plugins] =
+      const [
+        version,
+        health,
+        settingsRaw,
+        sessions,
+        providers,
+        project,
+        onboarding,
+        plugins,
+        notifications,
+      ] =
         await Promise.all([
           api.getVersion(),
           api.health(),
@@ -445,6 +466,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           api.getProject(),
           api.getOnboarding(),
           api.listPlugins(),
+          api.listNotifications({ limit: 200 }),
         ]);
       let settings = settingsRaw;
       // First-run default per D003: Agent. Never force-rewrite an existing
@@ -510,6 +532,8 @@ export const useAppStore = create<AppState>((set, get) => ({
         openProjects: hydratedProjects,
         onboarding,
         plugins: plugins.plugins,
+        notifications: notifications.notifications,
+        unreadNotificationCount: notifications.unreadCount,
       });
       saveSidebarPreferences(preferencesFromState(get()));
       if (currentWorkspace?.path) {
@@ -1422,6 +1446,67 @@ export const useAppStore = create<AppState>((set, get) => ({
   refreshPlugins: async () => {
     const plugins = await api.listPlugins();
     set({ plugins: plugins.plugins });
+  },
+
+  refreshNotifications: async () => {
+    const result = await api.listNotifications({ limit: 200 });
+    set({
+      notifications: result.notifications,
+      unreadNotificationCount: result.unreadCount,
+    });
+  },
+
+  receiveNotification: (notification) => {
+    set((state) => {
+      const withoutCurrent = state.notifications.filter(
+        (item) => item.id !== notification.id,
+      );
+      const notifications = [notification, ...withoutCurrent].slice(0, 200);
+      return {
+        notifications,
+        unreadNotificationCount: notifications.reduce(
+          (count, item) => count + (item.readAt ? 0 : 1),
+          0,
+        ),
+      };
+    });
+  },
+
+  markNotificationRead: async (id) => {
+    const item = get().notifications.find((notification) => notification.id === id);
+    if (!item || item.readAt) return;
+    await api.markNotificationRead(id);
+    const readAt = new Date().toISOString();
+    set((state) => ({
+      notifications: state.notifications.map((notification) =>
+        notification.id === id ? { ...notification, readAt } : notification,
+      ),
+      unreadNotificationCount: Math.max(0, state.unreadNotificationCount - 1),
+    }));
+  },
+
+  markAllNotificationsRead: async () => {
+    if (get().unreadNotificationCount === 0) return;
+    await api.markAllNotificationsRead();
+    const readAt = new Date().toISOString();
+    set((state) => ({
+      notifications: state.notifications.map((notification) =>
+        notification.readAt ? notification : { ...notification, readAt },
+      ),
+      unreadNotificationCount: 0,
+    }));
+  },
+
+  clearNotifications: async () => {
+    await api.clearNotifications();
+    set({ notifications: [], unreadNotificationCount: 0 });
+  },
+
+  openNotification: async (id) => {
+    const notification = get().notifications.find((item) => item.id === id);
+    if (!notification) return;
+    await get().markNotificationRead(id);
+    await get().selectSession(notification.sessionId);
   },
 
   handleAgentEvent: (envelope) => {

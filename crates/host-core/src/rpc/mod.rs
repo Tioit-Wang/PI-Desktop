@@ -9,14 +9,15 @@ use tokio::sync::{mpsc, Mutex};
 
 use crate::artifacts;
 use crate::audit;
+use crate::notifications;
 use crate::permissions::{PermissionDecision, PermissionManager};
 use crate::providers::{self, DiscoveredModelInput, ProviderCreateInput, ProviderUpdateInput};
 use crate::scheduled;
 use crate::scratch;
 use crate::sessions::{self, UiMessage};
-use crate::workspace;
 use crate::state::{AppState, HOST_VERSION, PROTOCOL_VERSION};
 use crate::tools::{self, ToolsExecuteParams};
+use crate::workspace;
 
 #[derive(Debug, Deserialize)]
 struct JsonRpcRequest {
@@ -321,7 +322,7 @@ async fn handle_request(
                 "version": HOST_VERSION,
                 "capabilities": [
                     "tools", "sessions", "providers", "secrets", "plugins", "permissions",
-                    "scheduled", "artifacts", "search", "turns"
+                    "scheduled", "artifacts", "search", "turns", "notifications"
                 ]
             }))
         }
@@ -796,7 +797,7 @@ async fn handle_request(
                 .and_then(|v| v.as_str())
                 .unwrap_or("completed");
             let st = state.lock().await;
-            let ok = sessions::end_turn(
+            let result = sessions::end_turn(
                 &st.db,
                 turn_id,
                 status,
@@ -804,7 +805,51 @@ async fn handle_request(
                 params.get("usage"),
             )
             .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            let mut response = json!({ "ok": result.updated });
+            if let Some(notification) = result.notification {
+                response["notification"] = json!(notification);
+            }
+            Ok(response)
+        }
+
+        "notification.list" => {
+            let unread_only = params
+                .get("unreadOnly")
+                .and_then(|value| value.as_bool())
+                .unwrap_or(false);
+            let limit = params
+                .get("limit")
+                .and_then(|value| value.as_i64())
+                .unwrap_or(crate::db::NOTIFICATION_KEEP);
+            let st = state.lock().await;
+            let (notifications, unread_count) = notifications::list(&st.db, unread_only, limit)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({
+                "notifications": notifications,
+                "unreadCount": unread_count
+            }))
+        }
+        "notification.markRead" => {
+            let id = params
+                .get("id")
+                .and_then(|value| value.as_str())
+                .filter(|id| !id.trim().is_empty())
+                .ok_or_else(|| rpc_err(1002, "id required", "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let ok = notifications::mark_read(&st.db, id)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
             Ok(json!({ "ok": ok }))
+        }
+        "notification.markAllRead" => {
+            let st = state.lock().await;
+            notifications::mark_all_read(&st.db)
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "ok": true }))
+        }
+        "notification.clear" => {
+            let st = state.lock().await;
+            notifications::clear(&st.db).map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "ok": true }))
         }
 
         "search.query" => {
@@ -1485,5 +1530,73 @@ mod tests {
         assert_eq!(listed["models"].as_array().unwrap().len(), 2);
         assert_eq!(listed["models"][1]["modelId"], "model-b");
         assert_eq!(listed["models"][1]["capabilities"][1], "reasoning");
+    }
+
+    #[tokio::test]
+    async fn notification_rpc_lifecycle() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let mut app_state = AppState::open(data_dir.path()).unwrap();
+        app_state.handshook = true;
+        let session = sessions::create_session(
+            &app_state.db,
+            Some("RPC task".into()),
+            None,
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+        let turn = sessions::begin_turn(&app_state.db, &session.id, None, None).unwrap();
+        sessions::end_turn(&app_state.db, &turn, "completed", None, None).unwrap();
+        let state = Arc::new(Mutex::new(app_state));
+        let (tx, _rx) = mpsc::unbounded_channel();
+
+        let listed = handle_request(
+            state.clone(),
+            "notification.list",
+            json!({ "unreadOnly": true, "limit": 10 }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(listed["unreadCount"], 1);
+        assert_eq!(listed["notifications"][0]["kind"], "task.completed");
+        assert_eq!(listed["notifications"][0]["sessionTitle"], "RPC task");
+        let id = listed["notifications"][0]["id"]
+            .as_str()
+            .unwrap()
+            .to_string();
+
+        let marked = handle_request(
+            state.clone(),
+            "notification.markRead",
+            json!({ "id": id }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(marked, json!({ "ok": true }));
+        let marked_all = handle_request(
+            state.clone(),
+            "notification.markAllRead",
+            json!({}),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(marked_all, json!({ "ok": true }));
+        let cleared = handle_request(state.clone(), "notification.clear", json!({}), tx)
+            .await
+            .unwrap();
+        assert_eq!(cleared, json!({ "ok": true }));
+
+        let remaining: i64 = state
+            .lock()
+            .await
+            .db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM notifications", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(remaining, 0);
     }
 }

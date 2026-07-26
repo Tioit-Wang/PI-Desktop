@@ -113,11 +113,11 @@ Each scenario is documented in this format:
 #### E2E-003: Rust host healthcheck responds
 
 - **Preconditions**: App is running; Rust host-core sidecar started.
-- **Steps**: 1) Electron handshakes with protocol version 3. 2) Call the host
-  healthcheck RPC. 3) Repeat boot with a version 2 host fixture.
-- **Expected**: The version 3 host returns `ok` and the handshake is logged.
-  The stale version 2 host is rejected before chat becomes interactive, so
-  regenerate cannot silently run without revision RPC support.
+- **Steps**: 1) Electron handshakes with protocol version 4. 2) Call the host
+  healthcheck RPC. 3) Repeat boot with a version 3 host fixture.
+- **Expected**: The version 4 host returns `ok` and the handshake is logged.
+  The stale version 3 host is rejected before chat becomes interactive, so
+  notification records cannot be silently lost at turn completion.
 - **Specs linked**: `03-runtime/05-host-core-rust.md`, `03-runtime/06-host-rpc-protocol.md`
 - **Acceptance**: A (bridge normal)
 - **Milestone**: M1
@@ -1067,6 +1067,53 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`home-empty-layout.test.mjs`); full UI scenario Draft
 
+#### E2E-064: Durable notification inbox records terminal task outcomes
+
+- **Preconditions**: Two durable sessions exist; a deterministic provider can
+  complete one turn, fail one turn with a stable error code, and abort one
+  turn; notification inbox starts empty.
+- **Steps**: 1) Complete a turn in session A. 2) Fail a turn in session B. 3)
+  Abort a third turn. 4) Repeat the terminal RPC for each turn id. 5) Open the
+  bell and switch between All and Unread. 6) Mark one row read, close/reopen
+  the popover, and restart the app. 7) Select the other row. 8) Generate a host
+  fixture with 205 terminal turns. 9) Use Mark all read, then Clear.
+- **Expected**: Exactly two rows exist, newest first: localized completed and
+  failed labels with snapshotted session titles, and the failure's stable
+  code;
+  abort/repeated terminal calls create no row. Badge and Unread show the exact
+  unread count without opening implicitly reading rows. Read state and both
+  records survive restart. Row selection marks it read and activates its bound
+  project/session. The fixture retains exactly the newest 200 rows. Mark all
+  preserves rows with zero unread; Clear empties only the inbox and leaves
+  sessions, turns, and transcripts intact.
+- **Specs linked**: `03-runtime/04-data-storage.md`,
+  `03-runtime/06-host-rpc-protocol.md`, `03-runtime/01-ipc-protocol.md`,
+  `04-ux/08-component-spec.md`, `08-meta/decisions-log.md` (D117)
+- **Acceptance**: C (turn completion), F (persistence), Quality
+- **Milestone**: M5
+- **Status**: Draft
+
+#### E2E-065: Native task notifications are unfocused-only and activate sessions
+
+- **Preconditions**: Native notifications are supported; sessions A and B
+  exist; the main window can be focused, unfocused, hidden, and minimized.
+- **Steps**: 1) Keep the app focused and complete a turn in A. 2) Unfocus the
+  app and complete a turn in B. 3) Click B's native notification. 4) Minimize
+  the app, fail another turn, and click its native notification. 5) Unfocus the
+  app and abort a turn. 6) Repeat with native delivery suppressed by the OS.
+- **Expected**: Every completed/failed turn still enters the durable inbox.
+  Focused completion shows no duplicate native banner. Unfocused completion
+  and failure each show one localized native notification. Clicking restores,
+  shows, and focuses the main window before activating the matching session;
+  no event opens the wrong currently selected session. Abort shows neither an
+  inbox row nor a native banner. OS suppression does not lose the durable row
+  or surface a misleading app error.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `04-ux/09-interaction-patterns.md`, `08-meta/decisions-log.md` (D117)
+- **Acceptance**: C (turn completion), Quality
+- **Milestone**: M5
+- **Status**: Draft
+
 #### E2E-066: Provider model catalog survives restart and offline refresh
 
 - **Preconditions**: A saved provider has returned at least two models from its
@@ -1099,14 +1146,14 @@ Each scenario is documented in this format:
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
 | B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055, E2E-066 |
-| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-031, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-060, E2E-061, E2E-062 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-031, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059, E2E-060, E2E-061, E2E-062, E2E-064, E2E-065 |
 | D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057, E2E-058, E2E-060 |
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040, E2E-049 |
-| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-066 |
+| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056, E2E-061, E2E-062, E2E-064, E2E-066 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030, E2E-049 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-066 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -1114,7 +1161,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-066 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059, E2E-060, E2E-061, E2E-062, E2E-063, E2E-064, E2E-065, E2E-066 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -1587,3 +1634,18 @@ This test plan spec is accepted when:
 - Suggestion cards remain fully visible without being covered by the composer;
   short windows scroll the stack rather than stacking layers on top of cards.
 - Card click still prefills the composer and focuses the draft.
+
+
+### US-UI-65 Durable notification inbox (D117)
+- Populate the inbox with unread/read completed and failed task rows, including
+  one long session title, then inspect the titlebar and popover in light/dark
+  themes at default and narrow supported widths.
+- Expect a stable 32px bell control, non-overlapping `1`–`99` / `99+` badge,
+  dense 360px-or-narrower list, localized kind/session/time/error content, and
+  distinct text/icon/unread-dot semantics without nested cards or clipped text.
+- Switch All/Unread; use Tab, arrow keys, Home/End, Enter/Space, Escape, and
+  outside click. Focus order remains predictable, row activation opens the
+  correct session, and Escape restores focus to the bell.
+- Mark all read and Clear expose icon tooltips/accessible names, disabled and
+  empty states remain understandable, and reduced-motion mode changes the
+  popover instantly without suppressing focus or unread state.

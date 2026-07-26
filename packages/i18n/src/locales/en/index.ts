@@ -510,6 +510,26 @@ export const en = {
   toast: {
     dismiss: "Dismiss notification",
   },
+  notifications: {
+    title: "Notifications",
+    open: "Open notifications",
+    openUnread: "Open notifications, {{count}} unread",
+    all: "All",
+    unread: "Unread",
+    markAllRead: "Mark all as read",
+    clearAll: "Clear notifications",
+    emptyTitle: "No notifications",
+    emptyBody: "Completed and failed tasks will appear here.",
+    emptyUnreadTitle: "You're all caught up",
+    emptyUnreadBody: "There are no unread notifications.",
+    completedTitle: "{{sessionTitle}} completed",
+    completedBody: "The task completed successfully.",
+    failedTitle: "{{sessionTitle}} failed",
+    failedBody: "The task did not complete.",
+    failedBodyWithCode: "The task stopped with error {{code}}.",
+    actionFailed: "Could not update notifications.",
+    justNow: "Just now",
+  },
   home: {
     suggestions: {
       explore: "Explore and understand code",

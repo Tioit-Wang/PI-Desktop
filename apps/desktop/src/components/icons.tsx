@@ -8,9 +8,11 @@ import {
   ArrowUpDown,
   ArrowUpRight,
   AtSign,
+  Bell,
   Bug,
   Camera,
   Check,
+  CheckCheck,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -102,6 +104,8 @@ export const IconArrowUp = icon(ArrowUp);
 export const IconArrowDown = icon(ArrowDown);
 export const IconCopy = icon(Copy);
 export const IconCheck = icon(Check);
+export const IconBell = icon(Bell);
+export const IconCheckCheck = icon(CheckCheck);
 export const IconShield = icon(Shield);
 export const IconChevronDown = icon(ChevronDown);
 export const IconClose = icon(X);

@@ -5,6 +5,7 @@ use serde_json::{json, Value};
 use uuid::Uuid;
 
 use crate::db::{ms_to_ts, now_ms, ts_to_ms, Database};
+use crate::notifications::{self, Notification};
 
 /// Values accepted by the persisted per-session thinking selector.  Keep this
 /// list in the host boundary so old clients cannot write arbitrary provider
@@ -1001,13 +1002,18 @@ pub fn begin_turn(
     Ok(id)
 }
 
+pub struct EndTurnResult {
+    pub updated: bool,
+    pub notification: Option<Notification>,
+}
+
 pub fn end_turn(
     db: &Database,
     turn_id: &str,
     status: &str,
     error_code: Option<&str>,
     usage: Option<&Value>,
-) -> Result<bool> {
+) -> Result<EndTurnResult> {
     let status = match status {
         "completed" | "aborted" | "error" => status,
         _ => "completed",
@@ -1018,8 +1024,8 @@ pub fn end_turn(
     let output_tokens = usage
         .and_then(|u| u.get("outputTokens"))
         .and_then(|v| v.as_i64());
-    let n = db
-        .conn()
+    let tx = db.conn().unchecked_transaction()?;
+    let n = tx
         .prepare_cached(
             "UPDATE turns SET status = ?1, error_code = ?2, ended_at = ?3,
                 input_tokens = COALESCE(?4, input_tokens),
@@ -1036,7 +1042,16 @@ pub fn end_turn(
             usage.map(|u| u.to_string()),
             turn_id,
         ])?;
-    Ok(n > 0)
+    let notification = if n > 0 {
+        notifications::insert_for_terminal_turn(&tx, turn_id, status, error_code)?
+    } else {
+        None
+    };
+    tx.commit()?;
+    Ok(EndTurnResult {
+        updated: n > 0,
+        notification,
+    })
 }
 
 // ---- search -----------------------------------------------------------------
@@ -1550,16 +1565,20 @@ mod tests {
         let db = test_db();
         let session = create_session(&db, None, None, None, None, None).unwrap();
         let turn = begin_turn(&db, &session.id, Some("p1"), Some("m1")).unwrap();
-        assert!(end_turn(
+        let ended = end_turn(
             &db,
             &turn,
             "completed",
             None,
-            Some(&json!({ "inputTokens": 10, "outputTokens": 20 }))
+            Some(&json!({ "inputTokens": 10, "outputTokens": 20 })),
         )
-        .unwrap());
+        .unwrap();
+        assert!(ended.updated);
+        assert_eq!(ended.notification.unwrap().kind, "task.completed");
         // Ending twice is a no-op.
-        assert!(!end_turn(&db, &turn, "completed", None, None).unwrap());
+        let duplicate = end_turn(&db, &turn, "completed", None, None).unwrap();
+        assert!(!duplicate.updated);
+        assert!(duplicate.notification.is_none());
         let (status, input, output): (String, i64, i64) = db
             .conn()
             .query_row(
@@ -1570,6 +1589,23 @@ mod tests {
             .unwrap();
         assert_eq!(status, "completed");
         assert_eq!((input, output), (10, 20));
+    }
+
+    #[test]
+    fn aborted_turn_does_not_create_notification() {
+        let db = test_db();
+        let session = create_session(&db, None, None, None, None, None).unwrap();
+        let turn = begin_turn(&db, &session.id, None, None).unwrap();
+
+        let ended = end_turn(&db, &turn, "aborted", None, None).unwrap();
+
+        assert!(ended.updated);
+        assert!(ended.notification.is_none());
+        let notification_count: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM notifications", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(notification_count, 0);
     }
 
     #[test]

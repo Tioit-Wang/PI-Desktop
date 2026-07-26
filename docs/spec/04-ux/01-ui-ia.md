@@ -133,6 +133,7 @@ independent Plugins destination described in §3.5.
 | Permission dialog | tool permission request | risk copy, args preview, allow-once / allow-session / deny, 120s countdown → deny |
 | Model menu | composer model chip | configured provider/model choices + settings entry (D091) |
 | Profile menu | sidebar footer | Settings / Logs / Theme cycle (D041) |
+| Notification inbox | titlebar bell | All/Unread views, task completion/failure rows, mark-all-read and clear actions (D117) |
 | Toasts | events (plugin toast, backend restored, copy) | top-center; 4s default, 8s for errors |
 
 ## 5. Navigation model
@@ -167,6 +168,12 @@ independent Plugins destination described in §3.5.
 - Background project session → the originating project row retains its
   running/error indicator. Selected shell state can move independently while
   the session tool root remains bound to its durable project.
+- Completed/failed turn → host-core appends one durable inbox row, including
+  for a background session. `aborted` turns append none. The bell badge shows
+  the unread count; selecting a row marks it read and activates its bound
+  project/session. Electron additionally presents a native system notification
+  only when the app window is unfocused, and clicking it focuses the window
+  before activating the same session (D117).
 - Backend degraded → status capsule (restarting) or fatal banner with Open
   logs (D080); composer submits are rejected with readable errors while down.
 

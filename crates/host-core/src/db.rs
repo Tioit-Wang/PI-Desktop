@@ -4,16 +4,15 @@ use serde::Serialize;
 use serde_json::Value;
 use std::path::Path;
 
-/// Storage schema v4 (docs/spec/03-runtime/04-data-storage.md).
-///
-/// v3 added per-session thinking levels.  v4 adds durable regenerate history
-/// so discarded assistant/tool tails can be browsed like ChatGPT variants.
-pub const SCHEMA_VERSION: i64 = 5;
+/// Storage schema v6 (docs/spec/03-runtime/04-data-storage.md).
+pub const SCHEMA_VERSION: i64 = 6;
 
 /// Audit rows older than this are pruned at boot.
 const AUDIT_RETENTION_MS: i64 = 90 * 24 * 3600 * 1000;
 /// task_runs kept per task after the boot prune.
 const TASK_RUNS_KEEP: i64 = 100;
+/// Durable notification rows kept globally.
+pub const NOTIFICATION_KEEP: i64 = 200;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -165,6 +164,20 @@ CREATE TABLE turns (
   ended_at      INTEGER
 );
 CREATE INDEX idx_turns_session ON turns(session_id, started_at DESC);
+
+CREATE TABLE notifications (
+  id         TEXT PRIMARY KEY,
+  kind       TEXT NOT NULL CHECK (kind IN ('task.completed', 'task.failed')),
+  session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  session_title TEXT NOT NULL,
+  turn_id    TEXT NOT NULL UNIQUE,
+  error_code TEXT,
+  created_at INTEGER NOT NULL,
+  read_at    INTEGER
+);
+CREATE INDEX idx_notifications_created ON notifications(created_at DESC);
+CREATE INDEX idx_notifications_unread
+  ON notifications(created_at DESC) WHERE read_at IS NULL;
 
 CREATE TABLE messages (
   mid          INTEGER PRIMARY KEY,
@@ -355,16 +368,22 @@ impl Database {
                 tx.commit()?;
                 migrate_to_v4(&conn)?;
                 migrate_to_v5(&conn)?;
+                migrate_to_v6(&conn)?;
             }
             3 => {
                 migrate_to_v4(&conn)?;
                 migrate_to_v5(&conn)?;
+                migrate_to_v6(&conn)?;
             }
             4 => {
                 migrate_to_v5(&conn)?;
+                migrate_to_v6(&conn)?;
+            }
+            5 => {
+                migrate_to_v6(&conn)?;
             }
             SCHEMA_VERSION => {}
-            // Future migrations chain here (5, 6, …) once they exist.
+            // Future migrations chain here once they exist.
             other => {
                 return Err(anyhow!(
                     "database schema version {other} is newer than supported {SCHEMA_VERSION}"
@@ -400,6 +419,15 @@ impl Database {
                ) WHERE rn > ?1
              )",
             params![TASK_RUNS_KEEP],
+        )?;
+        self.conn.execute(
+            "DELETE FROM notifications
+             WHERE id IN (
+               SELECT id FROM notifications
+               ORDER BY created_at DESC, id DESC
+               LIMIT -1 OFFSET ?1
+             )",
+            params![NOTIFICATION_KEEP],
         )?;
         let _ = self.conn.execute_batch("PRAGMA incremental_vacuum;");
         Ok(())
@@ -526,6 +554,30 @@ fn migrate_to_v5(conn: &Connection) -> Result<()> {
          CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto'));",
     )?;
     tx.pragma_update(None, "user_version", 5)?;
+    tx.commit()?;
+    Ok(())
+}
+
+fn migrate_to_v6(conn: &Connection) -> Result<()> {
+    let tx = conn.unchecked_transaction()?;
+    tx.execute_batch(
+        r#"
+        CREATE TABLE notifications (
+          id         TEXT PRIMARY KEY,
+          kind       TEXT NOT NULL CHECK (kind IN ('task.completed', 'task.failed')),
+          session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+          session_title TEXT NOT NULL,
+          turn_id    TEXT NOT NULL UNIQUE,
+          error_code TEXT,
+          created_at INTEGER NOT NULL,
+          read_at    INTEGER
+        );
+        CREATE INDEX idx_notifications_created ON notifications(created_at DESC);
+        CREATE INDEX idx_notifications_unread
+          ON notifications(created_at DESC) WHERE read_at IS NULL;
+        "#,
+    )?;
+    tx.pragma_update(None, "user_version", 6)?;
     tx.commit()?;
     Ok(())
 }
@@ -864,6 +916,22 @@ fn migrate_v1_file(v1_path: &Path, v2_path: &Path) -> Result<()> {
 mod tests {
     use super::*;
 
+    const V6_SCHEMA_FRAGMENT: &str = r#"CREATE TABLE notifications (
+  id         TEXT PRIMARY KEY,
+  kind       TEXT NOT NULL CHECK (kind IN ('task.completed', 'task.failed')),
+  session_id TEXT NOT NULL REFERENCES sessions(id) ON DELETE CASCADE,
+  session_title TEXT NOT NULL,
+  turn_id    TEXT NOT NULL UNIQUE,
+  error_code TEXT,
+  created_at INTEGER NOT NULL,
+  read_at    INTEGER
+);
+CREATE INDEX idx_notifications_created ON notifications(created_at DESC);
+CREATE INDEX idx_notifications_unread
+  ON notifications(created_at DESC) WHERE read_at IS NULL;
+
+"#;
+
     #[test]
     fn fresh_open_creates_latest_schema() {
         let dir = tempfile::tempdir().unwrap();
@@ -880,6 +948,7 @@ mod tests {
             "models",
             "sessions",
             "turns",
+            "notifications",
             "messages",
             "message_revisions",
             "artifacts",
@@ -935,10 +1004,15 @@ CREATE INDEX idx_message_revisions_root
         let schema_v2 = SCHEMA_LATEST
             .replace(v2_column, "")
             .replace(v4_table, "")
-            .replace(v5_column, "");
-        assert_ne!(schema_v2, SCHEMA_LATEST, "v2 fixture must omit thinking_level");
+            .replace(v5_column, "")
+            .replace(V6_SCHEMA_FRAGMENT, "");
+        assert_ne!(
+            schema_v2, SCHEMA_LATEST,
+            "v2 fixture must omit thinking_level"
+        );
         assert!(!schema_v2.contains("message_revisions"));
         assert!(!schema_v2.contains("permission_mode"));
+        assert!(!schema_v2.contains("notifications"));
         {
             let conn = Connection::open(&path).unwrap();
             conn.execute_batch(&schema_v2).unwrap();
@@ -1006,9 +1080,16 @@ CREATE INDEX idx_message_revisions_root
         let v5_column = r#"  permission_mode TEXT NOT NULL DEFAULT 'inherit'
                 CHECK (permission_mode IN ('inherit', 'ask', 'accept-edits', 'auto')),
 "#;
-        let schema_v3 = SCHEMA_LATEST.replace(v4_table, "").replace(v5_column, "");
-        assert_ne!(schema_v3, SCHEMA_LATEST, "v3 fixture must omit message_revisions");
+        let schema_v3 = SCHEMA_LATEST
+            .replace(v4_table, "")
+            .replace(v5_column, "")
+            .replace(V6_SCHEMA_FRAGMENT, "");
+        assert_ne!(
+            schema_v3, SCHEMA_LATEST,
+            "v3 fixture must omit message_revisions"
+        );
         assert!(!schema_v3.contains("permission_mode"));
+        assert!(!schema_v3.contains("notifications"));
         {
             let conn = Connection::open(&path).unwrap();
             conn.execute_batch(&schema_v3).unwrap();
@@ -1045,6 +1126,66 @@ CREATE INDEX idx_message_revisions_root
         let remaining: i64 = db
             .conn()
             .query_row("SELECT COUNT(*) FROM message_revisions", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(remaining, 0);
+    }
+
+    #[test]
+    fn migrates_v5_to_v6_notifications() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("pi.sqlite");
+        let schema_v5 = SCHEMA_LATEST.replace(V6_SCHEMA_FRAGMENT, "");
+        assert!(!schema_v5.contains("notifications"));
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch(&schema_v5).unwrap();
+            conn.pragma_update(None, "user_version", 5).unwrap();
+            conn.execute(
+                "INSERT INTO sessions
+                    (id, title, mode, created_at, updated_at)
+                 VALUES ('legacy', 'Legacy task', 'agent', 1, 2)",
+                [],
+            )
+            .unwrap();
+            conn.execute(
+                "INSERT INTO turns (id, session_id, status, started_at, ended_at)
+                 VALUES ('turn-1', 'legacy', 'completed', 2, 3)",
+                [],
+            )
+            .unwrap();
+        }
+
+        let db = Database::open(&path).unwrap();
+        let version: i64 = db
+            .conn()
+            .query_row("PRAGMA user_version", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(version, SCHEMA_VERSION);
+        assert!(table_exists(db.conn(), "notifications").unwrap());
+        let notification_count: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM notifications", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(
+            notification_count, 0,
+            "migration must not backfill old turns"
+        );
+
+        db.conn()
+            .execute(
+                "INSERT INTO notifications
+                    (id, kind, session_id, session_title, turn_id, created_at)
+                 VALUES
+                    ('notification-1', 'task.completed', 'legacy', 'Legacy task', 'turn-1', 3)",
+                [],
+            )
+            .unwrap();
+        db.conn()
+            .execute("DELETE FROM sessions WHERE id = 'legacy'", [])
+            .unwrap();
+        let remaining: i64 = db
+            .conn()
+            .query_row("SELECT COUNT(*) FROM notifications", [], |row| row.get(0))
             .unwrap();
         assert_eq!(remaining, 0);
     }

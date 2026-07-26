@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 3 as const;
+export const PROTOCOL_VERSION = 4 as const;
 export const APP_NAME = "PI-Desktop";
 export const APP_VERSION = "0.1.0";
 
@@ -8,6 +8,11 @@ export const IPC = {
     appHealth: "pi-desktop/app/health",
     appGetOnboarding: "pi-desktop/app/getOnboarding",
     appDismissOnboarding: "pi-desktop/app/dismissOnboarding",
+    notificationList: "pi-desktop/notification/list",
+    notificationMarkRead: "pi-desktop/notification/markRead",
+    notificationMarkAllRead: "pi-desktop/notification/markAllRead",
+    notificationClear: "pi-desktop/notification/clear",
+    notificationShowNative: "pi-desktop/notification/showNative",
     agentPrompt: "pi-desktop/agent/prompt",
     agentAbort: "pi-desktop/agent/abort",
     agentGetStatus: "pi-desktop/agent/getStatus",
@@ -80,6 +85,8 @@ export const IPC = {
     terminalExit: "pi-desktop/terminal/event/exit",
     browserState: "pi-desktop/browser/event/state",
     browserPreview: "pi-desktop/browser/event/preview",
+    notificationChanged: "pi-desktop/notification/event/changed",
+    notificationActivated: "pi-desktop/notification/event/activated",
   },
 } as const;
 

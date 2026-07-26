@@ -507,6 +507,26 @@ export const zhCN = {
   toast: {
     dismiss: "关闭通知",
   },
+  notifications: {
+    title: "通知",
+    open: "打开通知中心",
+    openUnread: "打开通知中心，{{count}} 条未读",
+    all: "全部",
+    unread: "未读",
+    markAllRead: "全部标为已读",
+    clearAll: "清空通知",
+    emptyTitle: "暂无通知",
+    emptyBody: "任务完成或失败后会显示在这里。",
+    emptyUnreadTitle: "已全部读完",
+    emptyUnreadBody: "当前没有未读通知。",
+    completedTitle: "{{sessionTitle}} 已完成",
+    completedBody: "任务已成功完成。",
+    failedTitle: "{{sessionTitle}} 失败",
+    failedBody: "任务未能完成。",
+    failedBodyWithCode: "任务因错误 {{code}} 停止。",
+    actionFailed: "无法更新通知。",
+    justNow: "刚刚",
+  },
   home: {
     suggestions: {
       explore: "探索并理解代码",

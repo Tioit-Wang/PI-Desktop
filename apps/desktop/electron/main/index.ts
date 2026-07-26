@@ -5,6 +5,7 @@ import {
   ipcMain,
   nativeImage,
   nativeTheme,
+  Notification as SystemNotification,
   screen,
   shell,
 } from "electron";
@@ -23,6 +24,7 @@ import {
   err,
   ok,
   type AgentEventEnvelope,
+  type AppNotification,
   type Result,
   type ThinkingLevel,
 } from "@pi-desktop/shared";
@@ -354,6 +356,7 @@ async function createWindow() {
   let boundsGuard = false;
   let boundsTimer: NodeJS.Timeout | null = null;
   let pinUntil = 0;
+  let captureViewportOverride = false;
   let lastCgAt = 0;
   let lastCg: { x: number; y: number; width: number; height: number } | null = null;
   let missingCgStreak = 0;
@@ -391,7 +394,7 @@ async function createWindow() {
   };
 
   const ensureStableBounds = (force = false) => {
-    if (!mainWindow || boundsGuard) return;
+    if (!mainWindow || boundsGuard || captureViewportOverride) return;
     const electronBounds = mainWindow.getBounds();
     const cg = readCgBounds();
     if (!cg && cgHelperAvailable) missingCgStreak += 1;
@@ -701,6 +704,89 @@ async function createWindow() {
               `void window.__PI_DESKTOP__?.seedTranscript?.(0)`,
             );
             await new Promise((r) => setTimeout(r, 250));
+            // Notification inbox: mixed status, long title, read state, 99+ badge,
+            // both themes, then the responsive fixed-position popover.
+            const openNotificationFixture = async () => {
+              await mainWindow!.webContents.executeJavaScript(`
+                window.__PI_DESKTOP__?.seedNotifications?.(105);
+                document.querySelector('.notification-trigger')?.dispatchEvent(
+                  new MouseEvent('click', { bubbles: true })
+                );
+              `);
+              // Opening refreshes the durable inbox; reapply the capture-only
+              // fixture after that request settles.
+              await new Promise((r) => setTimeout(r, 350));
+              await mainWindow!.webContents.executeJavaScript(
+                `window.__PI_DESKTOP__?.seedNotifications?.(105)`,
+              );
+              await new Promise((r) => setTimeout(r, 150));
+            };
+            const probeNotificationFixture = async (scene: string) => {
+              const probe = await mainWindow!.webContents.executeJavaScript(`(() => {
+                const popover = document.querySelector('.notification-popover');
+                const title = document.querySelector('.notification-item-title');
+                const badge = document.querySelector('.notification-badge');
+                if (!popover || !title) return null;
+                const rect = popover.getBoundingClientRect();
+                const titleStyle = getComputedStyle(title);
+                return {
+                  scene: ${JSON.stringify(scene)},
+                  viewport: { width: innerWidth, height: innerHeight },
+                  popover: {
+                    left: Math.round(rect.left),
+                    top: Math.round(rect.top),
+                    right: Math.round(rect.right),
+                    bottom: Math.round(rect.bottom),
+                    position: getComputedStyle(popover).position,
+                  },
+                  withinViewport:
+                    rect.left >= 0 && rect.top >= 0 &&
+                    rect.right <= innerWidth && rect.bottom <= innerHeight,
+                  badge: badge?.textContent?.trim() || '',
+                  rowCount: document.querySelectorAll('.notification-item').length,
+                  unreadRows: document.querySelectorAll('.notification-item.unread').length,
+                  failedRows: document.querySelectorAll('.notification-kind-icon.failed').length,
+                  titleTruncated:
+                    title.scrollWidth > title.clientWidth &&
+                    titleStyle.textOverflow === 'ellipsis',
+                };
+              })()`);
+              console.log("NOTIFICATION_PROBE", probe);
+            };
+            await setTheme("light");
+            await setPage("chat");
+            await openNotificationFixture();
+            await probeNotificationFixture("light");
+            await shot("pi-notifications-light");
+            await mainWindow!.webContents.executeJavaScript(`
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            `);
+            await setTheme("dark");
+            await openNotificationFixture();
+            await probeNotificationFixture("dark");
+            await shot("pi-notifications-dark");
+            await mainWindow!.webContents.executeJavaScript(`
+              document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            `);
+            captureViewportOverride = true;
+            try {
+              mainWindow!.setMinimumSize(420, 640);
+              mainWindow!.setSize(420, 760, false);
+              await new Promise((r) => setTimeout(r, 250));
+              await setTheme("light");
+              await openNotificationFixture();
+              await probeNotificationFixture("narrow");
+              await shot("pi-notifications-narrow");
+              await mainWindow!.webContents.executeJavaScript(`
+                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+                window.__PI_DESKTOP__?.seedNotifications?.(0);
+              `);
+            } finally {
+              mainWindow!.setSize(CODEX_BOUNDS.width, CODEX_BOUNDS.height, false);
+              mainWindow!.setMinimumSize(960, 640);
+              captureViewportOverride = false;
+            }
+            await new Promise((r) => setTimeout(r, 300));
             // Destination + theme captures (robust via __PI_DESKTOP__ hooks).
             await setTheme("dark");
             await setPage("chat");
@@ -1032,7 +1118,18 @@ function finishTurn(
   activeTurns.delete(sessionId);
   if (host && turnId) {
     void host
-      .call("session.endTurn", { turnId, status, errorCode })
+      .call<{ ok: boolean; notification?: AppNotification }>("session.endTurn", {
+        turnId,
+        status,
+        errorCode,
+      })
+      .then((result) => {
+        if (result.notification) {
+          sendToRenderer(IPC.event.notificationChanged, {
+            notification: result.notification,
+          });
+        }
+      })
       .catch((e) =>
         logger.app("warn", "endTurn failed", { sessionId, data: String(e) }),
       );
@@ -1334,6 +1431,61 @@ function registerIpc() {
     const settings = await host.call<any>("settings.get");
     await host.call("settings.set", { ...settings, onboardingDismissed: true });
     return { ok: true };
+  });
+
+  handle(IPC.invoke.notificationList, async (input: {
+    unreadOnly?: boolean;
+    limit?: number;
+  } = {}) => {
+    if (!host) throw new Error("host unavailable");
+    return host.call("notification.list", input);
+  });
+
+  handle(IPC.invoke.notificationMarkRead, async (input: { id?: string } = {}) => {
+    if (!host) throw new Error("host unavailable");
+    return host.call("notification.markRead", input);
+  });
+
+  handle(IPC.invoke.notificationMarkAllRead, async () => {
+    if (!host) throw new Error("host unavailable");
+    return host.call("notification.markAllRead");
+  });
+
+  handle(IPC.invoke.notificationClear, async () => {
+    if (!host) throw new Error("host unavailable");
+    return host.call("notification.clear");
+  });
+
+  handle(IPC.invoke.notificationShowNative, async (input: {
+    id?: string;
+    sessionId?: string;
+    title?: string;
+    body?: string;
+  } = {}) => {
+    if (
+      !mainWindow ||
+      mainWindow.isDestroyed() ||
+      mainWindow.isFocused() ||
+      !SystemNotification.isSupported()
+    ) {
+      return { shown: false };
+    }
+    const id = String(input.id ?? "");
+    const sessionId = String(input.sessionId ?? "");
+    const title = String(input.title ?? "").trim().slice(0, 100);
+    const body = String(input.body ?? "").trim().slice(0, 240);
+    if (!id || !sessionId || !title) return { shown: false };
+
+    const notification = new SystemNotification({ title, body });
+    notification.on("click", () => {
+      if (!mainWindow || mainWindow.isDestroyed()) return;
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+      sendToRenderer(IPC.event.notificationActivated, { id, sessionId });
+    });
+    notification.show();
+    return { shown: true };
   });
 
   handle(IPC.invoke.sessionList, async () => {

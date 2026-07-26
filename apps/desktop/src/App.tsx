@@ -9,6 +9,7 @@ import { OnboardingChecklist } from "./components/OnboardingChecklist";
 import { PermissionDialog } from "./components/PermissionDialog";
 import { CommandPalette } from "./components/CommandPalette";
 import { ToastHost } from "./components/Toast";
+import { NotificationCenter } from "./components/NotificationCenter";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ProjectsPage } from "./pages/ProjectsPage";
 import { PullRequestsPage } from "./pages/PullRequestsPage";
@@ -132,6 +133,40 @@ function AppShell() {
         useAppStore.setState({ isRunning: false });
       }
     });
+    const offNotificationChanged = api.onNotificationChanged((notification) => {
+      useAppStore.getState().receiveNotification(notification);
+      const failed = notification.kind === "task.failed";
+      const title = t(
+        failed ? "notifications.failedTitle" : "notifications.completedTitle",
+        { sessionTitle: notification.sessionTitle },
+      );
+      const body = failed
+        ? notification.errorCode
+          ? t("notifications.failedBodyWithCode", { code: notification.errorCode })
+          : t("notifications.failedBody")
+        : t("notifications.completedBody");
+      void api
+        .showNativeNotification({
+          id: notification.id,
+          sessionId: notification.sessionId,
+          title,
+          body,
+        })
+        .catch(() => undefined);
+    });
+    const offNotificationActivated = api.onNotificationActivated(({ id }) => {
+      void useAppStore
+        .getState()
+        .openNotification(id)
+        .catch((activationError) =>
+          showToast(
+            activationError instanceof Error
+              ? activationError.message
+              : String(activationError),
+            { variant: "error" },
+          ),
+        );
+    });
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -160,6 +195,8 @@ function AppShell() {
       offToast();
       offBrowserPreview();
       offHostStatus();
+      offNotificationChanged();
+      offNotificationActivated();
       window.removeEventListener("keydown", onKey);
     };
   }, [bootstrap, handleAgentEvent, showToast, abort, t]);
@@ -177,6 +214,8 @@ function AppShell() {
   }, [t]);
 
   useEffect(() => {
+    const originalRefreshNotifications =
+      useAppStore.getState().refreshNotifications;
     (window as any).__PI_DESKTOP__ = {
       setPage: (page: string) => useAppStore.getState().setPage(page as any),
       refreshProviders: () => useAppStore.getState().refreshProviders(),
@@ -277,6 +316,42 @@ function AppShell() {
           })),
         });
       },
+      seedNotifications: (count = 105) => {
+        // Capture-only notification fixture; count 0 restores an empty inbox.
+        if (!(window as any).__PI_CAPTURE__) return;
+        if (count <= 0) {
+          useAppStore.setState({
+            notifications: [],
+            unreadNotificationCount: 0,
+            refreshNotifications: originalRefreshNotifications,
+          });
+          return;
+        }
+        const now = Date.now();
+        const titles = [
+          "重新设计设置页面插件板块手机端 UI 布局并验证所有断点",
+          "修复 host-core 启动失败并补充错误恢复测试",
+          "同步代码",
+        ];
+        const notifications = Array.from({ length: count }, (_, index) => ({
+          id: `capture-notification-${index}`,
+          kind: index === 1 ? ("task.failed" as const) : ("task.completed" as const),
+          sessionId: `capture-session-${index}`,
+          sessionTitle: titles[index] ?? `后台任务 ${index + 1}`,
+          turnId: `capture-turn-${index}`,
+          ...(index === 1 ? { errorCode: "MODEL_REQUEST_TIMEOUT" } : {}),
+          createdAt: new Date(now - (index + 1) * 60_000).toISOString(),
+          readAt: index === 2 ? new Date(now - 30_000).toISOString() : null,
+        }));
+        useAppStore.setState({
+          notifications,
+          unreadNotificationCount: notifications.reduce(
+            (total, notification) => total + (notification.readAt ? 0 : 1),
+            0,
+          ),
+          refreshNotifications: async () => undefined,
+        });
+      },
       ensureVisualFixtures: async () => {
         // Destructive fixture seeding is capture-rig only; the rig sets
         // __PI_CAPTURE__ before invoking (see electron/main capture suite).
@@ -359,6 +434,9 @@ function AppShell() {
       },
     };
     return () => {
+      useAppStore.setState({
+        refreshNotifications: originalRefreshNotifications,
+      });
       try {
         delete (window as any).__PI_DESKTOP__;
       } catch {
@@ -406,6 +484,7 @@ function AppShell() {
       <section className="main-pane">
         <div className="main-titlebar">
           <div className="main-titlebar-right no-drag">
+            <NotificationCenter />
             <button
               className={`title-nav-btn ${workPanelOpen ? "active" : ""}`}
               title={t("nav.toggleWorkPanel")}

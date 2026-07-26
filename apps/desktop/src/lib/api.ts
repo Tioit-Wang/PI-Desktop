@@ -32,6 +32,8 @@ import type {
   TerminalExitEvent,
   ToolPermissionResolution,
   WorkspaceDiff,
+  AppNotification,
+  NotificationListResult,
 } from "@pi-desktop/shared";
 import { IPC } from "@pi-desktop/shared";
 
@@ -86,6 +88,20 @@ export const api = {
   health: () => invoke<HostHealth>(IPC.invoke.appHealth),
   getOnboarding: () => invoke<OnboardingState>(IPC.invoke.appGetOnboarding),
   dismissOnboarding: () => invoke(IPC.invoke.appDismissOnboarding),
+  listNotifications: (input?: { unreadOnly?: boolean; limit?: number }) =>
+    invoke<NotificationListResult>(IPC.invoke.notificationList, input ?? {}),
+  markNotificationRead: (id: string) =>
+    invoke<{ ok: boolean }>(IPC.invoke.notificationMarkRead, { id }),
+  markAllNotificationsRead: () =>
+    invoke<{ ok: boolean }>(IPC.invoke.notificationMarkAllRead),
+  clearNotifications: () =>
+    invoke<{ ok: boolean }>(IPC.invoke.notificationClear),
+  showNativeNotification: (input: {
+    id: string;
+    sessionId: string;
+    title: string;
+    body: string;
+  }) => invoke<{ shown: boolean }>(IPC.invoke.notificationShowNative, input),
   listSessions: () =>
     invoke<{ sessions: SessionSummary[] }>(IPC.invoke.sessionList),
   createSession: (input?: Partial<SessionSummary>) =>
@@ -285,6 +301,22 @@ export const api = {
     if (!window.piDesktop?.on) return () => undefined;
     return window.piDesktop.on(IPC.event.hostStatus, (payload) =>
       listener(payload as HostStatusEvent),
+    );
+  },
+  onNotificationChanged: (
+    listener: (notification: AppNotification) => void,
+  ) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.notificationChanged, (payload) =>
+      listener((payload as { notification: AppNotification }).notification),
+    );
+  },
+  onNotificationActivated: (
+    listener: (event: { id: string; sessionId: string }) => void,
+  ) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.notificationActivated, (payload) =>
+      listener(payload as { id: string; sessionId: string }),
     );
   },
 };

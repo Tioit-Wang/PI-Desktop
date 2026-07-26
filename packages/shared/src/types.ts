@@ -166,6 +166,24 @@ export type AgentEventEnvelope = {
   event: AgentEvent;
 };
 
+export type AppNotificationKind = "task.completed" | "task.failed";
+
+export type AppNotification = {
+  id: string;
+  kind: AppNotificationKind;
+  sessionId: string;
+  sessionTitle: string;
+  turnId: string;
+  errorCode?: string;
+  createdAt: string;
+  readAt?: string | null;
+};
+
+export type NotificationListResult = {
+  notifications: AppNotification[];
+  unreadCount: number;
+};
+
 export type ProjectWorkspace = {
   path: string;
   name: string;

@@ -29,6 +29,7 @@ Principles:
 | `terminal` | Work panel PTY create/write/resize/dispose + data/exit events |
 | `browser` | Work panel embedded preview navigation/bounds/visibility + state events |
 | `fs` | Work panel workspace file listing/reading/reveal (read-only) |
+| `notification` | Durable inbox list/read/clear and new/activated events |
 
 ## 3. Channel Conventions
 
@@ -165,6 +166,67 @@ type AgentEvent =
 > These are **UI-normalized events**, not a pass-through of raw pi events.
 > `packages/agent-runtime` is responsible for mapping pi events to this model.
 
+## 6a. Notification API (D117, protocol v4)
+
+Durable inbox requests are allowlisted preload invokes that Electron forwards
+to the singular host RPC domain without renderer access to SQLite:
+
+- `pi-desktop/notification/list({ unreadOnly?, limit? })`
+- `pi-desktop/notification/markRead({ id })`
+- `pi-desktop/notification/markAllRead()`
+- `pi-desktop/notification/clear()`
+
+The renderer also invokes
+`pi-desktop/notification/showNative({ id, sessionId, title, body })` after
+localizing a new record. This Electron-only request never crosses into the host
+RPC domain.
+
+```ts
+type AppNotification = {
+  id: string;
+  kind: "task.completed" | "task.failed";
+  sessionId: string;
+  sessionTitle: string;
+  turnId: string;
+  errorCode?: string;
+  createdAt: string;
+  readAt?: string | null;
+};
+
+type NotificationListResult = {
+  notifications: AppNotification[];
+  unreadCount: number;
+};
+
+type NotificationChangedEvent = {
+  notification: AppNotification;
+};
+
+type NotificationActivatedEvent = {
+  id: string;
+  sessionId: string;
+};
+```
+
+Main sends two events:
+
+- `pi-desktop/notification/event/changed` after `session.endTurn` returns a
+  newly inserted record. Renderer merges the record into its bounded local list
+  and recalculates the exact unread count; repeated/aborted terminal updates
+  emit nothing.
+- `pi-desktop/notification/event/activated` after the user clicks Electron's
+  native system notification. Renderer follows its existing session-selection
+  path, including project activation for a project-bound session.
+
+Electron owns the native surface while the renderer derives localized
+title/body text from the structured record. Electron accepts `showNative` only
+for a valid notification/session pair, shows a native notification only when
+the main window is unfocused and the platform API is supported, then
+restores/shows and focuses the window before emitting `activated`. There is no
+native notification while focused and no permission, scheduled-reminder, or
+plugin source in this contract. Native delivery is best-effort; the durable
+inbox remains authoritative when the OS suppresses a banner.
+
 ## 7. Session API
 
 ```ts
@@ -296,9 +358,12 @@ type ToolPermissionResolution = {
 
 ## 11. Version Compatibility
 
-- IPC contract version field: `protocolVersion: 1`
+- IPC/host contract version field: `protocolVersion: 4`
 - Breaking changes must bump the version and record an ADR
 - renderer and main validate the version at startup; on mismatch, prompt to upgrade/reinstall
+- Protocol v4 adds notification records, channels, and the
+  notification-bearing `session.endTurn` result. A v3 peer is rejected rather
+  than silently losing durable completion/failure events.
 
 ## 12. Plugin API (host UI side)
 
