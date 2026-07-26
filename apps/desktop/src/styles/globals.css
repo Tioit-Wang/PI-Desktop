@@ -623,12 +623,13 @@ textarea:disabled {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 28px;
   width: min(100%, 768px);
   max-width: 100%;
-  min-height: 100%;
-  margin-inline: auto;
+  /* Auto block margins center the stack when it fits and degrade to
+     top-aligned scrolling when it overflows (unlike justify-content:center,
+     which clips the top of overflowing content). */
+  margin: auto;
   padding: 40px 12px 28px;
   box-sizing: border-box;
 }
@@ -875,7 +876,6 @@ textarea:disabled {
 
 @media (max-height: 760px) {
   .home-stack-inner {
-    justify-content: flex-start;
     padding-top: 28px;
     gap: 20px;
   }
@@ -4879,7 +4879,6 @@ textarea:disabled {
 
 .diff-file-body {
   border-top: 1px solid var(--ds-border-subtle);
-  overflow-x: auto;
 }
 
 .diff-file-note {
@@ -4898,12 +4897,11 @@ textarea:disabled {
 
 .diff-line {
   display: flex;
-  min-width: max-content;
+  min-width: 0;
   align-items: stretch;
   font-family: var(--font-mono);
   font-size: var(--text-xs-plus);
   line-height: var(--leading-relaxed);
-  white-space: pre;
 }
 
 .diff-line-sign {
@@ -4916,7 +4914,10 @@ textarea:disabled {
 
 .diff-line-text {
   flex: 1;
+  min-width: 0;
   padding-right: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .diff-line.add {
