@@ -141,6 +141,10 @@ test("regenerate history pager and stable revision family are wired", async () =
   assert.match(mainSource, /session\.saveRevision/);
   assert.match(mainSource, /revisionRootId/);
   assert.match(mainSource, /revisionCount: count \+ 1/);
+  assert.match(
+    mainSource,
+    /save regenerate revision failed[\s\S]*?throw error;[\s\S]*?session\.replaceMessages/,
+  );
   assert.match(sharedSource, /revisionRootId\?: string/);
   assert.match(sharedSource, /MessageRevisionSummary/);
 });

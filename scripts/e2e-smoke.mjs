@@ -96,8 +96,12 @@ async function main() {
   const host = new Host(hostBin, dataDir);
   try {
     // E2E-003 host health / handshake
-    const hs = await host.call("app.handshake", { protocolVersion: 1 });
-    record("E2E-003-handshake", hs.protocolVersion === 1, `v=${hs.version}`);
+    const hs = await host.call("app.handshake", { protocolVersion: 3 });
+    record(
+      "E2E-003-handshake",
+      hs.protocolVersion === 3,
+      `v=${hs.protocolVersion}`,
+    );
     const health = await host.call("app.health");
     record("E2E-003-health", health.ok === true, `uptime=${health.uptimeMs}`);
 

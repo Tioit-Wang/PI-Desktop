@@ -989,22 +989,34 @@ function persistAgentEvent(envelope: AgentEventEnvelope) {
           typeof root.revisionRootId === "string" && root.revisionRootId
             ? root.revisionRootId
             : root.id;
-        const saved = await host.call<{ revision?: { revisionIndex?: number } }>(
-          "session.saveRevision",
-          {
-            sessionId: envelope.sessionId,
-            rootUserId: stableRootUserId,
-            messages: branch,
-            makeActive: true,
-          },
-        );
+        const listedBefore = await host.call<{
+          revisions?: Array<{ revisionIndex: number; isActive?: boolean }>
+        }>("session.listRevisions", {
+          sessionId: envelope.sessionId,
+          rootUserId: stableRootUserId,
+        });
+        const existing = listedBefore.revisions ?? [];
+        const desiredActive = Number(root.activeRevision ?? 0);
+        const alreadyPresent = existing.some((revision) => revision.revisionIndex === desiredActive);
+        let active = desiredActive || existing.length + 1;
+        if (!alreadyPresent) {
+          const saved = await host.call<{ revision?: { revisionIndex?: number } }>(
+            "session.saveRevision",
+            {
+              sessionId: envelope.sessionId,
+              rootUserId: stableRootUserId,
+              messages: branch,
+              makeActive: true,
+            },
+          );
+          active = Number(saved.revision?.revisionIndex ?? active) || active;
+        }
         const listed = await host.call<{ revisions?: Array<{ revisionIndex: number }> }>(
           "session.listRevisions",
           { sessionId: envelope.sessionId, rootUserId: stableRootUserId },
         );
         const total = listed.revisions?.length ?? Number(root.revisionCount ?? 1);
-        const active =
-          Number(saved.revision?.revisionIndex ?? root.activeRevision ?? total) || total;
+        if (!active || active < 1) active = total;
         const stamped = {
           ...root,
           revisionRootId: stableRootUserId,
@@ -1856,15 +1868,22 @@ function registerIpc() {
             typeof rootUser.revisionRootId === "string" && rootUser.revisionRootId
               ? rootUser.revisionRootId
               : rootUser.id;
-          // Archive the discarded branch under that stable root. First
-          // regenerate stores the original tail as revision 1; later ones
-          // append the currently active discarded tail.
-          await host.call("session.saveRevision", {
-            sessionId: req.sessionId,
-            rootUserId: stableRootUserId,
-            messages: discarded,
-            makeActive: false,
-          });
+          const listed = await host.call<{ revisions?: Array<{ revisionIndex: number }> }>(
+            "session.listRevisions",
+            { sessionId: req.sessionId, rootUserId: stableRootUserId },
+          );
+          const existing = listed.revisions ?? [];
+          // First regenerate only: the original live tail is not stored yet.
+          // Later regenerates already persisted the active branch on agent_end,
+          // so re-archiving here would duplicate variants.
+          if (existing.length === 0) {
+            await host.call("session.saveRevision", {
+              sessionId: req.sessionId,
+              rootUserId: stableRootUserId,
+              messages: discarded,
+              makeActive: false,
+            });
+          }
           const revisions = await host.call<{ revisions?: Array<{ revisionIndex: number }> }>(
             "session.listRevisions",
             { sessionId: req.sessionId, rootUserId: stableRootUserId },
@@ -1881,6 +1900,11 @@ function registerIpc() {
             sessionId: req.sessionId,
             data: String(error),
           });
+          // Regenerate is destructive after this point. If the running host is
+          // stale or revision persistence is unavailable, abort before
+          // truncating the live transcript so the renderer can reload the
+          // untouched branch.
+          throw error;
         }
       }
       await host.call("session.replaceMessages", {

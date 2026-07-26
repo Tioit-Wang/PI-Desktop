@@ -78,7 +78,7 @@ Params:
 
 ```ts
 type HandshakeParams = {
-  protocolVersion: 2
+  protocolVersion: 3
   client: "electron-main"
   clientVersion: string
   locale: string // default "en"
@@ -89,7 +89,7 @@ Result:
 
 ```ts
 type HandshakeResult = {
-  protocolVersion: 2
+  protocolVersion: 3
   host: "rust-host-core"
   hostVersion: string
   features: string[]
@@ -101,6 +101,8 @@ Rules:
 1. If protocol major version mismatches → abort boot
 2. Electron should exit with actionable error if handshake fails
 3. All subsequent calls require successful handshake
+4. Version 3 is required for durable regenerate revisions; a version 2 host
+   must be rejected before chat becomes interactive
 
 ## 4. Method catalog (MVP)
 

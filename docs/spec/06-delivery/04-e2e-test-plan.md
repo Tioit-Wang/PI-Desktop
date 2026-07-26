@@ -113,8 +113,11 @@ Each scenario is documented in this format:
 #### E2E-003: Rust host healthcheck responds
 
 - **Preconditions**: App is running; Rust host-core sidecar started.
-- **Steps**: 1) Electron calls host healthcheck RPC. 2) Observe response in logs.
-- **Expected**: Host returns `ok` with protocol version; handshake logged.
+- **Steps**: 1) Electron handshakes with protocol version 3. 2) Call the host
+  healthcheck RPC. 3) Repeat boot with a version 2 host fixture.
+- **Expected**: The version 3 host returns `ok` and the handshake is logged.
+  The stale version 2 host is rejected before chat becomes interactive, so
+  regenerate cannot silently run without revision RPC support.
 - **Specs linked**: `03-runtime/05-host-core-rust.md`, `03-runtime/06-host-rpc-protocol.md`
 - **Acceptance**: A (bridge normal)
 - **Milestone**: M1

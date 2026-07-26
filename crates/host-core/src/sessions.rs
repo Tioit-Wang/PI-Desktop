@@ -815,17 +815,31 @@ pub fn activate_message_revision(
     let mut combined = Vec::with_capacity(prefix.len() + branch.len());
     combined.extend_from_slice(prefix);
     combined.extend(branch.iter().cloned());
-    // stamp revision meta on the root user message when present
-    if let Some(root) = combined.iter_mut().find(|m| m.id == root_user_id) {
-        let total: i64 = tx.query_row(
-            "SELECT COUNT(*) FROM message_revisions
-             WHERE session_id = ?1 AND root_user_id = ?2",
-            params![session_id, root_user_id],
-            |row| row.get(0),
-        )?;
-        root.revision_root_id = Some(root_user_id.to_string());
-        root.revision_count = Some(total);
-        root.active_revision = Some(revision_index);
+    // Stamp revision meta on the branch's user root. After regenerate the live
+    // prompt id may differ from the stable family key, so prefer an exact id
+    // match and fall back to the first user message in the restored branch.
+    let total: i64 = tx.query_row(
+        "SELECT COUNT(*) FROM message_revisions
+         WHERE session_id = ?1 AND root_user_id = ?2",
+        params![session_id, root_user_id],
+        |row| row.get(0),
+    )?;
+    let root_pos = combined
+        .iter()
+        .position(|m| m.id == root_user_id)
+        .or_else(|| {
+            combined
+                .iter()
+                .skip(prefix.len())
+                .position(|m| m.role == "user")
+                .map(|rel| prefix.len() + rel)
+        });
+    if let Some(pos) = root_pos {
+        if let Some(root) = combined.get_mut(pos) {
+            root.revision_root_id = Some(root_user_id.to_string());
+            root.revision_count = Some(total);
+            root.active_revision = Some(revision_index);
+        }
     }
     for (seq, message) in combined.iter().enumerate() {
         insert_message(
