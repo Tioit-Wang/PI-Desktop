@@ -2854,6 +2854,26 @@ textarea:disabled {
   padding: 8px 10px 6px;
 }
 
+/* Provider→models groups: the list scrolls on its own so the thinking
+   controls above it stay reachable with many discovered models. */
+.composer-model-list {
+  max-height: 264px;
+  overflow-y: auto;
+}
+
+.composer-model-group-label {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 7px 10px 3px;
+  background: var(--ds-bg-elevated-opaque);
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs-plus);
+  font-weight: var(--font-weight-strong);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
 .composer-thinking-section {
   padding: 7px 8px 9px;
 }
@@ -5737,6 +5757,17 @@ textarea:disabled {
 
 .provider-card.is-disabled .provider-card-main {
   opacity: 0.55;
+}
+
+.provider-model-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.provider-model-row .provider-model-input {
+  flex: 1;
+  min-width: 0;
 }
 
 @media (max-width: 980px) {

@@ -24,7 +24,7 @@ import {
   IconSnapshot,
   IconSparkles,
 } from "../components/icons";
-import type { ProviderPublic } from "@pi-desktop/shared";
+import type { ModelInfo, ProviderPublic } from "@pi-desktop/shared";
 
 type SettingsTab = ReturnType<typeof useAppStore.getState>["settingsTab"];
 
@@ -503,6 +503,9 @@ function ConfigurationSection() {
   const [saving, setSaving] = useState(false);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  // Models discovered from the endpoint; null keeps the manual input.
+  const [modelOptions, setModelOptions] = useState<ModelInfo[] | null>(null);
+  const [fetchingModels, setFetchingModels] = useState(false);
 
   const dialogOpen = dialogFor !== null;
   const editingProvider =
@@ -529,12 +532,48 @@ function ConfigurationSection() {
 
   const openAdd = () => {
     setForm(EMPTY_PROVIDER_FORM);
+    setModelOptions(null);
     setDialogFor("");
   };
 
   const openEdit = (provider: ProviderPublic) => {
     setForm(formFromProvider(provider));
+    setModelOptions(null);
     setDialogFor(provider.id);
+  };
+
+  const fetchModels = async () => {
+    if (!form.baseUrl.trim() || fetchingModels) return;
+    setFetchingModels(true);
+    try {
+      const result = await api.listProviderModels({
+        providerId: editingProvider?.id,
+        baseUrl: form.baseUrl.trim(),
+        apiKey: form.apiKey || undefined,
+        apiStyle: form.apiStyle,
+      });
+      if (result.source === "remote" && result.models.length > 0) {
+        setModelOptions(result.models);
+        // Keep the current pick when the endpoint still offers it.
+        if (!result.models.some((m) => m.modelId === form.modelId.trim())) {
+          setField("modelId", result.models[0].modelId);
+        }
+        showToast(t("settings.fetchModelsCount", { count: result.models.length }), {
+          variant: "success",
+        });
+      } else {
+        showToast(
+          result.error
+            ? `${t("settings.fetchModelsFailed")}: ${result.error}`
+            : t("settings.fetchModelsFailed"),
+          { variant: "error" },
+        );
+      }
+    } catch (e) {
+      showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+    } finally {
+      setFetchingModels(false);
+    }
   };
 
   const saveProvider = async () => {
@@ -906,12 +945,52 @@ function ConfigurationSection() {
                   />
                 </Field>
                 <Field label={t("settings.modelId")}>
-                  <Input
-                    value={form.modelId}
-                    onChange={(e) => setField("modelId", e.target.value)}
-                    className="font-mono text-sm-plus"
-                    placeholder="gpt-4.1"
-                  />
+                  <div className="provider-model-row">
+                    {modelOptions ? (
+                      <Select
+                        className="provider-model-input font-mono text-sm-plus"
+                        value={
+                          modelOptions.some((m) => m.modelId === form.modelId)
+                            ? form.modelId
+                            : "__custom__"
+                        }
+                        onChange={(e) => {
+                          if (e.target.value === "__custom__") {
+                            setModelOptions(null);
+                            return;
+                          }
+                          setField("modelId", e.target.value);
+                        }}
+                      >
+                        {modelOptions.map((model) => (
+                          <option key={model.modelId} value={model.modelId}>
+                            {model.displayName !== model.modelId
+                              ? `${model.displayName} (${model.modelId})`
+                              : model.modelId}
+                          </option>
+                        ))}
+                        <option value="__custom__">
+                          {t("settings.modelManualEntry")}
+                        </option>
+                      </Select>
+                    ) : (
+                      <Input
+                        value={form.modelId}
+                        onChange={(e) => setField("modelId", e.target.value)}
+                        className="provider-model-input font-mono text-sm-plus"
+                        placeholder="gpt-4.1"
+                      />
+                    )}
+                    <Button
+                      variant="secondary"
+                      disabled={fetchingModels || !form.baseUrl.trim()}
+                      onClick={() => void fetchModels()}
+                    >
+                      {fetchingModels
+                        ? t("settings.fetchingModels")
+                        : t("settings.fetchModels")}
+                    </Button>
+                  </div>
                 </Field>
                 <Field
                   label={t("settings.apiKey")}

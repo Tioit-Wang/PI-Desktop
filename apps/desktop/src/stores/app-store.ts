@@ -4,6 +4,7 @@ import type {
   AgentEventEnvelope,
   AppSettings,
   AppVersionInfo,
+  ModelInfo,
   OnboardingState,
   PluginSummary,
   ProjectWorkspace,
@@ -188,6 +189,8 @@ export type AppState = {
   /** Run state per session id — sessions run independent agents. */
   runningSessions: Record<string, boolean>;
   providers: ProviderPublic[];
+  /** Discovered model lists per provider id (composer model menu). */
+  providerModels: Record<string, ModelInfo[]>;
   workspace?: ProjectWorkspace | null;
   onboarding?: OnboardingState;
   plugins: PluginSummary[];
@@ -247,6 +250,8 @@ export type AppState = {
   }) => SessionSummary[];
   getSortedProjects: () => ProjectWorkspace[];
   refreshProviders: () => Promise<void>;
+  /** Load a provider's model list into the cache (no-op when cached). */
+  loadProviderModels: (providerId: string) => Promise<void>;
   refreshPlugins: () => Promise<void>;
   handleAgentEvent: (envelope: AgentEventEnvelope) => void;
   setPage: (page: AppState["page"], opts?: { record?: boolean }) => void;
@@ -372,6 +377,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   isRunning: false,
   runningSessions: {},
   providers: [],
+  providerModels: {},
   plugins: [],
   permission: null,
   page: "chat",
@@ -1265,10 +1271,27 @@ export const useAppStore = create<AppState>((set, get) => ({
     ]);
     set((state) => ({
       providers: providers.providers,
+      // Provider edits may change baseUrl/apiStyle — drop stale model lists.
+      providerModels: {},
       sessions: decorateSessions(sessions.sessions, state.sessionMeta),
       settings,
       onboarding,
     }));
+  },
+
+  loadProviderModels: async (providerId) => {
+    if (get().providerModels[providerId]) return;
+    try {
+      const result = await api.listProviderModels({ providerId });
+      set((state) => ({
+        providerModels: {
+          ...state.providerModels,
+          [providerId]: result.models,
+        },
+      }));
+    } catch {
+      // Menu falls back to the provider's configured model.
+    }
   },
 
   refreshPlugins: async () => {

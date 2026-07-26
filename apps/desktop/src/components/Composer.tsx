@@ -99,6 +99,8 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   const sessions = useAppStore((s) => s.sessions);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const providers = useAppStore((s) => s.providers);
+  const providerModels = useAppStore((s) => s.providerModels);
+  const loadProviderModels = useAppStore((s) => s.loadProviderModels);
   const refreshProviders = useAppStore((s) => s.refreshProviders);
   const configureActiveSession = useAppStore((s) => s.configureActiveSession);
   const showToast = useAppStore((s) => s.showToast);
@@ -164,6 +166,18 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
       window.removeEventListener("keydown", onKey);
     };
   }, [modelOpen]);
+
+  // Opening the menu lazily fills each ready provider's model list; entries
+  // render immediately from the configured model and refine when discovery
+  // answers.
+  useEffect(() => {
+    if (!modelOpen) return;
+    for (const candidate of providers) {
+      if (candidate.enabled && (candidate.hasSecret || candidate.authKind === "none")) {
+        void loadProviderModels(candidate.id);
+      }
+    }
+  }, [modelOpen, providers, loadProviderModels]);
 
   const activeSession = sessions.find((session) => session.id === activeSessionId);
   const mode = activeSession?.mode ?? settings?.defaultMode ?? "agent";
@@ -406,54 +420,86 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                       )}
                     </div>
                     <div className="composer-plus-sep" />
-                    {providers
-                      .filter(
-                        (candidate) =>
-                          candidate.enabled &&
-                          !!candidate.defaultModelId &&
-                          (candidate.hasSecret ||
-                            candidate.authKind === "none"),
-                      )
-                      .map((candidate) => (
-                      <button
-                        key={candidate.id}
-                        className={`composer-plus-item ${
-                          provider?.id === candidate.id &&
-                          modelId === candidate.defaultModelId
-                            ? "active"
-                            : ""
-                        }`}
-                        role="menuitemradio"
-                        aria-checked={
-                          provider?.id === candidate.id &&
-                          modelId === candidate.defaultModelId
-                        }
-                        onClick={async () => {
-                          try {
-                            await configureActiveSession({
-                              mode,
-                              providerId: candidate.id,
-                              modelId: candidate.defaultModelId,
-                              thinkingLevel: thinkingLevelForProvider(
-                                candidate,
-                                thinkingLevel,
-                              ),
-                            });
-                            setModelOpen(false);
-                          } catch (e) {
-                            showToast(
-                              e instanceof Error ? e.message : String(e),
-                              { variant: "error" },
-                            );
-                          }
-                        }}
-                      >
-                        <span className="truncate">{candidate.name}</span>
-                        <span className="ml-auto max-w-[180px] truncate font-mono text-text-secondary">
-                          {candidate.defaultModelId}
-                        </span>
-                      </button>
-                    ))}
+                    <div className="composer-model-list">
+                      {providers
+                        .filter(
+                          (candidate) =>
+                            candidate.enabled &&
+                            (candidate.hasSecret ||
+                              candidate.authKind === "none"),
+                        )
+                        .map((candidate) => {
+                          const discovered = providerModels[candidate.id];
+                          const models =
+                            discovered && discovered.length > 0
+                              ? discovered
+                              : candidate.defaultModelId
+                                ? [
+                                    {
+                                      modelId: candidate.defaultModelId,
+                                      displayName: candidate.defaultModelId,
+                                    },
+                                  ]
+                                : [];
+                          if (models.length === 0) return null;
+                          return (
+                            <div
+                              key={candidate.id}
+                              className="composer-model-group"
+                              role="group"
+                              aria-label={candidate.name}
+                            >
+                              <div className="composer-model-group-label">
+                                {candidate.name}
+                              </div>
+                              {models.map((model) => {
+                                const active =
+                                  provider?.id === candidate.id &&
+                                  modelId === model.modelId;
+                                return (
+                                  <button
+                                    key={model.modelId}
+                                    className={`composer-plus-item ${active ? "active" : ""}`}
+                                    role="menuitemradio"
+                                    aria-checked={active}
+                                    onClick={async () => {
+                                      try {
+                                        await configureActiveSession({
+                                          mode,
+                                          providerId: candidate.id,
+                                          modelId: model.modelId,
+                                          thinkingLevel: thinkingLevelForProvider(
+                                            candidate,
+                                            thinkingLevel,
+                                          ),
+                                        });
+                                        setModelOpen(false);
+                                      } catch (e) {
+                                        showToast(
+                                          e instanceof Error
+                                            ? e.message
+                                            : String(e),
+                                          { variant: "error" },
+                                        );
+                                      }
+                                    }}
+                                  >
+                                    <span className="truncate">
+                                      {model.displayName || model.modelId}
+                                    </span>
+                                    {model.displayName &&
+                                    model.displayName !== model.modelId ? (
+                                      <span className="ml-auto max-w-[180px] truncate font-mono text-text-secondary">
+                                        {model.modelId}
+                                      </span>
+                                    ) : null}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          );
+                        })}
+                    </div>
                     <div className="composer-plus-sep" />
                     <button
                       className="composer-plus-item"
