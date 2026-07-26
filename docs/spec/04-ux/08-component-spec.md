@@ -544,7 +544,9 @@ Single message render — either user (plaintext) or assistant (markdown streami
   turn switches archived branches without losing history (D109). After
   Retry/Regenerate starts, the root user turn remains in the live transcript
   and owns the pager whenever `revisionCount > 1`; replacing the assistant/tool
-  tail must not move or detach that pager from the visible user bubble.
+  tail must not move or detach that pager from the user bubble. The pager is
+  part of the message action toolbar: hidden by default and revealed together
+  with Copy on row hover or keyboard focus.
 - Assistant meta: optional model badge + token-usage chip under the answer
   (collapsed summary with hover breakdown for input/output/cache/reasoning)
 - Gap: 10px vertical padding between consecutive message rows (denser than

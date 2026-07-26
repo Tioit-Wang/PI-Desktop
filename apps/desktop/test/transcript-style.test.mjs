@@ -136,6 +136,10 @@ test("regenerate history pager and stable revision family are wired", async () =
   );
   assert.doesNotMatch(transcriptSource, /showRevisionPagerHere|revisionOwner/);
   assert.match(stylesSource, /\.message-revision-pager/);
+  assert.doesNotMatch(
+    stylesSource,
+    /\.message-actions:has\(\.message-revision-pager\)[\s\S]*?opacity:\s*1/,
+  );
   assert.match(storeSource, /revisionRootId \|\| root\.id/);
   assert.match(storeSource, /activateSessionRevision/);
   assert.match(mainSource, /session\.saveRevision/);

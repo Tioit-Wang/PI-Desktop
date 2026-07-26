@@ -990,10 +990,11 @@ Each scenario is documented in this format:
   after it completes. 3) Switch to a previous variant. 4) Switch forward
   again. 5) Reload the session.
 - **Expected**: The root user bubble remains visible and shows the
-  `current / total` pager as soon as multiple variants exist; retry does not
-  move or detach the selector from that bubble. Switching restores the
-  archived assistant/tool branch in place. Reload preserves the active
-  variant and the full revision set.
+  `current / total` pager inside its action toolbar once the row is hovered or
+  focused; the toolbar, including the pager, is hidden by default. Retry does
+  not move or detach the selector from that bubble. Switching restores the
+  archived assistant/tool branch in place. Reload preserves the active variant
+  and the full revision set.
 - **Specs linked**: `04-ux/08-component-spec.md`, `03-runtime/04-data-storage.md`
 - **Acceptance**: C (chat stream), F (persistence)
 - **Milestone**: M5
@@ -1490,8 +1491,8 @@ This test plan spec is accepted when:
 
 ### US-UI-63 Regenerate history pager (D109)
 - Regenerate an assistant answer twice.
-- After each retry, expect the visible root user bubble to retain a `1/N` pager
-  and allow restoring earlier variants without losing them.
+- After each retry, hover or focus the root user bubble and expect its action
+  toolbar to expose a `1/N` pager for restoring earlier variants.
 
 
 ### US-UI-64 Empty home no composer overlap (D111)

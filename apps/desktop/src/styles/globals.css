@@ -1387,11 +1387,6 @@ textarea:disabled {
   font-variant-numeric: tabular-nums;
 }
 
-/* Revision history is stateful navigation, not a hover-only chrome chip. */
-.message-actions:has(.message-revision-pager) {
-  opacity: 1;
-}
-
 .message-revision-label {
   min-width: 34px;
   text-align: center;
