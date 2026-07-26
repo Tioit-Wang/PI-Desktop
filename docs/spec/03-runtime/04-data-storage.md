@@ -93,6 +93,48 @@ CREATE TABLE kv (
 New config domains (e.g. MCP servers) start as a namespace; they graduate to
 tables only when they need relations or indexes.
 
+#### Renderer sidebar preferences (D093)
+
+Sidebar organization is non-authoritative presentation state stored
+best-effort under renderer localStorage key
+`pi.desktop.sidebarPreferences`:
+
+```ts
+type SidebarPreferences = {
+  sessionMeta: Record<string, {
+    pinned?: boolean;
+    archived?: boolean;
+    order?: number; // compatibility/future manual order
+  }>;
+  projectMeta: Record<string, {
+    pinned?: boolean;
+    archived?: boolean;
+    collapsed?: boolean;
+    order?: number; // compatibility/future manual order
+  }>;
+  projectSort: "recent" | "created" | "oldest" | "name" | "manual";
+  sessionView: {
+    sort: "recent" | "created" | "oldest" | "name" | "manual";
+    archived: boolean;
+  };
+  openProjectPaths: string[];
+};
+```
+
+- Project keys and retained paths use normalized full paths; session keys use
+  durable session ids. Duplicate/slash-variant paths are discarded on load.
+- `manual`/`order` are compatibility fields. This baseline exposes no
+  drag/manual-reorder interaction; values without a usable order fall back to
+  a stable recent ordering.
+- Missing, malformed, or unwritable preferences fall back to empty metadata,
+  `recent`, archived hidden, and the host-selected project. Preference failure
+  never blocks a host operation.
+- The record never contains transcript content, tool arguments, provider
+  configuration, or secrets. Clearing it changes presentation only.
+- `openProjectPaths` retains sidebar tabs. The selected workspace remains
+  host-owned `kv(app, currentProjectId)` and is restored through
+  `workspace.get`; the renderer does not persist a competing active path.
+
 ### 4.2 projects — places work happens
 
 Replaces the v1 `workspace` singleton. Feeds the Projects index page (D066),
@@ -114,12 +156,14 @@ CREATE TABLE projects (
 - Project paths are trimmed, separators are normalized to `/`, and trailing
   separators are removed before the unique-path upsert. Imports therefore
   materialize one durable logical project directory per distinct path.
-- `projects.list` is the Projects index source of truth. Renderer localStorage
-  may retain presentation metadata, but cannot hide a durable imported row.
+- `projects.list` is the Projects index source of truth. Renderer preferences
+  may hide an archived project from the default sidebar, but cannot remove or
+  hide its durable Projects-index row.
 - A project row is a logical index entry. Import never creates an operating
   system directory: historical paths may be missing, remote, or read-only.
-- The *current* workspace is `kv(app, currentProjectId)` — no singleton table,
-  no partial-unique flag.
+- The *current* visible workspace is `kv(app, currentProjectId)` — no singleton
+  table, no partial-unique flag. Retained tabs do not add more current-project
+  fields.
 
 ### 4.3 providers
 
@@ -204,12 +248,17 @@ CREATE INDEX idx_sessions_project ON sessions(project_id) WHERE project_id IS NO
 - Import binds every non-empty normalized `projectPath` to `project_id`;
   path-less imports remain `NULL`. Re-importing a deterministic session id
   creates neither another session nor another project row.
-- `pinned` is retained for project-index ordering and migration compatibility;
-  D088 removes pin actions from the home sidebar. No `status` column: live
-  running/waiting state is runtime truth, not durable truth; badge data comes
-  from the latest `turns` row (§4.6) plus in-memory state.
+- The schema `pinned` column is retained for project-index ordering and
+  migration compatibility. D093 sidebar pin/archive/collapse state is the
+  renderer preference overlay and does not require a schema migration. No
+  `status` column: live running/waiting state is runtime truth, not durable
+  truth; badge data comes from the latest `turns` row (§4.6) plus in-memory
+  state.
 - `source` + deterministic imported ids keep re-imports idempotent and let the
   UI badge imported sessions.
+- `project_id` is also the tool-root authority for that session. Switching the
+  visible workspace cannot redirect an in-flight or later tool call belonging
+  to a different session.
 
 ### 4.6 turns — one row per agent run
 
@@ -530,7 +579,12 @@ anything the host filters, joins, sums, or indexes.
 6. FTS finds CJK and ASCII substrings across sessions; deleting a session
    removes its index entries
 7. Plugin uninstall clears `kv(plugin:<id>)` in one statement
-8. A session's thinking level survives restart; a v2 database opens at v3
-   with every existing session set to `off`
-9. Assistant thinking blocks round-trip independently from final answer text;
-   the derived search text excludes thinking content
+8. Resetting sidebar preferences changes no `projects`, `sessions`, or
+   transcript row; retained paths and organization choices survive a normal
+   renderer restart when preferences are available
+9. A tool call for session A resolves A's persisted project root even after
+   the visible workspace switches to project B
+10. A session's thinking level survives restart; a v2 database opens at v3
+    with every existing session set to `off`
+11. Assistant thinking blocks round-trip independently from final answer text;
+    the derived search text excludes thinking content

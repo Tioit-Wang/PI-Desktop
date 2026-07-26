@@ -171,6 +171,19 @@ fn thinking_level_param(params: &Value) -> Result<Option<String>, JsonRpcError> 
     Ok(Some(level.to_string()))
 }
 
+fn resolve_tool_workspace(
+    state: &AppState,
+    session_id: &str,
+) -> Result<Option<String>, JsonRpcError> {
+    match sessions::get_session(&state.db, session_id) {
+        Ok(Some(detail)) => Ok(detail.summary.project_path),
+        // Compatibility fallback for old callers that did not persist a
+        // session before dispatching a tool request.
+        Ok(None) => Ok(state.workspace.path.clone()),
+        Err(error) => Err(rpc_err(1000, error.to_string(), "INTERNAL")),
+    }
+}
+
 async fn emit_notification(tx: &mpsc::UnboundedSender<String>, method: &str, params: Value) {
     let note = JsonRpcNotification {
         jsonrpc: "2.0",
@@ -870,7 +883,12 @@ async fn handle_request(
                     &p.mode,
                     &st.session_grants,
                 );
-                let ws = st.workspace.path.clone();
+                // Resolve the tool root from the persisted session instead of
+                // the mutable global workspace. This keeps background turns
+                // isolated when the renderer switches between project tabs.
+                // Fall back to the global workspace only for legacy callers
+                // that do not have a persisted session.
+                let ws = resolve_tool_workspace(&st, &p.session_id)?;
                 if let Some(decision) = auto {
                     (Some(decision), ws, None, None)
                 } else {
@@ -1211,5 +1229,65 @@ async fn handle_request(
             format!("method not found: {method}"),
             "NOT_FOUND",
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use super::resolve_tool_workspace;
+    use crate::sessions;
+    use crate::state::AppState;
+
+    #[test]
+    fn tool_workspace_follows_the_persisted_session_project() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let project_a = data_dir.path().join("project-a");
+        let project_b = data_dir.path().join("project-b");
+        fs::create_dir_all(&project_a).unwrap();
+        fs::create_dir_all(&project_b).unwrap();
+        let mut state = AppState::open(data_dir.path()).unwrap();
+        state.workspace.set(&project_b);
+        let session = sessions::create_session(
+            &state.db,
+            Some("Project A".into()),
+            Some("agent".into()),
+            None,
+            None,
+            Some(project_a.to_string_lossy().into_owned()),
+        )
+        .unwrap();
+
+        let resolved = resolve_tool_workspace(&state, &session.id).unwrap();
+
+        assert_eq!(
+            resolved.as_deref(),
+            Some(project_a.canonicalize().unwrap().to_string_lossy().as_ref())
+        );
+    }
+
+    #[test]
+    fn temporary_session_does_not_inherit_the_active_workspace() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let active_project = data_dir.path().join("active-project");
+        fs::create_dir_all(&active_project).unwrap();
+        let mut state = AppState::open(data_dir.path()).unwrap();
+        state.workspace.set(&active_project);
+        let session = sessions::create_session(
+            &state.db,
+            Some("Temporary".into()),
+            Some("agent".into()),
+            None,
+            None,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(resolve_tool_workspace(&state, &session.id).unwrap(), None);
+        assert_eq!(
+            resolve_tool_workspace(&state, "legacy-missing-session").unwrap(),
+            state.workspace.path
+        );
     }
 }

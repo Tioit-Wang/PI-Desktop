@@ -56,7 +56,8 @@ interface AgentRuntime {
 ## 5. Prompt flow
 
 1. load the durable session and reject a missing session
-2. resolve that session's mode/provider/model (app defaults are legacy fallback)
+2. resolve that session's mode/provider/model and project binding (app/current
+   workspace defaults are legacy fallback only)
 3. resolve reasoning capability for that exact provider/model and clamp the
    durable session thinking level to the nearest supported value
 4. validate model/secret availability
@@ -65,7 +66,8 @@ interface AgentRuntime {
 7. start pi turn with the resolved session configuration and effective
    thinking level
 8. stream normalized answer and thinking events to UI
-9. on tool calls, delegate to Rust host bridge
+9. on tool calls, delegate to Rust host bridge with the durable `sessionId`;
+   host resolves the session-bound workspace root
 10. finalize and persist answer/thinking blocks independently
 
 ## 5b. Mode defaults
@@ -142,6 +144,9 @@ Local models are supported through OpenAI-compatible endpoints (Ollama, LM Studi
 | same session | single turn serial |
 | different sessions | limited parallel |
 | tools | sequential by default |
+
+Selecting another project tab affects only the visible shell workspace. It
+does not dispose, abort, or re-root a runtime belonging to another session.
 
 ## 9. Abort semantics
 

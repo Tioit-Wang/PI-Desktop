@@ -15,8 +15,24 @@ import type {
 } from "@pi-desktop/shared";
 import { PROTOCOL_VERSION } from "@pi-desktop/shared";
 import { api } from "../lib/api";
-import { rememberProject } from "../lib/recent-projects";
-import { sessionMatchesProject } from "../lib/sidebar-session-groups";
+import { rememberProject, setProjectPinned } from "../lib/recent-projects";
+import { normalizeProjectPath, sessionMatchesProject } from "../lib/sidebar-session-groups";
+import {
+  loadSidebarPreferences,
+  projectIsArchived,
+  projectIsCollapsed,
+  projectIsPinned,
+  projectWorkspaceFromPath,
+  saveSidebarPreferences,
+  sessionIsArchived,
+  sessionIsPinned,
+  sortProjects,
+  sortSessions,
+  type ProjectMeta,
+  type ProjectSort,
+  type SessionMeta,
+  type SessionSort,
+} from "../lib/sidebar-preferences";
 import { formatToolValue } from "../lib/tool-display";
 
 // Sessions created before locale switches keep their old default title, so
@@ -61,12 +77,32 @@ export function isDefaultSessionTitle(title?: string | null) {
   );
 }
 
-type AppState = {
+export type SessionView = {
+  sort: SessionSort;
+  /** Alias retained for sidebar consumers that use the explicit name. */
+  sortBy?: SessionSort;
+  /** Whether archived sessions are included in sidebar queries. */
+  archived: boolean;
+  showArchived?: boolean;
+};
+
+export type AppState = {
   ready: boolean;
   version?: AppVersionInfo;
   healthOk: boolean;
   settings?: AppSettings;
   sessions: SessionSummary[];
+  /** Renderer-owned conversation presentation metadata. */
+  sessionMeta: Record<string, SessionMeta>;
+  sessionView: SessionView;
+  /** Open project tabs and the host's currently active workspace. */
+  openProjects: ProjectWorkspace[];
+  openProjectPaths: string[];
+  activeProjectPath?: string;
+  projectMeta: Record<string, ProjectMeta>;
+  /** Kept as a flat map for lightweight consumers (Sidebar). */
+  projectCollapsed: Record<string, boolean>;
+  projectSort: ProjectSort;
   activeSessionId?: string;
   messages: UiMessage[];
   isRunning: boolean;
@@ -97,7 +133,33 @@ type AppState = {
   sendPrompt: (content: string) => Promise<void>;
   abort: () => Promise<void>;
   openProject: () => Promise<void>;
+  activateProject: (path: string) => Promise<ProjectWorkspace | null>;
+  openProjectPath: (path: string) => Promise<ProjectWorkspace | null>;
+  switchProjectPath: (path: string) => Promise<ProjectWorkspace | null>;
+  closeProjectPath: (path: string) => Promise<void>;
   clearProject: () => Promise<void>;
+  toggleSessionPinned: (id: string) => void;
+  toggleSessionArchived: (id: string) => void;
+  archiveSession: (id: string) => void;
+  restoreSession: (id: string) => void;
+  deleteSession: (id: string) => Promise<void>;
+  setSessionSort: (sort: SessionSort) => void;
+  setSessionArchiveVisibility: (show: boolean) => void;
+  setSessionView: (view: Partial<SessionView> | boolean) => void;
+  setShowArchived: (show: boolean) => void;
+  toggleProjectPinned: (path: string, pinned?: boolean) => void;
+  toggleProjectArchived: (path: string) => void;
+  restoreProject: (path: string) => void;
+  archiveProject: (path: string) => void;
+  setProjectCollapsed: (path: string, collapsed?: boolean) => void;
+  toggleProjectCollapsed: (path: string) => void;
+  closeProject: (path: string) => Promise<void>;
+  setProjectSort: (sort: ProjectSort) => void;
+  getVisibleSessions: (options?: {
+    projectPath?: string | null;
+    includeArchived?: boolean;
+  }) => SessionSummary[];
+  getSortedProjects: () => ProjectWorkspace[];
   refreshProviders: () => Promise<void>;
   refreshPlugins: () => Promise<void>;
   handleAgentEvent: (envelope: AgentEventEnvelope) => void;
@@ -117,10 +179,88 @@ type AppState = {
   clearComposerPrefill: () => void;
 };
 
+const initialSidebarPreferences = loadSidebarPreferences();
+function decorateSessions(
+  sessions: SessionSummary[],
+  meta: Record<string, SessionMeta>,
+): SessionSummary[] {
+  return sessions.map((session) => ({
+    ...session,
+    pinned: sessionIsPinned(session.id, meta),
+    archived: sessionIsArchived(session.id, meta),
+  }));
+}
+
+function promoteProjectPath(paths: string[], rawPath: string): string[] {
+  const key = normalizeProjectPath(rawPath);
+  if (!key) return paths;
+  const withoutPath = paths.filter(
+    (path) => normalizeProjectPath(path) !== key,
+  );
+  return [...withoutPath, rawPath];
+}
+
+function removeProjectPath(paths: string[], rawPath: string): string[] {
+  const key = normalizeProjectPath(rawPath);
+  return key
+    ? paths.filter((path) => normalizeProjectPath(path) !== key)
+    : paths;
+}
+
+function upsertWorkspace(
+  projects: ProjectWorkspace[],
+  workspace: ProjectWorkspace,
+): ProjectWorkspace[] {
+  const key = normalizeProjectPath(workspace.path);
+  if (!key) return projects;
+  const index = projects.findIndex((item) => normalizeProjectPath(item.path) === key);
+  if (index < 0) return [...projects, workspace];
+  const next = projects.slice();
+  next[index] = { ...next[index], ...workspace };
+  return next;
+}
+
+function preferencesFromState(state: Pick<
+  AppState,
+  | "sessionMeta"
+  | "projectMeta"
+  | "projectSort"
+  | "sessionView"
+  | "openProjectPaths"
+>) {
+  return {
+    sessionMeta: state.sessionMeta,
+    projectMeta: state.projectMeta,
+    projectSort: state.projectSort,
+    sessionView: state.sessionView,
+    openProjectPaths: state.openProjectPaths,
+  };
+}
+
+function persistCurrentSidebar(getState: () => AppState): void {
+  saveSidebarPreferences(preferencesFromState(getState()));
+}
+
 export const useAppStore = create<AppState>((set, get) => ({
   ready: false,
   healthOk: false,
   sessions: [],
+  sessionMeta: initialSidebarPreferences.sessionMeta,
+  sessionView: {
+    ...initialSidebarPreferences.sessionView,
+    sortBy: initialSidebarPreferences.sessionView.sort,
+    showArchived: initialSidebarPreferences.sessionView.archived,
+  },
+  openProjects: initialSidebarPreferences.openProjectPaths.map(projectWorkspaceFromPath),
+  openProjectPaths: initialSidebarPreferences.openProjectPaths,
+  activeProjectPath: undefined,
+  projectMeta: initialSidebarPreferences.projectMeta,
+  projectCollapsed: Object.fromEntries(
+    Object.entries(initialSidebarPreferences.projectMeta)
+      .filter(([, meta]) => meta.collapsed === true)
+      .map(([path]) => [path, true]),
+  ),
+  projectSort: initialSidebarPreferences.projectSort,
   messages: [],
   isRunning: false,
   runningSessions: {},
@@ -167,22 +307,39 @@ export const useAppStore = create<AppState>((set, get) => ({
           errorCode: "PROTOCOL_MISMATCH",
         });
       }
+      const currentWorkspace = project.workspace;
+      const persistedPaths = get().openProjectPaths;
+      // Only explicitly retained tabs are restored. Historical sessions stay
+      // available in Projects, but must not silently reopen a tab that was
+      // intentionally closed.
+      const openProjectPaths = currentWorkspace?.path
+        ? promoteProjectPath(persistedPaths, currentWorkspace.path)
+        : persistedPaths;
+      const openProjects = openProjectPaths.map((path) => projectWorkspaceFromPath(path));
+      const hydratedProjects = currentWorkspace
+        ? upsertWorkspace(openProjects, currentWorkspace)
+        : openProjects;
+      const hydratedSessions = decorateSessions(sessions.sessions, get().sessionMeta);
       set({
         ready: true,
         version,
         healthOk: health.ok,
         settings,
-        sessions: sessions.sessions,
+        sessions: hydratedSessions,
         providers: providers.providers,
-        workspace: project.workspace,
+        workspace: currentWorkspace,
+        activeProjectPath: currentWorkspace?.path,
+        openProjectPaths,
+        openProjects: hydratedProjects,
         onboarding,
         plugins: plugins.plugins,
       });
-      if (project.workspace?.path) {
+      saveSidebarPreferences(preferencesFromState(get()));
+      if (currentWorkspace?.path) {
         rememberProject({
-          path: project.workspace.path,
-          name: project.workspace.name || project.workspace.path,
-          branch: project.workspace.branch,
+          path: currentWorkspace.path,
+          name: currentWorkspace.name || currentWorkspace.path,
+          branch: currentWorkspace.branch,
         });
       }
       // Codex opens an empty draft home ("What should we build…") rather than
@@ -199,11 +356,28 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   refreshSessions: async () => {
     const sessions = await api.listSessions();
-    set({ sessions: sessions.sessions });
+    set({ sessions: decorateSessions(sessions.sessions, get().sessionMeta) });
   },
 
   selectSession: async (id, opts) => {
     const detail = await api.getSession(id);
+    const sessionProjectPath = detail.session?.projectPath;
+    // Selecting a conversation also selects its project tab. This is what
+    // makes several open projects behave like independent sidebar scopes.
+    if (sessionProjectPath) {
+      if (
+        !sessionMatchesProject(
+          { projectPath: get().activeProjectPath },
+          sessionProjectPath,
+        )
+      ) {
+        const workspace = await get().activateProject(sessionProjectPath);
+        if (!workspace) throw new Error("Unable to activate project workspace");
+      }
+    } else if (get().workspace) {
+      // Temporary conversations have no workspace context.
+      await get().clearProject();
+    }
     const record = opts?.record !== false;
     if (!record) {
       set((s) => ({
@@ -236,27 +410,40 @@ export const useAppStore = create<AppState>((set, get) => ({
       options && "projectPath" in options
         ? options.projectPath ?? null
         : get().workspace?.path ?? null;
+    if (
+      requestedProjectPath &&
+      !sessionMatchesProject(
+        { projectPath: get().activeProjectPath },
+        requestedProjectPath,
+      )
+    ) {
+      const workspace = await get().activateProject(requestedProjectPath);
+      if (!workspace) throw new Error("Unable to activate project workspace");
+    }
 
     // Codex reuses an empty draft thread instead of stacking "New task" rows.
     for (const session of get().sessions) {
       if (
         !isDefaultSessionTitle(session.title) ||
+        sessionIsArchived(session.id, get().sessionMeta) ||
         !sessionMatchesProject(session, requestedProjectPath)
       ) {
         continue;
       }
+      let messages: UiMessage[];
       try {
         const detail = await api.getSession(session.id);
-        const messages = detail.session?.messages ?? [];
-        if (messages.length === 0) {
-          if (requestedProjectPath === null && get().workspace) {
-            await get().clearProject();
-          }
-          await get().selectSession(session.id);
-          return;
-        }
+        messages = detail.session?.messages ?? [];
       } catch {
-        // fall through to create
+        // A stale summary must not prevent creating a replacement draft.
+        continue;
+      }
+      if (messages.length === 0) {
+        if (requestedProjectPath === null && get().workspace) {
+          await get().clearProject();
+        }
+        await get().selectSession(session.id);
+        return;
       }
     }
     if (requestedProjectPath === null && get().workspace) {
@@ -307,7 +494,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const result = await api.configureSession(sessionId, config);
     set((state) => ({
       sessions: state.sessions.map((session) =>
-        session.id === sessionId ? result.session : session,
+        session.id === sessionId
+          ? {
+              ...result.session,
+              pinned: sessionIsPinned(sessionId, state.sessionMeta),
+              archived: sessionIsArchived(sessionId, state.sessionMeta),
+            }
+          : session,
       ),
     }));
   },
@@ -361,17 +554,110 @@ export const useAppStore = create<AppState>((set, get) => ({
     }));
   },
 
+  activateProject: async (path) => {
+    const requestedPath = path.trim();
+    if (!requestedPath) return null;
+    const result = await api.setProject(requestedPath);
+    const workspace = result.workspace;
+    if (!workspace?.path) return null;
+
+    set((state) => {
+      const switchesVisibleProject =
+        normalizeProjectPath(state.activeProjectPath) !==
+        normalizeProjectPath(workspace.path);
+      const openProjectPaths = promoteProjectPath(
+        state.openProjectPaths,
+        workspace.path,
+      );
+      const openProjects = upsertWorkspace(state.openProjects, workspace);
+      return {
+        workspace,
+        activeProjectPath: workspace.path,
+        openProjectPaths,
+        openProjects,
+        page: "chat" as const,
+        ...(switchesVisibleProject
+          ? {
+              activeSessionId: undefined,
+              messages: [],
+              isRunning: false,
+            }
+          : {}),
+      };
+    });
+    rememberProject({
+      path: workspace.path,
+      name: workspace.name || workspace.path,
+      branch: workspace.branch,
+    });
+    persistCurrentSidebar(get);
+    return workspace;
+  },
+
+  openProjectPath: async (path) => get().activateProject(path),
+  switchProjectPath: async (path) => get().activateProject(path),
+
+  closeProjectPath: async (path) => {
+    const key = normalizeProjectPath(path);
+    if (!key) return;
+    const state = get();
+    const isActive = normalizeProjectPath(state.activeProjectPath) === key;
+    const nextPaths = removeProjectPath(state.openProjectPaths, path);
+    if (isActive) {
+      const fallbackPath = nextPaths[nextPaths.length - 1];
+      try {
+        if (fallbackPath) await get().activateProject(fallbackPath);
+        else await get().clearProject();
+      } catch (error) {
+        // Keep the current workspace/tab intact when the fallback fails.
+        throw error;
+      }
+    }
+    set((current) => ({
+      openProjectPaths: removeProjectPath(current.openProjectPaths, path),
+      openProjects: current.openProjects.filter(
+        (project) => normalizeProjectPath(project.path) !== key,
+      ),
+    }));
+    persistCurrentSidebar(get);
+  },
+  closeProject: async (path) => get().closeProjectPath(path),
+
   openProject: async () => {
     const result = await api.openProject();
-    if (!result.canceled) {
-      set({ workspace: result.workspace });
-      if (result.workspace?.path) {
+    if (!result.canceled && result.workspace) {
+      const workspace = result.workspace;
+      set((state) => {
+        const switchesVisibleProject =
+          normalizeProjectPath(state.activeProjectPath) !==
+          normalizeProjectPath(workspace.path);
+        const openProjectPaths = promoteProjectPath(
+          state.openProjectPaths,
+          workspace.path,
+        );
+        return {
+          workspace,
+          activeProjectPath: workspace.path,
+          openProjectPaths,
+          openProjects: upsertWorkspace(state.openProjects, workspace),
+          page: "chat" as const,
+          ...(switchesVisibleProject
+            ? {
+                activeSessionId: undefined,
+                messages: [],
+                isRunning: false,
+              }
+            : {}),
+        };
+      });
+      if (workspace.path) {
         rememberProject({
-          path: result.workspace.path,
-          name: result.workspace.name || result.workspace.path,
-          branch: result.workspace.branch,
+          path: workspace.path,
+          name: workspace.name || workspace.path,
+          branch: workspace.branch,
         });
       }
+      persistCurrentSidebar(get);
       const onboarding = await api.getOnboarding();
       set({ onboarding, page: "chat" });
     }
@@ -379,9 +665,241 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   clearProject: async () => {
     await api.clearProject();
-    set({ workspace: null });
+    set({
+      workspace: null,
+      activeProjectPath: undefined,
+      activeSessionId: undefined,
+      messages: [],
+      isRunning: false,
+    });
+    persistCurrentSidebar(get);
     const onboarding = await api.getOnboarding();
     set({ onboarding });
+  },
+
+  toggleSessionPinned: (id) => {
+    if (!id) return;
+    set((state) => {
+      const pinned = !sessionIsPinned(id, state.sessionMeta);
+      const sessionMeta = {
+        ...state.sessionMeta,
+        [id]: { ...(state.sessionMeta[id] || {}), pinned },
+      };
+      const sessions = state.sessions.map((session) =>
+        session.id === id ? { ...session, pinned } : session,
+      );
+      return { sessionMeta, sessions };
+    });
+    persistCurrentSidebar(get);
+  },
+
+  toggleSessionArchived: (id) => {
+    if (!id) return;
+    set((state) => {
+      const archived = !sessionIsArchived(id, state.sessionMeta);
+      const sessionMeta = {
+        ...state.sessionMeta,
+        [id]: { ...(state.sessionMeta[id] || {}), archived },
+      };
+      const sessions = state.sessions.map((session) =>
+        session.id === id ? { ...session, archived } : session,
+      );
+      return { sessionMeta, sessions };
+    });
+    persistCurrentSidebar(get);
+  },
+
+  archiveSession: (id) => {
+    if (!id) return;
+    set((state) => ({
+      sessionMeta: {
+        ...state.sessionMeta,
+        [id]: { ...(state.sessionMeta[id] || {}), archived: true },
+      },
+      sessions: state.sessions.map((session) =>
+        session.id === id ? { ...session, archived: true } : session,
+      ),
+    }));
+    persistCurrentSidebar(get);
+  },
+
+  restoreSession: (id) => {
+    if (!id) return;
+    set((state) => ({
+      sessionMeta: {
+        ...state.sessionMeta,
+        [id]: { ...(state.sessionMeta[id] || {}), archived: false },
+      },
+      sessions: state.sessions.map((session) =>
+        session.id === id ? { ...session, archived: false } : session,
+      ),
+    }));
+    persistCurrentSidebar(get);
+  },
+
+  deleteSession: async (id) => {
+    if (!id) return;
+    await api.deleteSession(id);
+    set((state) => {
+      const sessionMeta = { ...state.sessionMeta };
+      delete sessionMeta[id];
+      const sessions = state.sessions.filter((session) => session.id !== id);
+      const runningSessions = { ...state.runningSessions };
+      delete runningSessions[id];
+      const retainedNav = state.navStack.filter(
+        (entry) => entry.sessionId !== id,
+      );
+      const navStack =
+        retainedNav.length > 0 ? retainedNav : [{ page: "chat" as const }];
+      return {
+        sessionMeta,
+        sessions,
+        runningSessions,
+        activeSessionId:
+          state.activeSessionId === id ? undefined : state.activeSessionId,
+        messages: state.activeSessionId === id ? [] : state.messages,
+        isRunning: state.activeSessionId === id ? false : state.isRunning,
+        permission:
+          state.permission?.sessionId === id ? null : state.permission,
+        navStack,
+        navIndex: Math.min(state.navIndex, navStack.length - 1),
+      };
+    });
+    persistCurrentSidebar(get);
+    await get().refreshSessions();
+  },
+
+  setSessionSort: (sort) => {
+    set((state) => ({
+      sessionView: { ...state.sessionView, sort, sortBy: sort },
+    }));
+    persistCurrentSidebar(get);
+  },
+
+  setSessionArchiveVisibility: (show) => {
+    set((state) => ({
+      sessionView: { ...state.sessionView, archived: show, showArchived: show },
+    }));
+    persistCurrentSidebar(get);
+  },
+
+  setSessionView: (view) => {
+    if (typeof view === "boolean") {
+      get().setSessionArchiveVisibility(view);
+      return;
+    }
+    if (view.sort || view.sortBy) {
+      get().setSessionSort(view.sort ?? view.sortBy ?? get().sessionView.sort);
+    }
+    if (view.archived !== undefined || view.showArchived !== undefined) {
+      get().setSessionArchiveVisibility(view.archived ?? view.showArchived ?? false);
+    }
+  },
+
+  setShowArchived: (show) => {
+    get().setSessionArchiveVisibility(show);
+  },
+
+  archiveProject: (path) => {
+    const key = normalizeProjectPath(path);
+    if (!key) return;
+    set((state) => ({
+      projectMeta: {
+        ...state.projectMeta,
+        [key]: { ...(state.projectMeta[key] || {}), archived: true },
+      },
+    }));
+    persistCurrentSidebar(get);
+  },
+
+  toggleProjectPinned: (path, requestedPinned) => {
+    const key = normalizeProjectPath(path);
+    if (!key) return;
+    set((state) => {
+      const pinned = requestedPinned ?? !projectIsPinned(key, state.projectMeta);
+      return {
+        projectMeta: {
+          ...state.projectMeta,
+          [key]: { ...(state.projectMeta[key] || {}), pinned },
+        },
+      };
+    });
+    // Keep the projects page's legacy recents index in sync as well.
+    try {
+      setProjectPinned(path, projectIsPinned(key, get().projectMeta));
+    } catch {
+      // The durable recent-project index is optional in restricted contexts.
+    }
+    persistCurrentSidebar(get);
+  },
+
+  toggleProjectArchived: (path) => {
+    const key = normalizeProjectPath(path);
+    if (!key) return;
+    set((state) => {
+      const archived = !projectIsArchived(key, state.projectMeta);
+      return {
+        projectMeta: {
+          ...state.projectMeta,
+          [key]: { ...(state.projectMeta[key] || {}), archived },
+        },
+      };
+    });
+    persistCurrentSidebar(get);
+  },
+
+  restoreProject: (path) => {
+    const key = normalizeProjectPath(path);
+    if (!key) return;
+    set((state) => ({
+      projectMeta: {
+        ...state.projectMeta,
+        [key]: { ...(state.projectMeta[key] || {}), archived: false },
+      },
+    }));
+    persistCurrentSidebar(get);
+  },
+
+  setProjectCollapsed: (path, collapsed) => {
+    const key = normalizeProjectPath(path);
+    if (!key) return;
+    set((state) => {
+      const next = collapsed ?? !projectIsCollapsed(key, state.projectMeta);
+      return {
+        projectCollapsed: { ...state.projectCollapsed, [key]: next },
+        projectMeta: {
+          ...state.projectMeta,
+          [key]: { ...(state.projectMeta[key] || {}), collapsed: next },
+        },
+      };
+    });
+    persistCurrentSidebar(get);
+  },
+
+  toggleProjectCollapsed: (path) => get().setProjectCollapsed(path),
+
+  setProjectSort: (sort) => {
+    set({ projectSort: sort });
+    persistCurrentSidebar(get);
+  },
+
+  getVisibleSessions: (options) => {
+    const state = get();
+    const includeArchived = options?.includeArchived ?? state.sessionView.archived;
+    const scoped = options && "projectPath" in options
+      ? state.sessions.filter((session) =>
+          sessionMatchesProject(session, options.projectPath),
+        )
+      : state.sessions;
+    return sortSessions(scoped, state.sessionMeta, state.sessionView.sort, includeArchived);
+  },
+
+  getSortedProjects: () => {
+    const state = get();
+    const projects = state.openProjects.filter(
+      (project) => !projectIsArchived(project.path, state.projectMeta),
+    );
+    return sortProjects(projects, state.projectMeta, state.projectSort);
   },
 
   refreshProviders: async () => {
@@ -391,12 +909,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       api.getSettings(),
       api.getOnboarding(),
     ]);
-    set({
+    set((state) => ({
       providers: providers.providers,
-      sessions: sessions.sessions,
+      sessions: decorateSessions(sessions.sessions, state.sessionMeta),
       settings,
       onboarding,
-    });
+    }));
   },
 
   refreshPlugins: async () => {

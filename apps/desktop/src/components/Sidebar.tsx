@@ -1,22 +1,132 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { isDefaultSessionTitle, useAppStore } from "../stores/app-store";
-import { groupSidebarSessions, normalizeProjectPath } from "../lib/sidebar-session-groups";
+import { normalizeProjectPath } from "../lib/sidebar-session-groups";
+import type { ProjectWorkspace, SessionSummary } from "@pi-desktop/shared";
+import type {
+  ProjectMeta,
+  SessionMeta,
+  SessionSort,
+} from "../lib/sidebar-preferences";
+import { BrandLogo } from "./BrandLogo";
 import {
+  IconArchive,
+  IconArchiveRestore,
+  IconArrowUpDown,
   IconAt,
+  IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
-  IconCompose,
+  IconNewSession,
   IconFolder,
   IconCloudDown,
   IconHelp,
   IconGear,
+  IconMore,
   IconPanel,
-  IconPlus,
+  IconPin,
   IconSearch,
   IconSettings,
   IconSliders,
+  IconX,
 } from "./icons";
+
+type ProjectEntry = {
+  path: string;
+  key: string;
+  name: string;
+  sessions: SessionSummary[];
+  open: boolean;
+  active: boolean;
+  meta: ProjectMeta;
+};
+
+function projectName(path: string, fallback?: string) {
+  if (fallback?.trim()) return fallback.trim();
+  const clean = path.replace(/[\\/]+$/, "");
+  const parts = clean.split(/[\\/]/).filter(Boolean);
+  return parts[parts.length - 1] || path;
+}
+
+function timestamp(value?: string) {
+  const parsed = value ? Date.parse(value) : 0;
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function optionalTimestamp(value?: string): number | null {
+  const parsed = value ? Date.parse(value) : NaN;
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sessionArchived(
+  session: SessionSummary,
+  meta: SessionMeta | undefined,
+): boolean {
+  return Boolean(meta?.archived || (session as SessionSummary & { archived?: boolean }).archived);
+}
+
+function sessionPinned(
+  session: SessionSummary,
+  meta: SessionMeta | undefined,
+): boolean {
+  return Boolean(meta?.pinned || (session as SessionSummary & { pinned?: boolean }).pinned);
+}
+
+function projectMetaFor(
+  path: string,
+  projectMeta: Record<string, ProjectMeta>,
+): ProjectMeta {
+  return projectMeta[normalizeProjectPath(path) || path] ?? projectMeta[path] ?? {};
+}
+
+function projectDomId(path: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < path.length; index += 1) {
+    hash ^= path.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return `sidebar-project-${(hash >>> 0).toString(36)}`;
+}
+
+function firstSessionDate(
+  sessions: SessionSummary[],
+  field: "createdAt" | "updatedAt",
+): number | null {
+  const values = sessions
+    .map((session) => timestamp(session[field]))
+    .filter((value) => value > 0);
+  return values.length ? Math.min(...values) : null;
+}
+
+function lastSessionDate(
+  sessions: SessionSummary[],
+  field: "createdAt" | "updatedAt",
+): number | null {
+  const values = sessions
+    .map((session) => timestamp(session[field]))
+    .filter((value) => value > 0);
+  return values.length ? Math.max(...values) : null;
+}
+
+function compareOptionalDate(
+  a: number | null,
+  b: number | null,
+  descending: boolean,
+): number {
+  if (a === null && b === null) return 0;
+  if (a === null) return 1;
+  if (b === null) return -1;
+  return descending ? b - a : a - b;
+}
 
 export function Sidebar({
   collapsed,
@@ -28,11 +138,16 @@ export function Sidebar({
   const { t } = useTranslation();
   const sessions = useAppStore((s) => s.sessions);
   const activeSessionId = useAppStore((s) => s.activeSessionId);
-  const selectSession = useAppStore((s) => s.selectSession);
-  const newSession = useAppStore((s) => s.newSession);
-  const openProject = useAppStore((s) => s.openProject);
-  const clearProject = useAppStore((s) => s.clearProject);
   const workspace = useAppStore((s) => s.workspace);
+  const openProjects = useAppStore((s) => s.openProjects);
+  const openProjectPathsState = useAppStore((s) => s.openProjectPaths);
+  const activeProjectPathState = useAppStore((s) => s.activeProjectPath);
+  const projectMeta = useAppStore((s) => s.projectMeta);
+  const projectCollapsed = useAppStore((s) => s.projectCollapsed);
+  const sessionMeta = useAppStore((s) => s.sessionMeta);
+  const sessionView = useAppStore((s) => s.sessionView);
+  const projectSort = useAppStore((s) => s.projectSort);
+  const runningSessions = useAppStore((s) => s.runningSessions);
   const setPage = useAppStore((s) => s.setPage);
   const settings = useAppStore((s) => s.settings);
   const page = useAppStore((s) => s.page);
@@ -40,123 +155,838 @@ export function Sidebar({
   const navForward = useAppStore((s) => s.navForward);
   const navIndex = useAppStore((s) => s.navIndex);
   const navStack = useAppStore((s) => s.navStack);
-  const canBack = navIndex > 0;
-  const canForward = navIndex < navStack.length - 1;
+  const selectSession = useAppStore((s) => s.selectSession);
+  const newSession = useAppStore((s) => s.newSession);
+  const openProject = useAppStore((s) => s.openProject);
+  const clearProject = useAppStore((s) => s.clearProject);
+  const activateProject = useAppStore((s) => s.activateProject);
+  const closeProjectAction = useAppStore((s) => s.closeProject);
+  const toggleSessionPinned = useAppStore((s) => s.toggleSessionPinned);
+  const archiveSessionAction = useAppStore((s) => s.archiveSession);
+  const restoreSession = useAppStore((s) => s.restoreSession);
+  const deleteSessionAction = useAppStore((s) => s.deleteSession);
+  const setSessionSort = useAppStore((s) => s.setSessionSort);
+  const setSessionArchiveVisibility = useAppStore((s) => s.setSessionArchiveVisibility);
+  const toggleProjectPinned = useAppStore((s) => s.toggleProjectPinned);
+  const archiveProjectAction = useAppStore((s) => s.archiveProject);
+  const restoreProject = useAppStore((s) => s.restoreProject);
+  const setProjectCollapsed = useAppStore((s) => s.setProjectCollapsed);
+  const setProjectSort = useAppStore((s) => s.setProjectSort);
+  const showToast = useAppStore((s) => s.showToast);
+
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [sortOpen, setSortOpen] = useState(false);
+  const [sessionMenu, setSessionMenu] = useState<string | null>(null);
+  const [projectMenu, setProjectMenu] = useState<string | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
+  const [temporaryCollapsed, setTemporaryCollapsed] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuFirstItemRef = useRef<HTMLButtonElement | null>(null);
+
+  const showArchived = sessionView.archived;
+  const sessionSort = sessionView.sort;
+  const displaySessionSort: Exclude<SessionSort, "manual"> =
+    sessionSort === "manual" ? "recent" : sessionSort;
+  const displayProjectSort: Exclude<SessionSort, "manual"> =
+    projectSort === "manual" ? "recent" : projectSort;
+  const activeProjectPath = normalizeProjectPath(activeProjectPathState ?? workspace?.path);
+  const openProjectPaths = useMemo(
+    () =>
+      openProjectPathsState
+        .map((path) => normalizeProjectPath(path))
+        .filter((path): path is string => Boolean(path)),
+    [openProjectPathsState],
+  );
+
+  const closeMenus = useCallback((restoreFocus = true) => {
+    const trigger = menuTriggerRef.current;
+    setProfileOpen(false);
+    setSortOpen(false);
+    setSessionMenu(null);
+    setProjectMenu(null);
+    setMenuPosition(null);
+    if (restoreFocus && trigger) requestAnimationFrame(() => trigger.focus());
+  }, []);
+
+  const placeMenu = useCallback((event: ReactMouseEvent<HTMLButtonElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    setMenuPosition({
+      top: Math.max(8, Math.min(rect.bottom + 4, window.innerHeight - 220)),
+      right: Math.max(8, window.innerWidth - rect.right),
+    });
+  }, []);
+
   useEffect(() => {
-    if (!profileOpen) return;
+    if (!profileOpen && !sortOpen && !sessionMenu && !projectMenu) return;
     const onPointer = (e: MouseEvent) => {
-      if (!profileRef.current?.contains(e.target as Node)) setProfileOpen(false);
+      const target = e.target as Node;
+      if (profileRef.current?.contains(target)) return;
+      if ((target as Element)?.closest?.(".sidebar-popover, .sidebar-row-menu")) return;
+      closeMenus(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setProfileOpen(false);
+      if (e.key !== "Escape") return;
+      closeMenus();
     };
+    const onViewportChange = () => closeMenus(false);
     window.addEventListener("mousedown", onPointer);
     window.addEventListener("keydown", onKey);
+    window.addEventListener("resize", onViewportChange);
     return () => {
       window.removeEventListener("mousedown", onPointer);
       window.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onViewportChange);
     };
-  }, [profileOpen]);
+  }, [profileOpen, sortOpen, sessionMenu, projectMenu, closeMenus]);
 
-  const taskTitle = (title?: string | null) => {
-    const value = (title || "").trim();
-    return isDefaultSessionTitle(value) ? t("chat.untitledTask") : value;
+  useEffect(() => {
+    if (!sessionMenu && !projectMenu && !sortOpen && !profileOpen) return;
+    requestAnimationFrame(() => menuFirstItemRef.current?.focus());
+  }, [sessionMenu, projectMenu, sortOpen, profileOpen]);
+
+  useEffect(() => {
+    if (collapsed) closeMenus();
+  }, [collapsed, closeMenus]);
+
+  const onMenuKeyDown = (event: ReactKeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      closeMenus();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) return;
+    const items = Array.from(
+      event.currentTarget.querySelectorAll<HTMLButtonElement>(
+        '[role="menuitem"], [role="menuitemradio"], [role="menuitemcheckbox"]',
+      ),
+    );
+    if (!items.length) return;
+    event.preventDefault();
+    const current = items.indexOf(document.activeElement as HTMLButtonElement);
+    const next =
+      event.key === "Home"
+        ? 0
+        : event.key === "End"
+          ? items.length - 1
+          : (current + (event.key === "ArrowDown" ? 1 : -1) + items.length) %
+            items.length;
+    items[next]?.focus();
   };
 
+  const taskTitle = useCallback((title?: string | null) => {
+    const value = (title || "").trim();
+    return isDefaultSessionTitle(value) ? t("chat.untitledTask") : value;
+  }, [t]);
+
   const filtered = useMemo(() => {
+    const candidates = showArchived
+      ? sessions
+      : sessions.filter(
+          (session) => !sessionArchived(session, sessionMeta[session.id]),
+        );
     // Keep at most one empty draft in each project/temporary scope.
     const keptEmptyScopes = new Set<string>();
-    const cleaned: typeof sessions = [];
-    for (const s of sessions) {
-      if (!isDefaultSessionTitle(s.title)) {
-        cleaned.push(s);
+    const cleaned: SessionSummary[] = [];
+    for (const session of candidates) {
+      if (!isDefaultSessionTitle(session.title)) {
+        cleaned.push(session);
         continue;
       }
-      const scope = normalizeProjectPath(s.projectPath) ?? "(temporary)";
-      if (s.id === activeSessionId && page === "chat") {
-        if (!keptEmptyScopes.has(scope)) cleaned.push(s);
+      const scope = normalizeProjectPath(session.projectPath) ?? "(temporary)";
+      if (session.id === activeSessionId && page === "chat") {
+        if (!keptEmptyScopes.has(scope)) cleaned.push(session);
         keptEmptyScopes.add(scope);
         continue;
       }
       if (keptEmptyScopes.has(scope)) continue;
-      cleaned.push(s);
+      cleaned.push(session);
       keptEmptyScopes.add(scope);
     }
     const q = query.trim().toLowerCase();
-    if (!q) return cleaned;
-    return cleaned.filter((s) => taskTitle(s.title).toLowerCase().includes(q));
-  }, [sessions, query, t, activeSessionId, page]);
+    const searched = q
+      ? cleaned.filter((session) => taskTitle(session.title).toLowerCase().includes(q))
+      : cleaned;
+    return searched;
+  }, [
+    sessions,
+    query,
+    taskTitle,
+    activeSessionId,
+    page,
+    showArchived,
+    sessionMeta,
+  ]);
 
-  const { projectSessions, temporarySessions } = useMemo(
-    () => groupSidebarSessions(filtered, workspace?.path),
-    [filtered, workspace?.path],
+  const compareSessions = useCallback((a: SessionSummary, b: SessionSummary) => {
+    const aMeta = sessionMeta[a.id] ?? {};
+    const bMeta = sessionMeta[b.id] ?? {};
+    const archiveOrder = Number(sessionArchived(a, aMeta)) - Number(sessionArchived(b, bMeta));
+    if (archiveOrder !== 0) return archiveOrder;
+    const pinOrder = Number(sessionPinned(b, bMeta)) - Number(sessionPinned(a, aMeta));
+    if (pinOrder !== 0) return pinOrder;
+    if (displaySessionSort === "name") {
+      const byName = taskTitle(a.title).localeCompare(taskTitle(b.title), undefined, {
+        sensitivity: "base",
+      });
+      if (byName !== 0) return byName;
+    } else if (displaySessionSort === "oldest") {
+      const byCreated = compareOptionalDate(
+        optionalTimestamp(a.createdAt),
+        optionalTimestamp(b.createdAt),
+        false,
+      );
+      if (byCreated !== 0) return byCreated;
+    } else if (displaySessionSort === "created") {
+      const byCreated = compareOptionalDate(
+        optionalTimestamp(a.createdAt),
+        optionalTimestamp(b.createdAt),
+        true,
+      );
+      if (byCreated !== 0) return byCreated;
+    } else {
+      const byRecent = compareOptionalDate(
+        optionalTimestamp(a.updatedAt),
+        optionalTimestamp(b.updatedAt),
+        true,
+      );
+      if (byRecent !== 0) return byRecent;
+    }
+    return a.id.localeCompare(b.id);
+  }, [displaySessionSort, sessionMeta, taskTitle]);
+
+  const projectEntries = useMemo(() => {
+    const byPath = new Map<string, ProjectEntry>();
+    const add = (rawPath: string, name?: string, open = false) => {
+      const normalized = normalizeProjectPath(rawPath);
+      if (!normalized) return;
+      const existing = byPath.get(normalized);
+      if (existing) {
+        existing.open ||= open;
+        if (name && existing.name === projectName(existing.path)) existing.name = name;
+        return;
+      }
+      byPath.set(normalized, {
+        path: rawPath,
+        key: normalized,
+        name: projectName(rawPath, name),
+        sessions: [],
+        open,
+        active: normalized === activeProjectPath,
+        meta: projectMetaFor(rawPath, projectMeta),
+      });
+    };
+    for (const path of openProjectPaths) {
+      const record = openProjects.find(
+        (project) => normalizeProjectPath(project.path) === path,
+      );
+      add(path, record?.name, true);
+    }
+    if (workspace?.path) add(workspace.path, workspace.name, true);
+    for (const session of filtered) {
+      const sessionPath = normalizeProjectPath(session.projectPath);
+      if (!sessionPath) continue;
+      // A closed project remains discoverable in Projects, but its historical
+      // sessions must not recreate a sidebar tab that the user just closed.
+      const entry = byPath.get(sessionPath);
+      if (entry) entry.sessions.push(session);
+    }
+    const result = [...byPath.values()].filter(
+      (entry) => showArchived || !entry.meta.archived,
+    );
+    for (const entry of result) entry.sessions.sort(compareSessions);
+    result.sort((a, b) => {
+      const archiveOrder = Number(!!a.meta.archived) - Number(!!b.meta.archived);
+      if (archiveOrder !== 0) return archiveOrder;
+      const pinOrder = Number(!!b.meta.pinned) - Number(!!a.meta.pinned);
+      if (pinOrder !== 0) return pinOrder;
+      if (displayProjectSort === "name") {
+        const byName = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+        if (byName !== 0) return byName;
+      } else if (
+        displayProjectSort === "oldest" ||
+        displayProjectSort === "created"
+      ) {
+        const dateForProject =
+          displayProjectSort === "oldest" ? firstSessionDate : lastSessionDate;
+        const aCreated = dateForProject(a.sessions, "createdAt");
+        const bCreated = dateForProject(b.sessions, "createdAt");
+        const byCreated = compareOptionalDate(
+          aCreated,
+          bCreated,
+          displayProjectSort === "created",
+        );
+        if (byCreated !== 0) return byCreated;
+      } else {
+        const aRecent = lastSessionDate(a.sessions, "updatedAt");
+        const bRecent = lastSessionDate(b.sessions, "updatedAt");
+        const byRecent = compareOptionalDate(aRecent, bRecent, true);
+        if (byRecent !== 0) return byRecent;
+      }
+      return a.key.localeCompare(b.key);
+    });
+    return result;
+  }, [
+    filtered,
+    openProjectPaths,
+    openProjects,
+    workspace,
+    activeProjectPath,
+    projectMeta,
+    showArchived,
+    displayProjectSort,
+    sessionMeta,
+    compareSessions,
+  ]);
+
+  const temporarySessions = useMemo(
+    () => filtered
+      .filter((session) => !normalizeProjectPath(session.projectPath))
+      .sort(compareSessions),
+    [filtered, compareSessions],
   );
 
+  const reportError = useCallback(
+    (error: unknown) => {
+      showToast(error instanceof Error ? error.message : String(error), {
+        variant: "error",
+      });
+    },
+    [showToast],
+  );
+
+  const focusComposer = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLTextAreaElement>(".composer-input")?.focus();
+    });
+  }, []);
+
+  const selectProject = async (path: string): Promise<boolean> => {
+    const normalized = normalizeProjectPath(path);
+    if (!normalized) return false;
+    if (normalized === activeProjectPath) return true;
+    try {
+      return Boolean(await activateProject(path));
+    } catch (error) {
+      reportError(error);
+      return false;
+    }
+  };
+
+  const selectProjectSession = async (session: SessionSummary): Promise<boolean> => {
+    if (session.projectPath && !(await selectProject(session.projectPath))) return false;
+    await selectSession(session.id);
+    focusComposer();
+    return true;
+  };
+
   const selectTemporarySession = async (sessionId: string) => {
-    if (workspace) await clearProject();
-    await selectSession(sessionId);
+    try {
+      if (workspace) await clearProject();
+      await selectSession(sessionId);
+      focusComposer();
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  const setCollapsed = (path: string, value: boolean) => {
+    const normalized = normalizeProjectPath(path) || path;
+    setProjectCollapsed(normalized, value);
+  };
+
+  const setSort = (next: SessionSort) => {
+    setSessionSort(next);
+    setProjectSort(next);
+    closeMenus();
+  };
+
+  const toggleShowArchived = () => {
+    const next = !showArchived;
+    setSessionArchiveVisibility(next);
+    closeMenus();
+  };
+
+  const toggleSessionPin = (session: SessionSummary) => {
+    toggleSessionPinned(session.id);
+    closeMenus();
+  };
+
+  const archiveSession = async (session: SessionSummary) => {
+    const archived = sessionArchived(session, sessionMeta[session.id]);
+    const wasActive = activeSessionId === session.id;
+    const next =
+      !archived && wasActive
+        ? session.projectPath
+          ? projectEntries
+              .find((entry) => entry.key === normalizeProjectPath(session.projectPath))
+              ?.sessions.find(
+                (item) =>
+                  item.id !== session.id &&
+                  !sessionArchived(item, sessionMeta[item.id]),
+              )
+          : temporarySessions.find(
+              (item) =>
+                item.id !== session.id &&
+                !sessionArchived(item, sessionMeta[item.id]),
+            )
+        : undefined;
+    try {
+      closeMenus();
+      if (archived) {
+        restoreSession(session.id);
+        return;
+      }
+      if (wasActive && next) {
+        if (!(await selectProjectSession(next))) return;
+        archiveSessionAction(session.id);
+        return;
+      }
+      if (wasActive) {
+        // Archive first so an empty active draft is not reused as its own
+        // replacement. Restore it if creating the fallback draft fails.
+        archiveSessionAction(session.id);
+        try {
+          await newSession({ projectPath: session.projectPath ?? null });
+        } catch (error) {
+          restoreSession(session.id);
+          throw error;
+        }
+        return;
+      }
+      archiveSessionAction(session.id);
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  const deleteSession = async (session: SessionSummary) => {
+    closeMenus();
+    const wasActive = activeSessionId === session.id;
+    const sameScope = session.projectPath
+      ? projectEntries.find(
+          (entry) => entry.key === normalizeProjectPath(session.projectPath),
+        )?.sessions ?? []
+      : temporarySessions;
+    const next = wasActive
+      ? sameScope.find(
+          (item) =>
+            item.id !== session.id &&
+            !sessionArchived(item, sessionMeta[item.id]),
+        ) ?? projectEntries
+          .flatMap((entry) => entry.sessions)
+          .find(
+            (item) =>
+              item.id !== session.id &&
+              !sessionArchived(item, sessionMeta[item.id]),
+          )
+      : undefined;
+    try {
+      await deleteSessionAction(session.id);
+      if (wasActive) {
+        if (next) await selectProjectSession(next);
+        else await newSession({ projectPath: session.projectPath ?? null });
+      }
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  const toggleProjectPin = (entry: ProjectEntry) => {
+    toggleProjectPinned(entry.path);
+    closeMenus();
+  };
+
+  const archiveProject = async (entry: ProjectEntry) => {
+    const archived = Boolean(entry.meta.archived);
+    const wasActive = entry.active;
+    const next = !archived
+      ? projectEntries.find(
+          (candidate) =>
+            candidate.key !== entry.key && !candidate.meta.archived,
+        )
+      : undefined;
+    try {
+      closeMenus();
+      if (archived) {
+        restoreProject(entry.path);
+        return;
+      }
+      // Move the visible context before hiding the active project. This
+      // prevents an archived, invisible project from remaining active.
+      if (wasActive) {
+        if (next) {
+          if (!(await selectProject(next.path))) return;
+        } else {
+          await clearProject();
+        }
+      }
+      archiveProjectAction(entry.path);
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  const closeProject = async (entry: ProjectEntry) => {
+    closeMenus();
+    try {
+      await closeProjectAction(entry.path);
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  const createSession = async (options?: { projectPath?: string | null }) => {
+    try {
+      await newSession(options);
+      focusComposer();
+    } catch (error) {
+      reportError(error);
+    }
+  };
+
+  const createProjectSession = async (path: string) => {
+    if (!(await selectProject(path))) return;
+    await createSession({ projectPath: path });
+  };
+
+  const openProjectPicker = async () => {
+    try {
+      await openProject();
+    } catch (error) {
+      reportError(error);
+    }
   };
 
   const renderSessionRows = (
-    items: typeof sessions,
-    options?: { temporary?: boolean },
-  ) =>
-    items.map((session) => {
-      const active = page === "chat" && activeSessionId === session.id;
-      return (
-        <div key={session.id} className={`thread-item ${active ? "active" : ""}`}>
+    items: SessionSummary[],
+    options?: { temporary?: boolean; projectPath?: string },
+  ) => items.map((session) => {
+    const meta = sessionMeta[session.id] ?? {};
+    const active = page === "chat" && activeSessionId === session.id;
+    const archived = sessionArchived(session, meta);
+    const running = Boolean(runningSessions[session.id]);
+    return (
+      <div
+        key={session.id}
+        className={`thread-item ${active ? "active" : ""} ${archived ? "archived" : ""}`}
+        data-sidebar-session-row={session.id}
+      >
+        <button
+          type="button"
+          className="thread-item-main"
+          onClick={() => void (options?.temporary ? selectTemporarySession(session.id) : selectProjectSession(session))}
+          title={taskTitle(session.title)}
+          aria-current={active ? "page" : undefined}
+        >
+          {running ? <span className="thread-item-status running" aria-label={t("nav.sessionRunning", { defaultValue: "Running" })} /> : null}
+          {sessionPinned(session, meta) ? (
+            <IconPin size={11} className="thread-item-pin" aria-hidden />
+          ) : null}
+          <span className="thread-item-title">{taskTitle(session.title)}</span>
+        </button>
+        <div className="sidebar-row-actions">
           <button
             type="button"
-            className="thread-item-main"
-            onClick={() =>
-              void (options?.temporary
-                ? selectTemporarySession(session.id)
-                : selectSession(session.id))
-            }
-            title={taskTitle(session.title)}
-            aria-current={active ? "page" : undefined}
+            className="thread-item-more"
+            data-action="session-menu"
+            aria-label={t("nav.sessionActions", { defaultValue: "Session actions" })}
+            aria-haspopup="menu"
+            aria-expanded={sessionMenu === session.id}
+            onClick={(event) => {
+              event.stopPropagation();
+              if (sessionMenu === session.id) {
+                closeMenus();
+                return;
+              }
+              menuTriggerRef.current = event.currentTarget;
+              placeMenu(event);
+              setSortOpen(false);
+              setProjectMenu(null);
+              setSessionMenu(session.id);
+            }}
           >
-            <span className="thread-item-title">{taskTitle(session.title)}</span>
+            <IconMore size={14} />
           </button>
         </div>
-      );
-    });
+      </div>
+    );
+  });
+
+  const renderProjectGroup = (entry: ProjectEntry) => {
+    const collapsedProject = entry.meta.collapsed ?? projectCollapsed[entry.key] ?? false;
+    const projectId = projectDomId(entry.key);
+    const isMenuOpen = projectMenu === entry.key;
+    return (
+      <section
+        key={entry.key}
+        className={`sidebar-session-group project-group ${entry.active ? "active" : ""} ${entry.meta.archived ? "archived" : ""}`}
+        aria-labelledby={projectId}
+        data-sidebar-project-group={entry.key}
+      >
+        <div className="sidebar-session-group-header">
+          <button
+            type="button"
+            className="project-collapse-toggle"
+            aria-label={
+              collapsedProject
+                ? t("project.expandDetails", { name: entry.name })
+                : t("project.collapseDetails", { name: entry.name })
+            }
+            aria-expanded={!collapsedProject}
+            data-action="toggle-project-collapse"
+            onClick={() => setCollapsed(entry.path, !collapsedProject)}
+          >
+            <IconChevronDown size={13} className={collapsedProject ? "collapsed" : ""} />
+          </button>
+          <button
+            type="button"
+            id={projectId}
+            className="sidebar-session-group-title project-toggle"
+            title={entry.path}
+            onClick={() => void selectProject(entry.path).then((ok) => {
+              if (ok) {
+                setCollapsed(entry.path, false);
+                focusComposer();
+              }
+            })}
+          >
+            <IconFolder size={13} />
+            <span>{entry.name}</span>
+            {entry.active ? <span className="sidebar-project-active-dot" aria-label={t("project.active", { defaultValue: "Active" })} /> : null}
+          </button>
+          <button
+            type="button"
+            className="sidebar-session-group-add"
+            title={entry.active ? t("project.newTask") : t("project.openAndNewTask", { defaultValue: "Open project and create task" })}
+            aria-label={entry.active ? t("project.newTask") : t("project.openAndNewTask", { defaultValue: "Open project and create task" })}
+            onClick={() => void createProjectSession(entry.path)}
+          >
+            <IconNewSession size={13} />
+          </button>
+          <div className="sidebar-menu-wrap">
+            <button
+              type="button"
+              className="thread-item-more project-more"
+              aria-label={t("project.openActions", { name: entry.name })}
+              aria-haspopup="menu"
+              aria-expanded={isMenuOpen}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isMenuOpen) {
+                  closeMenus();
+                  return;
+                }
+                menuTriggerRef.current = event.currentTarget;
+                placeMenu(event);
+                setSortOpen(false);
+                setSessionMenu(null);
+                setProjectMenu(entry.key);
+              }}
+            >
+              <IconMore size={14} />
+            </button>
+          </div>
+        </div>
+        {!collapsedProject ? (
+          <div className="sidebar-session-group-body project">
+            {entry.sessions.length > 0 ? renderSessionRows(entry.sessions, { projectPath: entry.path }) : (
+              <div className="sidebar-session-empty">{t("nav.noProjectSessions")}</div>
+            )}
+          </div>
+        ) : null}
+      </section>
+    );
+  };
+
+  const renderTemporaryGroup = () => (
+    <section className="sidebar-session-group" aria-labelledby="sidebar-temporary-group-label" data-sidebar-project-group="temporary">
+      <div className="sidebar-session-group-header">
+        <button
+          type="button"
+          id="sidebar-temporary-group-label"
+          className="sidebar-session-group-title project-toggle static"
+          aria-expanded={!temporaryCollapsed}
+          data-action="toggle-temporary-collapse"
+          onClick={() => setTemporaryCollapsed((value) => !value)}
+        >
+          <IconChevronDown size={13} className={temporaryCollapsed ? "collapsed" : ""} />
+          <IconPanel size={13} />
+          <span>{t("nav.temporarySessions")}</span>
+        </button>
+        <button
+          type="button"
+          className="sidebar-session-group-add"
+          title={t("nav.newTemporarySession")}
+          aria-label={t("nav.newTemporarySession")}
+          onClick={() => void createSession({ projectPath: null })}
+        >
+          <IconNewSession size={13} />
+        </button>
+      </div>
+      {!temporaryCollapsed ? (
+        <div className="sidebar-session-group-body temporary">
+          {temporarySessions.length > 0 ? renderSessionRows(temporarySessions, { temporary: true }) : (
+            <div className="sidebar-session-empty">{t("nav.noTemporarySessions")}</div>
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
+
+  const renderFloatingMenu = () => {
+    if (
+      !menuPosition ||
+      typeof document === "undefined" ||
+      (!sessionMenu && !projectMenu)
+    ) {
+      return null;
+    }
+    const session = sessionMenu
+      ? sessions.find((item) => item.id === sessionMenu)
+      : undefined;
+    const entry = projectMenu
+      ? projectEntries.find((item) => item.key === projectMenu)
+      : undefined;
+    if (!session && !entry) return null;
+    return createPortal(
+      <div
+        className="sidebar-row-menu sidebar-floating-menu"
+        role="menu"
+        onKeyDown={onMenuKeyDown}
+        style={{ top: menuPosition.top, right: menuPosition.right }}
+      >
+        {session ? (
+          <>
+            <button
+              ref={menuFirstItemRef}
+              type="button"
+              role="menuitem"
+              data-action="toggle-session-pin"
+              onClick={() => toggleSessionPin(session)}
+            >
+              <IconPin size={14} />
+              {sessionPinned(session, sessionMeta[session.id])
+                ? t("nav.unpinTask", { defaultValue: "Unpin" })
+                : t("nav.pinTask", { defaultValue: "Pin" })}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-action="toggle-session-archive"
+              onClick={() => void archiveSession(session)}
+            >
+              {sessionArchived(session, sessionMeta[session.id]) ? (
+                <IconArchiveRestore size={14} />
+              ) : (
+                <IconArchive size={14} />
+              )}
+              {sessionArchived(session, sessionMeta[session.id])
+                ? t("nav.restoreTask", { defaultValue: "Restore" })
+                : t("nav.archiveTask", { defaultValue: "Archive" })}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              className="danger"
+              data-action="delete-session"
+              onClick={() => void deleteSession(session)}
+            >
+              <IconX size={14} />
+              {t("nav.deleteTask", { defaultValue: "Delete" })}
+            </button>
+          </>
+        ) : null}
+        {entry ? (
+          <>
+            <button
+              ref={menuFirstItemRef}
+              type="button"
+              role="menuitem"
+              onClick={() =>
+                void selectProject(entry.path).then((ok) => {
+                  if (ok) {
+                    closeMenus(false);
+                    focusComposer();
+                  }
+                })
+              }
+            >
+              <IconFolder size={14} />
+              {entry.active
+                ? t("project.active", { defaultValue: "Active" })
+                : t("project.switch", { defaultValue: "Switch" })}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-action="toggle-project-pin"
+              onClick={() => toggleProjectPin(entry)}
+            >
+              <IconPin size={14} />
+              {entry.meta.pinned ? t("project.unpin") : t("project.pin")}
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              data-action="toggle-project-archive"
+              onClick={() => void archiveProject(entry)}
+            >
+              {entry.meta.archived ? (
+                <IconArchiveRestore size={14} />
+              ) : (
+                <IconArchive size={14} />
+              )}
+              {entry.meta.archived
+                ? t("project.restore", { defaultValue: "Restore project" })
+                : t("project.archive", { defaultValue: "Archive project" })}
+            </button>
+            {entry.open ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => void closeProject(entry)}
+              >
+                <IconX size={14} />
+                {t("project.close")}
+              </button>
+            ) : null}
+          </>
+        ) : null}
+      </div>,
+      document.body,
+    );
+  };
+
+  const canBack = navIndex > 0;
+  const canForward = navIndex < navStack.length - 1;
 
   if (collapsed) {
     return (
       <aside className="sidebar-rail">
         <div className="sidebar-drag" />
         <div className="no-drag flex flex-1 flex-col items-center gap-2 px-2 py-2">
-          <button
-            className="icon-btn"
-            title={t("nav.newTask")}
-            data-nav="new-task"
-            onClick={() => void newSession()}
-          >
-            <IconCompose size={16} />
+          <div className="sidebar-rail-brand" title={t("app.shellName")} aria-label={t("app.shellName")}>
+            <BrandLogo size={18} />
+          </div>
+          <button className="icon-btn" title={t("nav.newTask")} data-nav="new-task" onClick={() => void createSession()}>
+            <IconNewSession size={16} />
           </button>
           <button className="icon-btn" title={t("nav.search")} onClick={onOpenPalette}>
             <IconSearch size={16} />
           </button>
-          <button
-            className="icon-btn"
-            title={t("nav.projects")}
-            data-nav="projects"
-            onClick={() => setPage("projects")}
-          >
+          {projectEntries.filter((entry) => entry.open).slice(0, 5).map((entry) => (
+            <button key={entry.key} className={`icon-btn sidebar-rail-project ${entry.active ? "active" : ""}`} title={entry.path} onClick={() => void selectProject(entry.path).then((ok) => { if (ok) focusComposer(); })}>
+              <IconFolder size={16} />
+            </button>
+          ))}
+          <button className="icon-btn" title={t("nav.projects")} data-nav="projects" onClick={() => setPage("projects")}>
             <IconFolder size={16} />
           </button>
           <div className="flex-1" />
-          <button
-            className="icon-btn"
-            title={t("nav.settings")}
-            data-nav="settings"
-            onClick={() => setPage("settings")}
-          >
+          <button className="icon-btn" title={t("nav.settings")} data-nav="settings" onClick={() => setPage("settings")}>
             <IconSettings size={16} />
           </button>
         </div>
@@ -168,238 +998,148 @@ export function Sidebar({
     <aside className="sidebar">
       <div className="sidebar-drag">
         <div className="traffic-nav no-drag">
-          <button
-            className="title-nav-btn"
-            title={t("nav.back")}
-            disabled={!canBack}
-            onClick={() => navBack()}
-          >
+          <button className="title-nav-btn" title={t("nav.back")} disabled={!canBack} onClick={() => navBack()}>
             <IconChevronLeft size={13} />
           </button>
-          <button
-            className="title-nav-btn"
-            title={t("nav.forward")}
-            disabled={!canForward}
-            onClick={() => navForward()}
-          >
+          <button className="title-nav-btn" title={t("nav.forward")} disabled={!canForward} onClick={() => navForward()}>
             <IconChevronRight size={13} />
           </button>
         </div>
       </div>
       <div className="no-drag flex min-h-0 flex-1 flex-col px-2 pb-1.5">
         <div className="sidebar-header">
-          <div className="brand">{t("app.shellName")}</div>
-          <button
-            className="icon-btn"
-            title={t("nav.search")}
-            onClick={() => {
-              setSearchOpen((v) => !v);
-              onOpenPalette();
-            }}
-          >
+          <div className="brand">
+            <BrandLogo size={15} />
+            <span>{t("app.shellName")}</span>
+          </div>
+          <button className={`icon-btn ${searchOpen ? "active" : ""}`} title={t("nav.search")} onClick={() => { setSearchOpen((value) => !value); onOpenPalette(); }}>
             <IconSearch size={15} />
           </button>
         </div>
 
-        <button
-          className="nav-item new-task-btn mb-1"
-          data-nav="new-task"
-          onClick={() => void newSession()}
-        >
-          <IconCompose size={15} />
+        <button className="nav-item new-task-btn mb-1" data-nav="new-task" onClick={() => void createSession()}>
+          <IconNewSession size={15} />
           <span>{t("nav.newTask")}</span>
         </button>
 
         <nav className="mb-0.5 space-y-0 px-0.5">
-          <button
-            className={`nav-item ${page === "projects" ? "active" : ""}`}
-            data-nav="projects"
-            onClick={() => setPage("projects")}
-          >
+          <button className={`nav-item ${page === "projects" ? "active" : ""}`} data-nav="projects" onClick={() => setPage("projects")}>
             <IconFolder size={15} />
             <span>{t("nav.projects")}</span>
           </button>
-          <button
-            className={`nav-item ${page === "plugins" ? "active" : ""}`}
-            data-nav="plugins"
-            onClick={() => setPage("plugins")}
-          >
+          <button className={`nav-item ${page === "plugins" ? "active" : ""}`} data-nav="plugins" onClick={() => setPage("plugins")}>
             <IconAt size={15} />
             <span>{t("nav.plugins")}</span>
           </button>
         </nav>
 
-        {searchOpen && (
+        {searchOpen ? (
           <div className="mb-2 px-1">
-            <input
-              className="field-input"
-              placeholder={t("nav.search")}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              autoFocus
-            />
+            <input className="field-input" placeholder={t("nav.search")} value={query} onChange={(event) => setQuery(event.target.value)} autoFocus />
           </div>
-        )}
+        ) : null}
 
-        <div className="sidebar-session-groups min-h-0 flex-1 overflow-auto px-0.5">
-          <section
-            className="sidebar-session-group"
-            aria-labelledby="sidebar-project-group-label"
-          >
-            <div className="sidebar-session-group-header">
-              {workspace ? (
-                <button
-                  type="button"
-                  id="sidebar-project-group-label"
-                  className="sidebar-session-group-title"
-                  title={workspace.path}
-                  onClick={() => setPage("projects")}
-                >
-                  <IconFolder size={13} />
-                  <span>{workspace.name || workspace.path}</span>
+        <div className="sidebar-list-toolbar">
+          <span className="sidebar-list-label">{t("nav.sessions", { defaultValue: "Sessions" })}</span>
+          <div className="sidebar-menu-wrap">
+            <button
+              type="button"
+              className={`sidebar-sort-button ${sortOpen ? "active" : ""}`}
+              data-action="session-sort"
+              aria-label={t("nav.sortSessions", { defaultValue: "Sort sessions" })}
+              aria-haspopup="menu"
+              aria-expanded={sortOpen}
+              onClick={(event) => {
+                if (sortOpen) {
+                  closeMenus();
+                  return;
+                }
+                menuTriggerRef.current = event.currentTarget;
+                setSessionMenu(null);
+                setProjectMenu(null);
+                setMenuPosition(null);
+                setSortOpen(true);
+              }}
+            >
+              <IconArrowUpDown size={14} />
+            </button>
+            {sortOpen ? (
+              <div className="sidebar-popover sidebar-sort-menu" role="menu" onKeyDown={onMenuKeyDown}>
+                <div className="sidebar-popover-title">{t("nav.sortSessions", { defaultValue: "Sort sessions" })}</div>
+                {(["recent", "oldest", "name", "created"] as const).map((value, index) => (
+                  <button ref={index === 0 ? menuFirstItemRef : undefined} key={value} type="button" role="menuitemradio" aria-checked={displaySessionSort === value} className={displaySessionSort === value ? "selected" : ""} data-sort={value} onClick={() => setSort(value)}>
+                    <span>{value === "recent" ? t("nav.sortRecent", { defaultValue: "Recently updated" }) : value === "oldest" ? t("nav.sortOldest", { defaultValue: "Oldest first" }) : value === "name" ? t("nav.sortName", { defaultValue: "Name" }) : t("nav.sortCreated", { defaultValue: "Created date" })}</span>
+                    {displaySessionSort === value ? <span className="sidebar-sort-check">✓</span> : null}
+                  </button>
+                ))}
+                <div className="sidebar-popover-divider" />
+                <button type="button" role="menuitemcheckbox" aria-checked={showArchived} data-action="toggle-show-archived" onClick={toggleShowArchived}>
+                  <span>{showArchived ? t("nav.hideArchived", { defaultValue: "Hide archived" }) : t("nav.showArchived", { defaultValue: "Show archived" })}</span>
+                  <span className={`sidebar-checkbox ${showArchived ? "checked" : ""}`}>{showArchived ? "✓" : ""}</span>
                 </button>
-              ) : (
-                <button
-                  type="button"
-                  id="sidebar-project-group-label"
-                  className="sidebar-session-group-title"
-                  onClick={() => void openProject()}
-                >
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div
+          className="sidebar-session-groups min-h-0 flex-1 overflow-auto px-0.5"
+          onScroll={() => {
+            if (sessionMenu || projectMenu) closeMenus(false);
+          }}
+        >
+          {projectEntries.length > 0 ? projectEntries.map(renderProjectGroup) : (
+            <section className="sidebar-session-group" aria-labelledby="sidebar-project-group-label">
+              <div className="sidebar-session-group-header">
+                <button type="button" id="sidebar-project-group-label" className="sidebar-session-group-title" onClick={() => void openProjectPicker()}>
                   <IconFolder size={13} />
                   <span>{t("project.open")}</span>
                 </button>
-              )}
-              {workspace ? (
-                <button
-                  type="button"
-                  className="sidebar-session-group-add"
-                  title={t("project.newTask")}
-                  aria-label={t("project.newTask")}
-                  onClick={() => void newSession({ projectPath: workspace.path })}
-                >
-                  <IconPlus size={13} />
-                </button>
-              ) : null}
-            </div>
-            {workspace ? (
-              <div className="sidebar-session-group-body project">
-                {projectSessions.length > 0 ? (
-                  renderSessionRows(projectSessions)
-                ) : (
-                  <div className="sidebar-session-empty">{t("nav.noProjectSessions")}</div>
-                )}
               </div>
-            ) : null}
-          </section>
-
-          <section
-            className="sidebar-session-group"
-            aria-labelledby="sidebar-temporary-group-label"
-          >
-            <div className="sidebar-session-group-header">
-              <div
-                id="sidebar-temporary-group-label"
-                className="sidebar-session-group-title static"
-              >
-                <IconPanel size={13} />
-                <span>{t("nav.temporarySessions")}</span>
-              </div>
-              <button
-                type="button"
-                className="sidebar-session-group-add"
-                title={t("nav.newTemporarySession")}
-                aria-label={t("nav.newTemporarySession")}
-                onClick={() => void newSession({ projectPath: null })}
-              >
-                <IconPlus size={13} />
-              </button>
-            </div>
-            <div className="sidebar-session-group-body temporary">
-              {temporarySessions.length > 0 ? (
-                renderSessionRows(temporarySessions, { temporary: true })
-              ) : (
-                <div className="sidebar-session-empty">{t("nav.noTemporarySessions")}</div>
-              )}
-            </div>
-          </section>
+            </section>
+          )}
+          {renderTemporaryGroup()}
         </div>
 
         <div className="sidebar-footer no-drag" ref={profileRef}>
-          {profileOpen && (
-            <div className="profile-menu" role="menu">
-              <button
-                className="profile-menu-item"
-                role="menuitem"
-                data-nav="settings"
-                onClick={() => {
-                  setProfileOpen(false);
-                  setPage("settings");
-                }}
-              >
+          {profileOpen ? (
+            <div className="profile-menu" role="menu" onKeyDown={onMenuKeyDown}>
+              <button ref={menuFirstItemRef} className="profile-menu-item" role="menuitem" data-nav="settings" onClick={() => { setProfileOpen(false); setPage("settings"); }}>
                 <IconSettings size={15} />
                 <span>{t("nav.settings")}</span>
               </button>
-              <button
-                className="profile-menu-item"
-                role="menuitem"
-                onClick={async () => {
-                  setProfileOpen(false);
-                  try {
-                    await (await import("../lib/api")).api.openLogs();
-                  } catch {
-                    // ignore
-                  }
-                }}
-              >
+              <button className="profile-menu-item" role="menuitem" onClick={async () => { setProfileOpen(false); try { await (await import("../lib/api")).api.openLogs(); } catch { /* ignore */ } }}>
                 <IconCloudDown size={15} />
                 <span>{t("nav.profileLogs")}</span>
               </button>
-              <button
-                className="profile-menu-item"
-                role="menuitem"
-                onClick={async () => {
-                  setProfileOpen(false);
-                  const cur = useAppStore.getState().settings;
-                  if (!cur) return;
-                  const order = ["system", "light", "dark"] as const;
-                  const idx = order.indexOf((cur.theme as (typeof order)[number]) || "system");
-                  const theme = order[(idx + 1) % order.length];
-                  try {
-                    await (await import("../lib/api")).api.setSettings({ ...cur, theme });
-                    // store refresh via host settings event path
-                    useAppStore.setState({ settings: { ...cur, theme } });
-                  } catch {
-                    // ignore
-                  }
-                }}
-              >
+              <button className="profile-menu-item" role="menuitem" onClick={async () => {
+                setProfileOpen(false);
+                const current = useAppStore.getState().settings;
+                if (!current) return;
+                const order = ["system", "light", "dark"] as const;
+                const index = order.indexOf((current.theme as (typeof order)[number]) || "system");
+                const theme = order[(index + 1) % order.length];
+                try {
+                  await (await import("../lib/api")).api.setSettings({ ...current, theme });
+                  useAppStore.setState({ settings: { ...current, theme } });
+                } catch { /* ignore */ }
+              }}>
                 <IconSliders size={15} />
                 <span>{t("nav.profileTheme")}</span>
                 <span className="meta">{settings?.theme || "system"}</span>
               </button>
             </div>
-          )}
-          <button
-            className={`nav-item footer-profile ${page === "settings" || profileOpen ? "active" : ""}`}
-            data-nav="profile"
-            aria-haspopup="menu"
-            aria-expanded={profileOpen}
-            onClick={() => setProfileOpen((v) => !v)}
-            title={t("nav.openProfileMenu")}
-          >
+          ) : null}
+          <button className={`nav-item footer-profile ${page === "settings" || profileOpen ? "active" : ""}`} data-nav="profile" aria-haspopup="menu" aria-expanded={profileOpen} onClick={(event) => { menuTriggerRef.current = event.currentTarget; setProfileOpen((value) => !value); }} title={t("nav.openProfileMenu")}>
             <IconGear size={15} />
             <span className="truncate">{t("nav.custom")}</span>
           </button>
-          <button
-            className="footer-help"
-            title={t("nav.help")}
-            aria-label={t("nav.help")}
-            onClick={() => setPage("settings")}
-          >
+          <button className="footer-help" title={t("nav.help")} aria-label={t("nav.help")} onClick={() => setPage("settings")}>
             <IconHelp size={14} />
           </button>
         </div>
       </div>
+      {renderFloatingMenu()}
     </aside>
   );
 }

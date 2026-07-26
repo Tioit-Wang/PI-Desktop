@@ -5,16 +5,20 @@ import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import { Button } from "../components/ui";
 import {
+  IconArchive,
+  IconArchiveRestore,
   IconChevronDown,
   IconChevronRight,
   IconFolder,
+  IconMore,
+  IconPin,
   IconPlus,
   IconSearch,
+  IconX,
 } from "../components/icons";
 import {
   loadRecentProjects,
   projectColor,
-  rememberProject,
   type RecentProject,
 } from "../lib/recent-projects";
 import { collectSessionProjects } from "../lib/session-projects";
@@ -45,8 +49,20 @@ function sourceLabel(path: string) {
 export function ProjectsPage() {
   const { t, i18n } = useTranslation();
   const workspace = useAppStore((s) => s.workspace);
+  const openProjectPaths = useAppStore((s) => s.openProjectPaths);
+  const projectMeta = useAppStore((s) => s.projectMeta);
+  const sessionMeta = useAppStore((s) => s.sessionMeta);
   const openProject = useAppStore((s) => s.openProject);
+  const activateProject = useAppStore((s) => s.activateProject);
   const clearProject = useAppStore((s) => s.clearProject);
+  const closeProject = useAppStore((s) => s.closeProject);
+  const toggleProjectPinned = useAppStore((s) => s.toggleProjectPinned);
+  const archiveProject = useAppStore((s) => s.archiveProject);
+  const restoreProject = useAppStore((s) => s.restoreProject);
+  const showArchived = useAppStore((s) => s.sessionView.archived);
+  const setSessionArchiveVisibility = useAppStore(
+    (s) => s.setSessionArchiveVisibility,
+  );
   const newSession = useAppStore((s) => s.newSession);
   const selectSession = useAppStore((s) => s.selectSession);
   const setPage = useAppStore((s) => s.setPage);
@@ -124,10 +140,23 @@ export function ProjectsPage() {
         });
       }
     }
-    return [...byPath.values()].sort(
-      (a, b) => Number(!!b.pinned) - Number(!!a.pinned) || b.openedAt - a.openedAt,
-    );
-  }, [durableProjects, recents, sessions, workspace]);
+    const merged = [...byPath.values()].map((project) => {
+      const meta = projectMeta[normalizeProjectPath(project.path) || project.path] ?? {};
+      return {
+        ...project,
+        pinned: meta.pinned ?? project.pinned,
+        archived: meta.archived === true,
+      };
+    });
+    return merged
+      .filter((project) => showArchived || !project.archived)
+      .sort(
+        (a, b) =>
+          Number(!!b.pinned) - Number(!!a.pinned) ||
+          b.openedAt - a.openedAt ||
+          a.path.localeCompare(b.path),
+      );
+  }, [durableProjects, recents, sessions, workspace, projectMeta, showArchived]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -140,34 +169,33 @@ export function ProjectsPage() {
     );
   }, [items, query]);
 
-  const activate = async (path: string) => {
+  const activate = async (path: string): Promise<boolean> => {
     try {
-      if (workspace?.path === path) {
+      const key = normalizeProjectPath(path);
+      const archived = Boolean(key && projectMeta[key]?.archived);
+      if (normalizeProjectPath(workspace?.path) === normalizeProjectPath(path)) {
+        if (archived) restoreProject(path);
         setPage("chat");
-        return;
+        return true;
       }
-      const result = await api.setProject(path);
-      if (result.workspace?.path) {
-        rememberProject({
-          path: result.workspace.path,
-          name: result.workspace.name || result.workspace.path,
-          branch: result.workspace.branch,
-        });
-        useAppStore.setState({ workspace: result.workspace, page: "chat" });
-        setRecents(loadRecentProjects());
-      } else {
-        await openProject();
-        setRecents(loadRecentProjects());
+      const activated = await activateProject(path);
+      if (!activated) {
+        showToast(t("project.none"), { variant: "error" });
+        return false;
       }
+      if (archived) restoreProject(path);
+      setRecents(loadRecentProjects());
+      return true;
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+      return false;
     }
   };
 
   const startTask = async (path: string) => {
     try {
-      await activate(path);
-      await newSession();
+      if (!(await activate(path))) return;
+      await newSession({ projectPath: path });
       setPage("chat");
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
@@ -175,7 +203,7 @@ export function ProjectsPage() {
   };
 
   const openProjectSession = async (path: string, sessionId: string) => {
-    await activate(path);
+    if (!(await activate(path))) return;
     if (
       normalizeProjectPath(useAppStore.getState().workspace?.path) !==
       normalizeProjectPath(path)
@@ -186,6 +214,50 @@ export function ProjectsPage() {
       await selectSession(sessionId);
     } catch (e) {
       showToast(e instanceof Error ? e.message : String(e), { variant: "error" });
+    }
+  };
+
+  const toggleProjectArchive = async (project: (typeof items)[number]) => {
+    setMenuFor(null);
+    if (project.archived) {
+      restoreProject(project.path);
+      return;
+    }
+    try {
+      const projectKey = normalizeProjectPath(project.path);
+      const isActive = normalizeProjectPath(workspace?.path) === projectKey;
+      if (isActive) {
+        const fallbackPath = [...openProjectPaths]
+          .reverse()
+          .find((path) => {
+            const key = normalizeProjectPath(path);
+            return key !== projectKey && !(key && projectMeta[key]?.archived);
+          });
+        if (fallbackPath) {
+          const activated = await activateProject(fallbackPath);
+          if (!activated) throw new Error(t("project.none"));
+          // Project management actions should keep the Projects index visible.
+          setPage("projects");
+        } else {
+          await clearProject();
+        }
+      }
+      archiveProject(project.path);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), {
+        variant: "error",
+      });
+    }
+  };
+
+  const closeProjectFromIndex = async (path: string) => {
+    try {
+      await closeProject(path);
+      setPage("projects");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : String(error), {
+        variant: "error",
+      });
     }
   };
 
@@ -205,6 +277,14 @@ export function ProjectsPage() {
                 aria-label={t("project.searchPlaceholder")}
               />
             </div>
+            <Button
+              variant="secondary"
+              onClick={() => setSessionArchiveVisibility(!showArchived)}
+            >
+              {showArchived
+                ? t("nav.hideArchived", { defaultValue: "Hide archived" })
+                : t("nav.showArchived", { defaultValue: "Show archived" })}
+            </Button>
             <Button
               variant="primary"
               onClick={() => void openProject().then(() => setRecents(loadRecentProjects()))}
@@ -254,14 +334,28 @@ export function ProjectsPage() {
             </div>
           ) : (
             filtered.map((project) => {
-              const active = workspace?.path === project.path;
+              const active =
+                normalizeProjectPath(workspace?.path) ===
+                normalizeProjectPath(project.path);
+              const archived = project.archived === true;
+              const retained = openProjectPaths.some(
+                (path) =>
+                  normalizeProjectPath(path) === normalizeProjectPath(project.path),
+              );
               const color = project.color || projectColor(project.path);
               const isOpen = !!expanded[project.path];
               const related = sessions
-                .filter((session) => sessionMatchesProject(session, project.path))
+                .filter(
+                  (session) =>
+                    sessionMatchesProject(session, project.path) &&
+                    (showArchived || !sessionMeta[session.id]?.archived),
+                )
                 .slice(0, 4);
               return (
-                <div key={project.path} className={`projects-row-block ${active ? "active" : ""}`}>
+                <div
+                  key={project.path}
+                  className={`projects-row-block ${active ? "active" : ""} ${archived ? "archived" : ""}`}
+                >
                   <div className="projects-table-row" role="row">
                     <div className="projects-col name" role="cell">
                       <button
@@ -328,7 +422,7 @@ export function ProjectsPage() {
                               setMenuFor((cur) => (cur === project.path ? null : project.path))
                             }
                           >
-                            ···
+                            <IconMore size={16} />
                           </button>
                           {menuFor === project.path ? (
                             <div className="projects-menu" role="menu">
@@ -342,16 +436,47 @@ export function ProjectsPage() {
                               >
                                 {t("project.newTask")}
                               </button>
-                              {active ? (
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => {
+                                  toggleProjectPinned(project.path, !project.pinned);
+                                  setMenuFor(null);
+                                }}
+                              >
+                                <IconPin size={14} />
+                                {project.pinned
+                                  ? t("project.unpin")
+                                  : t("project.pin")}
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                onClick={() => void toggleProjectArchive(project)}
+                              >
+                                {archived ? (
+                                  <IconArchiveRestore size={14} />
+                                ) : (
+                                  <IconArchive size={14} />
+                                )}
+                                {archived
+                                  ? t("project.restore", {
+                                      defaultValue: "Restore project",
+                                    })
+                                  : t("project.archive", {
+                                      defaultValue: "Archive project",
+                                    })}
+                              </button>
+                              {retained ? (
                                 <button
                                   type="button"
                                   role="menuitem"
-                                  onClick={async () => {
+                                  onClick={() => {
                                     setMenuFor(null);
-                                    await clearProject();
-                                    setRecents(loadRecentProjects());
+                                    void closeProjectFromIndex(project.path);
                                   }}
                                 >
+                                  <IconX size={14} />
                                   {t("project.close")}
                                 </button>
                               ) : null}

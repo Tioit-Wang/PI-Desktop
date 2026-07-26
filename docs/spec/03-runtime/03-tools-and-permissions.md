@@ -1,6 +1,6 @@
 # 03. Tools and Permissions
 
-> Decisions applied: D003, D004, D005, D006, D013, D015
+> Decisions applied: D003, D004, D005, D006, D013, D015, D093
 
 ## 0. Frozen policy summary
 
@@ -43,18 +43,28 @@ Every tool must have:
 
 ## 4. Path Rules
 
-- All file paths are relative to `workspaceRoot` by default
+- For a durable `sessionId`, `workspaceRoot` is resolved from that session's
+  persisted project binding. It is not read from the mutable active sidebar
+  tab at execution time.
+- All file paths are relative to the resolved `workspaceRoot` by default
 - After normalization they must still reside within the workspace
 - `..` escapes are forbidden
 - Symlinks that escape the workspace are rejected
-- When no workspace is set, high-risk tools are unavailable
+- A project switch does not redirect or cancel a background session's tools;
+  sessions A and B remain sandboxed to projects A and B respectively.
+- A Temporary/path-less session has no workspace root, even if another project
+  is visible. High-risk tools are unavailable without a session project.
+- Legacy calls that do not resolve to a durable session may use the selected
+  host workspace only during the compatibility window.
+- A session lookup/storage error fails the tool request; it must never be
+  treated as a missing legacy session or redirected to the selected workspace.
 
 ## 5. Bash Rules
 
 MVP baseline:
 
-- A workspace is required
-- Default cwd = workspaceRoot
+- A project-bound session workspace is required
+- Default cwd = the originating session's `workspaceRoot`
 - Confirmation required by default
 - Set a timeout (e.g. 60s, configurable)
 - Capture stdout/stderr
@@ -142,6 +152,8 @@ MVP may start by writing to SQLite or a log file.
 - Chat mode hard-denies high-risk tools before permission UI
 - Agent mode uses permission cards for Write/Edit/Bash
 - allow-session is remembered per toolName for the active session only
+- Session grants follow `sessionId` across project-tab switches and are never
+  inherited by another session or Temporary conversation
 
 ## 11. Plugin Tools
 

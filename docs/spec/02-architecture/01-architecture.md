@@ -84,10 +84,15 @@ PI-Desktop uses a layered desktop architecture:
  5.1 pi requests tool execution via host bridge
  5.2 Rust permission gateway evaluates risk
  5.3 UI confirms if required
- 5.4 Rust executes tool in workspace sandbox
+ 5.4 Rust resolves the durable session's project and executes the tool in that
+     workspace sandbox (never whichever sidebar tab is currently active)
  5.5 result returns to pi runtime
 6. turn ends; session persistence updates
 ```
+
+The renderer may retain several project tabs, but this does not create several
+host workspace singletons. One project supplies visible shell context;
+session-bound project identity supplies each turn's privileged tool root.
 
 ## 5. Why hybrid Rust + pi
 

@@ -195,6 +195,23 @@ type ToolsExecuteParams = {
 }
 ```
 
+Workspace resolution is session-scoped:
+
+1. Host loads `sessionId` and resolves its persisted `project_id`/path.
+2. That path becomes the tool sandbox root for permission preview, execution,
+   artifact paths, and audit context.
+3. The mutable `workspace.get` selection is not consulted for a valid durable
+   session, so switching a retained project tab cannot redirect a background
+   call.
+4. A durable path-less session resolves no root and receives
+   `WORKSPACE_REQUIRED` where the tool requires one. A selected project is not
+   inherited.
+5. Legacy calls whose session does not exist may temporarily fall back to the
+   selected workspace; new renderer flows must always provide a valid
+   `sessionId`.
+6. A database/session-resolution error returns `INTERNAL` and fails closed;
+   only a confirmed missing session may use the legacy fallback.
+
 ### result
 
 ```ts
@@ -259,8 +276,10 @@ Timeout behavior (**D005**): after 120s unresolved → deny.
 ## 8. Concurrency / ordering
 
 1. Requests may be concurrent, but tools for the same `sessionId` execute serially by default
-2. Notifications may arrive anytime after handshake
-3. Abort should be best-effort and idempotent
+2. Different sessions may continue concurrently across retained project tabs;
+   each resolves its own project root and grants
+3. Notifications may arrive anytime after handshake
+4. Abort should be best-effort and idempotent
 
 ## 9. Logging rules
 
@@ -274,3 +293,5 @@ Timeout behavior (**D005**): after 120s unresolved → deny.
 2. health method returns ok
 3. denied tool path returns `TOOL_DENIED`
 4. timeout path returns deny decision after 120s
+5. switching the selected workspace from A to B does not change the tool root
+   of a call issued by session A

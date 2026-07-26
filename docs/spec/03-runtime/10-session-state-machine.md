@@ -35,6 +35,10 @@ accept_prompt
 3. Abort from running or waiting_permission is allowed
 4. Permission timeout moves to tool denied, then agent may continue or end based on runtime handling
 5. Session status returns to idle after terminal turn states are persisted
+6. Changing the renderer's active project/session does not transition or abort
+   any background session
+7. A tool transition retains the originating session's persisted project root;
+   it never adopts the newly active project's root
 
 ## 4. Persistence points
 
@@ -48,3 +52,5 @@ accept_prompt
 1. Busy session cannot start second concurrent turn
 2. Abort is idempotent
 3. waiting_permission is visible in UI status
+4. sessions in two retained project tabs may run independently without
+   transcript-event or workspace-root crossover

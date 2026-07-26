@@ -13,8 +13,9 @@
 > updated values: sidebar ~275px (not 240px), toolbar 46px (not 44px),
 > composer placeholder per D046/D066, home split-grow per D045/D047,
 > Projects index table per D066, settings full-page shell per D063 with the
-> compact four-destination directory from D090, and scoped sidebar rows per
-> D088 (which supersedes D068 session pin actions).
+> compact four-destination directory from D090, and retained path-keyed
+> project groups per D093 (which preserves D088's Temporary/exact-path boundary
+> while restoring scoped project and conversation organization actions).
 
 ## 1. AppShell
 
@@ -56,7 +57,8 @@ Outer frame that positions Topbar, Sidebar, MainChat, and ContextPanel. Owns res
 ### 1.6 MVP constraints
 
 - No drag-to-resize panel widths (fixed values)
-- No multi-tab sessions (single active session)
+- The main pane renders one active transcript and one selected workspace while
+  the sidebar may retain several project tabs/groups
 - No status bar (deferred)
 
 ---
@@ -109,9 +111,10 @@ Global controls bar: project identity, model selection, mode indicator, abort bu
 
 ### 3.1 Purpose
 
-Scoped session navigation and management. The expanded sidebar shows exactly
-one current project plus path-less temporary sessions; the collapsed state is
-an icon rail.
+Scoped project and session navigation and management. The expanded sidebar
+shows every retained project tab as an independently collapsible group plus
+path-less Temporary sessions; the collapsed state is an icon rail. Retained
+tabs are renderer presentation state, not additional host workspaces.
 The home destination controls expose Projects and Plugins only; Pull requests
 and Scheduled are not rendered in the sidebar.
 
@@ -122,8 +125,9 @@ Expanded (~275px, D034/D070):
 +---------------------------+
 | [+ New Chat] button       |
 | Projects / Plugins        |
-| project-name          [+] |
+| project-A      [v] [+] … |
 |   • Project session      |
+| project-B      [>] [+] … |
 | Temporary sessions   [+] |
 |   • Path-less session   |
 | ─────────────────         |
@@ -149,33 +153,65 @@ Collapsed (48px):
 | Collapsed | Icon rail — hover shows tooltip with session title |
 | Active session | Accent background highlight on current session item |
 | Hover session | bg-tertiary background |
-| No project | Compact Open project entry; no project-session rows |
+| Active project | Header carries active state; topbar follows that workspace |
+| Collapsed project | Header remains visible; child conversations are hidden |
+| Archived row | Hidden by default; visible in the explicit archived view |
+| No retained project | Compact Open project entry; Temporary rows remain available |
 | Empty group | Muted one-line empty state; group create action remains available |
 
 ### 3.4 Interactions
 
-- Click session: switch active session, scroll to last message
-- Click "+ New Chat": create/reuse a draft in the current workspace scope
-- Click project `+`: create/reuse a session bound to the current project
+- Click project identity/switch action: activate its path through the existing
+  `project.set` bridge and retain the other project groups
+- Click project disclosure: expand/collapse only that group
+- Click session: activate its bound project when necessary, switch the active
+  session, and scroll to the last message
+- Click New Chat: create/reuse a draft in the current workspace scope
+- Click project `+`: activate that project and create/reuse a session bound to
+  its exact path
 - Click Temporary sessions `+`: clear the workspace and create/reuse a
   path-less persistent session
-- Right-click session: context menu (rename, delete) — MVP: via command palette only
+- Project overflow: switch, pin/unpin, archive/restore, close retained tab
+- Conversation overflow: pin/unpin, archive/restore, delete
+- Sort menu: Recently updated, Created date, Oldest first, and Name; pinned
+  rows stay ahead of unpinned rows. A stored `manual` compatibility value
+  requires no drag-reorder UI.
 - Sidebar toggle: Topbar hamburger + keyboard shortcut
 
 ### 3.5 Accessibility
 
-- Project and Temporary headings have localized names; each `+` has a
-  scope-specific accessible name
+- Project and Temporary headings have localized names; each disclosure and `+`
+  has a scope-specific accessible name
 - Session groups use semantic `section` containers
 - Active session: `aria-current="true"`
+- Project disclosure: `aria-expanded`; menu check/radio items expose
+  `aria-checked`
 - Collapsed state: each icon has `aria-label` with session title
 - Keyboard: arrow keys navigate session list
+
 
 ### 3.6 MVP constraints
 
 - No sidebar search (deferred per [01-ui-ia.md](01-ui-ia.md))
-- No drag-to-reorder sessions
-- No multi-project tree in the home sidebar
+- No drag-to-reorder contract; `manual` is a persisted compatibility value
+- Project tabs do not create another host workspace or a second main pane
+
+### 3.7 Project group contract
+
+Each retained project is one labeled `section` keyed by normalized full path.
+The header owns project-level controls; the child list owns conversation-level
+controls.
+
+| Element | Contract |
+|---|---|
+| Group root | localized project name; full path in tooltip/accessible description |
+| Disclosure | independent `aria-expanded`; toggling never activates or archives |
+| Project pin | presentation priority only; no host row deletion/move |
+| Project archive | omitted from default view; restorable from archived view |
+| Project close | removes retained tab only; durable project/sessions remain |
+| Session list | exact-path matches only; no basename grouping |
+| Active group | exactly one group reflects the selected host workspace |
+| Background state | running/error indicator updates by session without replacing the visible transcript |
 
 ---
 
@@ -274,7 +310,9 @@ Secondary panel for project metadata, workspace status, and session details. Col
 ### 6.1 Purpose
 
 List user sessions by execution context inside the sidebar. It exposes the
-current project's sessions and persistent sessions that have no project.
+sessions for every retained project tab plus persistent sessions that have no
+project. Pin/archive/collapse state is a presentation over durable host
+sessions, not a replacement persistence model.
 
 ### 6.2 Anatomy
 
@@ -282,6 +320,8 @@ Groups and session items:
 
 ```text
 [folder] current-project                         [+]
+           Session title
+[folder] another-project                         [+]
            Session title
 [panel]  Temporary sessions                      [+]
            Session title
@@ -296,18 +336,25 @@ Groups and session items:
 | Hover (inactive) | bg-tertiary |
 | Running | accent pulse on left border |
 | Error | error dot indicator |
+| Pinned | ordered before unpinned rows within the selected sort |
+| Archived | omitted by default; shown only when archived view is enabled |
 
 ### 6.4 Interactions
 
 - Click: activate session
-- Current-project matching uses the normalized full project path, never only
-  the folder basename.
-- Sessions from other projects are hidden here and remain accessible from the
-  Projects index.
-- Selecting a temporary session clears the active workspace so composer and
+- Project matching uses the normalized full project path, never only the folder
+  basename.
+- Sessions for retained paths appear beneath their corresponding project
+  group. Sessions for closed paths remain discoverable from the Projects index.
+- Selecting a temporary session clears the active workspace so session and
   tool context do not imply project access.
+- Pin/archive actions update renderer presentation metadata; delete remains
+  the explicit durable host operation.
+- Selecting a conversation with a different project first activates that
+  project's workspace. A running turn in the previously selected session is
+  not aborted.
 - Keyboard: arrow up/down, Enter to select
-- Delete: via command palette `builtin.session.delete`
+- Delete: row menu or command palette `builtin.session.delete`
 
 ### 6.5 Accessibility
 
@@ -315,14 +362,17 @@ Groups and session items:
 - Scope-specific create buttons expose localized `aria-label` values.
 - Active rows expose the selected visual state and retain their full title in
   a tooltip.
+- Archived state and running/error status are announced rather than conveyed
+  by color alone.
 
 ### 6.6 MVP constraints
 
-- No session search/filter
-- No nested/multi-project sidebar tree.
+- Search remains a local title filter; archive visibility and ordering are
+  local view controls rather than host queries.
 - Temporary means **not bound to a project**, not ephemeral storage; these
   sessions survive restart.
-- The two groups share one independently scrollable sidebar region.
+- All project groups and the Temporary group share one independently scrollable
+  sidebar region.
 
 ---
 
@@ -796,8 +846,8 @@ Control in Topbar showing current workspace. Allows opening or clearing a projec
 
 ### 13.6 MVP constraints
 
-- No recent projects list (deferred)
-- No multi-project tabs
+- Project selection may activate a retained tab or add a new local project
+  tab; the host still exposes one selected workspace
 - No project status indicators beyond path display
 
 ---

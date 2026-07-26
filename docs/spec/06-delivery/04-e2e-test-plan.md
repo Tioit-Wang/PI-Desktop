@@ -35,7 +35,7 @@
 |---|---|---|---|
 | **Unit** | Single module, no IPC | Many | Vitest / Rust #[test] |
 | **Integration** | IPC contract, host↔renderer, host↔sidecar | Moderate | Vitest + IPC mocks or live Electron |
-| **E2E** | Full user journey through the desktop app | ~44 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
+| **E2E** | Full user journey through the desktop app | ~54 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
 
 **Strategy**: document all E2E scenarios now; write unit/integration tests alongside code; automate E2E after M5.
 
@@ -198,9 +198,14 @@ Each scenario is documented in this format:
 
 #### E2E-011: Switch between project and temporary sessions
 
-- **Preconditions**: One current-project session and one path-less temporary session exist.
-- **Steps**: 1) Open the current-project session from its sidebar group. 2) Open the temporary session. 3) Observe chat content and workspace chrome.
-- **Expected**: The sidebar contains no Recents aggregate; only the current project's sessions and Temporary sessions are shown; other-project sessions stay hidden; each transcript loads correctly; selecting the temporary session clears project context; both sessions remain persisted.
+- **Preconditions**: One retained project session and one path-less Temporary
+  session exist.
+- **Steps**: 1) Open the project session from its exact-path sidebar group. 2)
+  Open the Temporary session. 3) Observe chat content and workspace chrome.
+- **Expected**: The sidebar contains no Recents aggregate; retained projects
+  have scoped groups and path-less sessions remain under Temporary; each
+  transcript loads correctly; selecting Temporary clears project context and
+  inherits no workspace access; both sessions remain persisted.
 - **Specs linked**: `03-runtime/10-session-state-machine.md`, `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`
 - **Acceptance**: C (switch sessions)
 - **Milestone**: M2
@@ -620,7 +625,80 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`thinking-ui.test.mjs`, agent-runtime capability tests); full UI scenario Draft
 
-#### E2E-047: Thinking level persists with the session
+#### E2E-047: Retain, collapse, switch, and close multiple project tabs
+
+- **Preconditions**: Projects A and B each have at least one durable session;
+  neither path is archived; a Temporary session also exists.
+- **Steps**: 1) Open project A from Projects. 2) Open project B without closing
+  A. 3) Collapse A and activate B. 4) Select A's conversation. 5) Close B. 6)
+  Restart the app. 7) Reopen B from Projects.
+- **Expected**: A and B render as separate exact-path sidebar groups; collapse
+  affects only A and survives restart; activating a group or its conversation
+  clears the previous visible transcript, updates the selected workspace and
+  session binding, and then loads only the selected project's conversation;
+  Temporary remains separate; closing B removes only its retained tab and
+  deletes neither its project row nor sessions; reopening B restores the same
+  sessions without duplication.
+- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`,
+  `04-ux/09-interaction-patterns.md`, ADR 0016
+- **Acceptance**: C (switch sessions), D (workspace), F (local presentation
+  persistence)
+- **Milestone**: M5
+- **Status**: Unit-covered (`sidebar-preferences.test.mjs` for retained paths
+  and collapse persistence); full UI scenario Draft
+
+#### E2E-048: Pin, archive, restore, and sort project/conversation rows
+
+- **Preconditions**: Two retained projects contain conversations with distinct
+  titles and created/updated timestamps; archived view is initially disabled.
+- **Steps**: 1) Pin one project and one conversation. 2) Select Recently
+  updated, Created date, Oldest first, and Name in turn. 3) Archive another
+  conversation and project. 4) Enable Show archived and restore both. 5)
+  Restart the app. 6) Delete a disposable conversation through the distinct
+  Delete action.
+- **Expected**: Pinned rows remain ahead of unpinned rows under every selected
+  secondary order; each sort produces the documented stable order; archived
+  rows disappear from the default view but retain transcripts/project records
+  and reappear in Show archived; restore returns them to the selected order;
+  archiving the active row selects a visible non-archived fallback or creates
+  the documented empty fallback instead of leaving hidden active context;
+  pin/archive/sort choices survive restart; only Delete removes the disposable
+  durable session. A legacy `manual` preference loads safely without exposing
+  or implying a drag-reorder workflow.
+- **Specs linked**: `03-runtime/04-data-storage.md`, `04-ux/01-ui-ia.md`,
+  `04-ux/08-component-spec.md`, `04-ux/09-interaction-patterns.md`
+- **Acceptance**: C (session organization), F (persistence)
+- **Milestone**: M5
+- **Status**: Unit-covered (`sidebar-preferences.test.mjs` for metadata,
+  filtering, and sort behavior); full UI scenario Draft
+
+#### E2E-049: Background sessions keep their originating workspace
+
+- **Preconditions**: Projects A and B are retained; each contains a session in
+  Agent mode; both workspaces contain different marker files with the same
+  relative name.
+- **Steps**: 1) In session A, start a turn that reads the marker and performs a
+  permission-gated long-running tool. 2) While A is running, activate project
+  B and open session B. 3) Read B's marker and allow a tool only in B. 4) Wait
+  for both turns to complete. 5) Open a Temporary session and attempt a
+  workspace-required tool.
+- **Expected**: Switching tabs aborts neither turn; A's tool cwd/path sandbox
+  remains project A and B's remains project B; A's events and grants never
+  appear in B's transcript/session; each sidebar row reports its own
+  running/completed state; the Temporary session inherits no project and
+  receives `WORKSPACE_REQUIRED`; returning to A restores A's completed
+  transcript.
+- **Specs linked**: `02-architecture/01-architecture.md`,
+  `03-runtime/02-agent-runtime.md`, `03-runtime/03-tools-and-permissions.md`,
+  `03-runtime/06-host-rpc-protocol.md`,
+  `03-runtime/10-session-state-machine.md`, ADR 0016
+- **Acceptance**: C (parallel sessions), D (workspace), E (tool/permission
+  isolation), Security (workspace boundary)
+- **Milestone**: M5
+- **Status**: Unit-covered (`rpc::tests` for project-bound, Temporary, and
+  missing-session workspace resolution); full multi-turn UI scenario Draft
+
+#### E2E-050: Thinking level persists with the session
 
 - **Preconditions**: A reasoning-capable session is idle.
 - **Steps**: 1) Select `high`. 2) Change Chat/Agent mode without changing the
@@ -635,7 +713,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (host schema/session tests, `thinking-ui.test.mjs`); full restart scenario Draft
 
-#### E2E-048: Thinking level reaches the pi request
+#### E2E-051: Thinking level reaches the pi request
 
 - **Preconditions**: Instrumented reasoning-capable provider with a sparse
   level set and request capture; one session configured above and below gaps.
@@ -650,7 +728,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (agent-runtime prompt/clamp tests); integration scenario Draft
 
-#### E2E-049: Thinking streams separately from the answer
+#### E2E-052: Thinking streams separately from the answer
 
 - **Preconditions**: Provider emits thinking deltas before and between answer
   deltas.
@@ -670,7 +748,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`thinking-ui.test.mjs`, agent-runtime event tests); full streaming scenario Draft
 
-#### E2E-046: Stored thinking reloads losslessly
+#### E2E-053: Stored thinking reloads losslessly
 
 - **Preconditions**: A completed assistant message contains both reasoning and
   final answer blocks; another contains reasoning only.
@@ -685,7 +763,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (host message/import tests, `thinking-ui.test.mjs`); full reload scenario Draft
 
-#### E2E-047: Unsupported provider transition clamps safely
+#### E2E-054: Unsupported provider transition clamps safely
 
 - **Preconditions**: Session on a reasoning provider at `max`; target
   providers include non-reasoning and sparse-level variants.
@@ -708,15 +786,15 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-046, E2E-048, E2E-051 |
-| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-048, E2E-049, E2E-050, E2E-051 |
-| D — Workspace | E2E-012, E2E-013 |
-| E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
-| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-050 |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-046, E2E-051, E2E-054 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-051, E2E-052, E2E-053, E2E-054 |
+| D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049 |
+| E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040, E2E-049 |
+| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-050, E2E-053 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
-| Security | E2E-028, E2E-029, E2E-030 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-049, E2E-051 |
+| Security | E2E-028, E2E-029, E2E-030, E2E-049 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-052, E2E-054 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -724,7 +802,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -1031,7 +1109,8 @@ This test plan spec is accepted when:
 - Expect large title, search pill, New button, and table columns Name / Sources / Updated.
 - Rows expand for recent tasks; activating a project or one of its sessions
   uses `setProject` without re-picking via dialog and keeps session/workspace
-  context synchronized. No renderer-local pin/remove action is shown.
+  context synchronized. Sidebar pin/archive/close metadata remains local to
+  the renderer and never hides or deletes a durable Projects-index row.
 
 
 ### US-UI-48 Home suggestion glyph parity
@@ -1041,10 +1120,11 @@ This test plan spec is accepted when:
 
 ### US-UI-49 Scoped sidebar row chrome
 - Hover or select a project or temporary session row.
-- Expect one restrained title row with active/hover background and no Recents
-  pin or redundant open-in-panel actions.
-- Sessions from other projects stay out of the home sidebar and remain
-  available in the Projects index.
+- Expect restrained title rows with active/hover background and compact
+  overflow actions for pin/archive (not a Recents aggregate).
+- Multiple retained project groups may be visible at once; sessions remain
+  under exact-path groups, while closed-project sessions remain available in
+  the Projects index.
 
 
 ### US-UI-50 Destination title scale
@@ -1097,3 +1177,31 @@ This test plan spec is accepted when:
   independently copyable and capped with internal scrolling.
 - Reloading the session preserves the action label and argument hint instead of
   degrading the row to a generic `Tool`.
+
+### US-UI-57 Multi-project sidebar groups
+- Open projects A and B without closing either.
+- Expect one path-keyed group per retained project, an active-state marker on
+  exactly one group, and a separate Temporary sessions group.
+- Collapse A, activate B, then return to A. Only A's child rows collapse; the
+  active project, topbar path, and transcript switch together.
+- Close B and reopen it from Projects. Closing removes only the sidebar tab;
+  durable project/session rows remain available.
+
+### US-UI-58 Sidebar organization actions
+- Open a project and conversation overflow menu.
+- Expect localized Pin/Unpin, Archive/Restore, and (for conversations) Delete
+  actions with keyboard-reachable menu semantics.
+- Pin one project/session and choose each user-facing sort mode (Recently
+  updated, Created date, Oldest first, Name). Pinned rows remain first.
+- Archive a row, verify it is absent by default, enable Show archived, and
+  restore it. The transcript and project binding remain unchanged.
+- A legacy `manual` preference loads without presenting a drag-reorder
+  affordance.
+
+### US-UI-59 Session-rooted background tools
+- Start a visible turn in project A, switch to project B while it runs, and
+  inspect both sidebar status indicators.
+- Expect A's turn to continue in the background, B's visible workspace and transcript to show
+  only B, and tool output/artifacts from A to remain rooted in A.
+- Open a Temporary session and invoke a workspace-required tool; expect the
+  normal `WORKSPACE_REQUIRED` result rather than inheritance from B.

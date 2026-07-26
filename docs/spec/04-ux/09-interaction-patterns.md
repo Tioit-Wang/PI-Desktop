@@ -46,6 +46,65 @@
 - Shortcuts are consistent across macOS (Cmd) and Windows/Linux (Ctrl)
 - Shortcut changes require updating the command palette metadata
 
+### 1.5 Sidebar project and conversation organization
+
+The sidebar is a path-keyed presentation of host-owned projects and sessions.
+Several project groups may be retained while exactly one workspace supplies
+the visible shell context.
+
+#### Project tab lifecycle
+
+1. **Open** — selecting a project from Projects or the picker adds its
+   normalized path to the retained set and activates it. Existing tabs remain.
+2. **Activate** — selecting a different group calls the existing `project.set`
+   bridge. Its path then drives topbar identity, active workspace state, and
+   new-task scope.
+3. **Collapse** — disclosure state belongs to each project path. Collapsing
+   hides children only; it neither changes the selected project/session nor
+   stops a run.
+4. **Close** — closing removes only the retained tab. If it was active, the
+   last remaining tab is selected or the visible workspace is cleared. Durable
+   projects, sessions, and transcripts remain.
+
+#### Organization actions
+
+- **Pin** toggles presentation priority. Pinned projects/conversations appear
+  before unpinned rows within the selected secondary order.
+- **Archive** is non-destructive. Archived rows are hidden by default,
+  available through Show archived, and restorable. Archiving does not cancel
+  a turn or delete a transcript.
+- Archiving the visible conversation/project first moves the visible context
+  to a non-archived sibling. With no sibling, a conversation receives a fresh
+  draft in the same scope and a project clears the visible workspace; the app
+  never leaves a hidden archived row as the active context.
+- **Sort** offers Recently updated (`recent`), Created date (`created`),
+  Oldest first (`oldest`), and Name (`name`). Missing/invalid values fall back
+  to `recent`. A persisted `manual` value is accepted for compatibility, but
+  no drag or manual-reorder interaction is promised in this baseline.
+- Presentation changes are saved best-effort. Storage failure must not block
+  project activation, session selection, or agent execution.
+
+#### Session isolation across tabs
+
+- Selecting a project-scoped conversation activates its project before loading
+  the transcript. Selecting a Temporary conversation clears the visible
+  workspace.
+- Run state, permission grants, and streamed events are keyed by session id.
+  A project/tab switch does not abort a background turn or copy its events into
+  the visible transcript.
+- Every tool call resolves `workspaceRoot` from the originating durable
+  session, not from the currently selected project tab. Background completion
+  refreshes the matching row without redirecting the active conversation.
+
+#### Focus and semantics
+
+- Project disclosures expose `aria-expanded`; sort/archive menu choices expose
+  their checked state. Active session rows retain `aria-current`.
+- Toggling disclosure or a menu action keeps focus on its control. Selecting a
+  project/session returns focus to the composer after loading.
+- Sort, archive, restore, pin, and close actions remain keyboard-reachable;
+  they cannot exist only as pointer-hover affordances.
+
 ## 2. Streaming message behavior
 
 ### 2.1 Token rendering
@@ -237,7 +296,7 @@ Agent calls high-risk tool
 
 **Not implemented in MVP.** Reserved for future milestones:
 
-- Drag session items to reorder sidebar
+- Drag project/session items to assign manual order
 - File drag into the composer has no attachment behavior until the pi prompt
   contract supports persisted file payloads
 - Drag panels to resize widths
@@ -264,8 +323,9 @@ When drag/drop is implemented, these patterns should apply:
 
 ### 9.2 Sidebar scrolling
 
-- Current-project and Temporary session groups share one scrollable sidebar
-  region independent from the footer and primary navigation.
+- All retained project groups and the Temporary session group share one
+  scrollable sidebar region independent from the footer and primary
+  navigation.
 - No horizontal scroll in sidebar
 - Scroll indicator: subtle fade at top/bottom edges (gradient mask, not scrollbar thumb)
 
@@ -322,6 +382,11 @@ This does not prevent state changes — it makes them instant.
 9. Focus rings visible on `focus-visible` only, 2px accent offset 2px
 10. Command palette traps focus; Escape returns to previous focus
 11. All animations respect `prefers-reduced-motion: reduce` — state changes are instant, no decorative motion
-12. Drag/drop is not implemented in MVP; patterns reserved for future spec
+12. Project/session rows support non-destructive pin/archive, independent
+    project collapse, and the documented user-facing sort modes
 13. Shell chrome does not create accidental text selections, while editable
     controls and transcript/code/tool content remain selectable and copyable
+14. Retained project tabs survive restart; activating one changes the selected
+    shell workspace without redirecting background session tool roots
+15. Drag/manual reorder is not implemented; `manual` remains a compatibility
+    value and future drag patterns follow §8

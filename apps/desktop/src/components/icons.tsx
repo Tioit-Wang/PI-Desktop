@@ -1,8 +1,11 @@
 import type { SVGProps } from "react";
 import {
   AppWindow,
+  Archive,
+  ArchiveRestore,
   ArrowDown,
   ArrowUp,
+  ArrowUpDown,
   ArrowUpRight,
   AtSign,
   Bug,
@@ -30,11 +33,12 @@ import {
   Keyboard,
   Link,
   Mic,
+  MessageSquarePlus,
+  MoreHorizontal,
   Palette,
   PanelLeft,
   PanelRight,
   PawPrint,
-  PenLine,
   PencilLine,
   Pin,
   Plug,
@@ -72,8 +76,12 @@ function icon(Lucide: LucideIcon) {
 }
 
 export const IconPlus = icon(Plus);
+export const IconArchive = icon(Archive);
+export const IconArchiveRestore = icon(ArchiveRestore);
+export const IconArrowUpDown = icon(ArrowUpDown);
 export const IconSearch = icon(Search);
-export const IconCompose = icon(PenLine);
+/** Session creation affordance. Keep it distinct from generic add actions. */
+export const IconNewSession = icon(MessageSquarePlus);
 export const IconFolder = icon(Folder);
 export const IconFileText = icon(FileText);
 export const IconGlobe = icon(Globe2);
@@ -124,6 +132,8 @@ export const IconPet = icon(PawPrint);
 export const IconSnapshot = icon(RotateCw);
 export const IconGear = icon(Settings);
 export const IconPin = icon(Pin);
+export const IconMore = icon(MoreHorizontal);
+export const IconX = icon(X);
 export const IconStar = icon(Star);
 /* Toast status glyphs (see ToastHost) */
 export const IconCircleCheck = icon(CircleCheck);
