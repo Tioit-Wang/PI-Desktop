@@ -745,7 +745,7 @@ async function createWindow() {
             await shot("pi-settings-models");
             await mainWindow!.webContents.executeJavaScript(`
               (() => {
-                const edit = [...document.querySelectorAll('.provider-card-actions button')][0];
+                const edit = [...document.querySelectorAll('.provider-row-actions .provider-icon-btn')][0];
                 const add = document.querySelector('.provider-section-head button');
                 (edit ?? add)?.dispatchEvent(new MouseEvent('click',{bubbles:true}));
               })()
