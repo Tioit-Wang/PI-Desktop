@@ -5,7 +5,11 @@ import type {
   AgentStatus,
   AppSettings,
   AppVersionInfo,
+  BrowserAction,
+  BrowserState,
   CommandItem,
+  FsEntry,
+  FsReadResult,
   HostHealth,
   HostStatusEvent,
   OnboardingState,
@@ -20,7 +24,11 @@ import type {
   Result,
   SessionDetail,
   SessionSummary,
+  TerminalCreateResult,
+  TerminalDataEvent,
+  TerminalExitEvent,
   ToolPermissionResolution,
+  WorkspaceDiff,
 } from "@pi-desktop/shared";
 import { IPC } from "@pi-desktop/shared";
 
@@ -169,6 +177,52 @@ export const api = {
   executeCommand: (commandId: string) =>
     invoke(IPC.invoke.commandPaletteExecute, commandId),
   openLogs: () => invoke(IPC.invoke.logOpenFolder),
+  workspaceDiff: () => invoke<WorkspaceDiff>(IPC.invoke.workspaceDiff),
+  terminalCreate: (input: { cwd: string; cols?: number; rows?: number }) =>
+    invoke<TerminalCreateResult>(IPC.invoke.terminalCreate, input),
+  terminalWrite: (termId: string, data: string) =>
+    invoke(IPC.invoke.terminalWrite, { termId, data }),
+  terminalResize: (termId: string, cols: number, rows: number) =>
+    invoke(IPC.invoke.terminalResize, { termId, cols, rows }),
+  terminalDispose: (termId: string) =>
+    invoke(IPC.invoke.terminalDispose, { termId }),
+  browserNavigate: (url: string) =>
+    invoke<BrowserState>(IPC.invoke.browserNavigate, { url }),
+  browserAction: (action: BrowserAction) =>
+    invoke(IPC.invoke.browserAction, { action }),
+  browserSetBounds: (bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => invoke(IPC.invoke.browserSetBounds, bounds),
+  browserSetVisible: (visible: boolean) =>
+    invoke(IPC.invoke.browserSetVisible, { visible }),
+  browserOpenExternal: () => invoke(IPC.invoke.browserOpenExternal),
+  browserGetState: () =>
+    invoke<BrowserState | null>(IPC.invoke.browserGetState),
+  fsList: (path?: string) =>
+    invoke<{ entries: FsEntry[] }>(IPC.invoke.fsList, { path: path ?? "" }),
+  fsRead: (path: string) => invoke<FsReadResult>(IPC.invoke.fsRead, { path }),
+  fsReveal: (path: string) => invoke(IPC.invoke.fsReveal, { path }),
+  onTerminalData: (listener: (event: TerminalDataEvent) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.terminalData, (payload) =>
+      listener(payload as TerminalDataEvent),
+    );
+  },
+  onTerminalExit: (listener: (event: TerminalExitEvent) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.terminalExit, (payload) =>
+      listener(payload as TerminalExitEvent),
+    );
+  },
+  onBrowserState: (listener: (state: BrowserState) => void) => {
+    if (!window.piDesktop?.on) return () => undefined;
+    return window.piDesktop.on(IPC.event.browserState, (payload) =>
+      listener(payload as BrowserState),
+    );
+  },
   onAgentEvent: (listener: (event: AgentEventEnvelope) => void) => {
     if (!window.piDesktop?.on) return () => undefined;
     return window.piDesktop.on(IPC.event.agentMessage, (payload) =>

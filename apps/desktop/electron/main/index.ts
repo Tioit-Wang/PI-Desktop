@@ -34,6 +34,7 @@ import { HostProcess } from "./host-process";
 import { AgentSidecar } from "./agent-sidecar";
 import { PluginRuntime } from "./plugin-runtime";
 import { Logger } from "./logger";
+import { collectWorkspaceDiff } from "./git-diff";
 import {
   convertSession,
   scanAllSources,
@@ -1413,6 +1414,18 @@ function registerIpc() {
     });
     if (result.canceled) return { paths: [] as string[], canceled: true };
     return { paths: result.filePaths, canceled: false };
+  });
+
+  handle(IPC.invoke.workspaceDiff, async () => {
+    if (!host) throw new Error("host unavailable");
+    const res = (await host.call("workspace.get")) as {
+      workspace: { path: string } | null;
+    };
+    const cwd = res.workspace?.path;
+    if (!cwd) {
+      return { repo: false, clean: true, files: [] };
+    }
+    return collectWorkspaceDiff(cwd);
   });
 
   handle(IPC.invoke.pullsList, async () => {

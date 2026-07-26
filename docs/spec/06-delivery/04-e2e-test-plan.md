@@ -35,7 +35,7 @@
 |---|---|---|---|
 | **Unit** | Single module, no IPC | Many | Vitest / Rust #[test] |
 | **Integration** | IPC contract, host↔renderer, host↔sidecar | Moderate | Vitest + IPC mocks or live Electron |
-| **E2E** | Full user journey through the desktop app | ~54 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
+| **E2E** | Full user journey through the desktop app | ~55 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
 
 **Strategy**: document all E2E scenarios now; write unit/integration tests alongside code; automate E2E after M5.
 
@@ -575,15 +575,15 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`tools::shell::tests`); scenario Documented
 
-#### E2E-044: Global PI-Desktop branding (Dock + renderer)
+#### E2E-044: Development launch uses PI-Desktop Dock branding
 
-- **Preconditions**: macOS development checkout with canonical `build/icon_1024.png`; app launched in light and dark themes.
-- **Steps**: 1) Run `pnpm dev` and inspect the Dock icon. 2) On the empty home, inspect the 56px hero mark. 3) Expand and collapse the sidebar; inspect the brand mark + shell name and New task icon. 4) Open a transcript and inspect the docked composer mark. 5) Scan shell copy in composer placeholder and Settings permission/menu-bar strings.
-- **Expected**: Dock and packaged icons use the canonical PI-Desktop asset; home/sidebar/composer reuse `BrandLogo` from `build/icon_1024.png`; New task/session controls use `MessageSquarePlus`; user-visible shell identity is `PI-Desktop`; `Codex` appears only as an external import source or design-reference term.
-- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`, `06-delivery/06-release-runbook.md`, `08-meta/decisions-log.md` (D094)
-- **Acceptance**: Quality (development shell and renderer match release branding)
+- **Preconditions**: macOS development checkout with canonical `build/icon_1024.png`.
+- **Steps**: 1) Run `pnpm dev`. 2) Inspect the running application's Dock icon.
+- **Expected**: The Dock shows the PI-Desktop brand icon, not Electron's default icon; packaged builds continue to use `build/icon.icns`.
+- **Specs linked**: `06-delivery/06-release-runbook.md`
+- **Acceptance**: Quality (development shell matches release branding)
 - **Milestone**: M5
-- **Status**: Unit-covered (`development-branding.test.mjs`, `renderer-branding.test.mjs`); visual scenario Documented
+- **Status**: Unit-covered (`development-branding.test.mjs`); visual scenario Documented
 
 #### E2E-045: Global text selection preserves editing and copying
 
@@ -604,26 +604,25 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`user-select.test.mjs`); scenario Documented
 
-#### E2E-046: Thinking selector follows exact model capability
+#### E2E-046: PI-Desktop renderer branding and session creation icon
 
-- **Preconditions**: One catalogued reasoning model, one non-reasoning model,
-  and a custom provider with an explicit reasoning override.
-- **Steps**: 1) Select each provider/model in turn. 2) Open the model menu and
-  inspect its Thinking section. 3) Choose multiple supported levels without
-  reopening the menu. 4) Use Enable thinking on the unknown custom provider.
-  5) Disable its override in Configuration and refresh model data.
-- **Expected**: The menu always shows the current Thinking state; reasoning
-  models expose only their sparse supported levels in canonical order and keep
-  the menu open after selection. The custom action persists `supportsReasoning`
-  and selects the supported level nearest `medium`; explicit `false` removes
-  stale reasoning tags and resets the effective level to `off`; known
-  non-reasoning and legacy providers remain unavailable without a crash.
-- **Specs linked**: `03-runtime/11-provider-model-system.md`,
-  `03-runtime/12-provider-config-schema.md`,
-  `03-runtime/13-model-catalog-and-selection.md`, ADR 0018
-- **Acceptance**: B (model config), Quality
+- **Preconditions**: App running in both English and zh-CN locales, with an
+  empty home and a docked transcript available.
+- **Steps**: 1) Inspect the expanded and collapsed sidebar. 2) Inspect the
+  empty-home hero and docked composer. 3) Focus the New task control and each
+  project/Temporary create control. 4) Open Settings and the composer input.
+- **Expected**: Visible shell identity reads `PI-Desktop`; the home hero,
+  expanded/collapsed sidebar, and docked composer all render the canonical
+  `build/icon_1024.png` asset through `BrandLogo`; every session-creation
+  control uses the dedicated message-plus icon with localized labels and
+  accessible names. `Codex` remains visible only as the external import-source
+  label or in non-runtime design-reference text.
+- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/07-ui-design-system.md`,
+  `04-ux/08-component-spec.md`, `04-ux/09-interaction-patterns.md`,
+  `08-meta/decisions-log.md` (D094)
+- **Acceptance**: Quality (brand consistency and key operations feel polished)
 - **Milestone**: M5
-- **Status**: Unit-covered (`thinking-ui.test.mjs`, agent-runtime capability tests); full UI scenario Draft
+- **Status**: Unit-covered (`renderer-branding.test.mjs`); scenario Documented
 
 #### E2E-047: Retain, collapse, switch, and close multiple project tabs
 
@@ -698,7 +697,28 @@ Each scenario is documented in this format:
 - **Status**: Unit-covered (`rpc::tests` for project-bound, Temporary, and
   missing-session workspace resolution); full multi-turn UI scenario Draft
 
-#### E2E-050: Thinking level persists with the session
+#### E2E-050: Thinking selector follows exact model capability
+
+- **Preconditions**: One catalogued reasoning model, one non-reasoning model,
+  and a custom provider with an explicit reasoning override.
+- **Steps**: 1) Select each provider/model in turn. 2) Open the model menu and
+  inspect its Thinking section. 3) Choose multiple supported levels without
+  reopening the menu. 4) Use Enable thinking on the unknown custom provider.
+  5) Disable its override in Configuration and refresh model data.
+- **Expected**: The menu always shows the current Thinking state; reasoning
+  models expose only their sparse supported levels in canonical order and keep
+  the menu open after selection. The custom action persists `supportsReasoning`
+  and selects the supported level nearest `medium`; explicit `false` removes
+  stale reasoning tags and resets the effective level to `off`; known
+  non-reasoning and legacy providers remain unavailable without a crash.
+- **Specs linked**: `03-runtime/11-provider-model-system.md`,
+  `03-runtime/12-provider-config-schema.md`,
+  `03-runtime/13-model-catalog-and-selection.md`, ADR 0018
+- **Acceptance**: B (model config), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`thinking-ui.test.mjs`, agent-runtime capability tests); full UI scenario Draft
+
+#### E2E-051: Thinking level persists with the session
 
 - **Preconditions**: A reasoning-capable session is idle.
 - **Steps**: 1) Select `high`. 2) Change Chat/Agent mode without changing the
@@ -713,7 +733,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (host schema/session tests, `thinking-ui.test.mjs`); full restart scenario Draft
 
-#### E2E-051: Thinking level reaches the pi request
+#### E2E-052: Thinking level reaches the pi request
 
 - **Preconditions**: Instrumented reasoning-capable provider with a sparse
   level set and request capture; one session configured above and below gaps.
@@ -728,7 +748,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (agent-runtime prompt/clamp tests); integration scenario Draft
 
-#### E2E-052: Thinking streams separately from the answer
+#### E2E-053: Thinking streams separately from the answer
 
 - **Preconditions**: Provider emits thinking deltas before and between answer
   deltas.
@@ -748,7 +768,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`thinking-ui.test.mjs`, agent-runtime event tests); full streaming scenario Draft
 
-#### E2E-053: Stored thinking reloads losslessly
+#### E2E-054: Stored thinking reloads losslessly
 
 - **Preconditions**: A completed assistant message contains both reasoning and
   final answer blocks; another contains reasoning only.
@@ -763,7 +783,7 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (host message/import tests, `thinking-ui.test.mjs`); full reload scenario Draft
 
-#### E2E-054: Unsupported provider transition clamps safely
+#### E2E-055: Unsupported provider transition clamps safely
 
 - **Preconditions**: Session on a reasoning provider at `max`; target
   providers include non-reasoning and sparse-level variants.
@@ -779,6 +799,42 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`thinking-ui.test.mjs`, host validation tests); full UI scenario Draft
 
+#### E2E-056: Work panel shell docking and persistence
+
+- **Preconditions**: App running with any workspace state.
+- **Steps**: 1) Toggle the panel via the titlebar button and via Cmd/Ctrl+J.
+  2) Switch across all four tabs. 3) Drag the left-edge handle below 320px and
+  beyond 60vw. 4) Shrink the window under the current panel width. 5) Relaunch
+  the app.
+- **Expected**: The panel docks as a third shell column (main pane shrinks —
+  no overlay), tabs switch without losing terminal state, width clamps to
+  320–min(720px, 60vw) and re-clamps on window resize, and `{open, tab,
+  width}` are restored after relaunch. The former context-panel overlay no
+  longer exists; the titlebar button reflects open state.
+- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`
+- **Acceptance**: F (persistence), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`work-panel.test.mjs` source invariants); full UI scenario Draft
+
+#### E2E-057: Review tab reflects the git working tree
+
+- **Preconditions**: A git workspace with a clean tree; agent configured.
+- **Steps**: 1) Open the review tab (clean state). 2) Ask the agent to edit a
+  tracked file and create a new file. 3) Wait for the turn to finish. 4) Edit
+  a file outside the app and press refresh. 5) Open the panel in a
+  non-git folder and with no workspace.
+- **Expected**: Clean tree shows the "no changes" empty state; agent
+  Write/Edit/Bash completions refresh the diff automatically (debounced) with
+  per-file status badges, +/− counts, and colored unified hunks (untracked
+  files included); manual refresh picks up external edits; non-git and
+  no-workspace states render their dedicated copy. Binary and >200KB patches
+  render as capped rows without hunks; >100 changed files shows the
+  truncation notice.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md` §13a, `04-ux/08-component-spec.md` §5
+- **Acceptance**: D (workspace), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`git-diff-parse.test.mjs`); full UI scenario Draft
+
 ---
 
 ## 8. Traceability Matrix
@@ -786,15 +842,15 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-046, E2E-051, E2E-054 |
-| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-051, E2E-052, E2E-053, E2E-054 |
-| D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049 |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055 |
+| D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057 |
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040, E2E-049 |
-| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-050, E2E-053 |
+| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030, E2E-049 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-052, E2E-054 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -802,7 +858,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -853,7 +909,7 @@ This test plan spec is accepted when:
 - Open the desktop app on macOS dark theme.
 - Expect charcoal main surface (`#181818`), left sidebar with New task +
   current-project and Temporary session groups, and a floating bottom composer
-  with project/model chips.
+  with mode/model controls and no workspace rail.
 - Expect no blue-slate marketing chrome; primary send control is a circular inverted button.
 
 ### US-UI-02 Empty thread hero
@@ -867,15 +923,17 @@ This test plan spec is accepted when:
 - Expect each destination to replace the main pane with a dedicated page (not only a toast).
 - From Projects, open/switch/close a local folder workspace.
 
-### US-UI-04 Composer context chips
-- With a git workspace open, composer shows project name, Local, and detected branch.
+### US-UI-04 Composer without workspace context
+- With a git workspace open, composer does not show project, Local, or branch
+  labels above the prompt surface.
 - Permission toggle switches between Agent and Request approval (chat mode).
 
 ### US-UI-05 Locale chrome
 - On a zh-CN system locale, sidebar labels render in Chinese (新建任务 / 项目 /
   插件 / 临时会话), without 拉取请求 or 已安排 entries.
-- Empty-thread hero remains English Codex copy: "What should we build?".
-- Composer shows 本地, Chat mode, and the active model ID on the right.
+- Empty-thread hero remains the English PI-Desktop shell copy: "What should we build?".
+- Composer omits the 本地 workspace label and shows Chat mode plus the active
+  model ID.
 
 ### US-UI-06 Session auto-title
 - Create a new task and send a first prompt such as "同步代码".
@@ -897,24 +955,26 @@ This test plan spec is accepted when:
   group and the home hero remains visible. Empty drafts in another scope are
   not reused.
 
-### US-UI-12 Combined workspace chips
-- On project home and in a thread, expect project / Local / branch controls to
-  share one context rail attached directly to the composer shell.
-- The rail and shell use one surface and one outer elevation with no visible
-  gap, independent rail shadow, or bottom seam; internal separators remain.
+### US-UI-12 Composer without workspace rail
+- On empty home, project home, and in a thread, expect no project / Local /
+  branch context rail above the composer.
+- The prompt shell remains one uninterrupted rounded surface with no reserved
+  rail height, attached top lip, rail shadow, bottom seam, or separators.
 
 ### US-UI-13 Light theme shell parity
 - Set theme to system/light on a light macOS appearance.
 - Expect sidebar `#f3f3f3`, main `#ffffff`, text `#1a1c1f`, white floating composer, and home hero with project underline.
 - Sidebar nav labels (New task / Projects / Plugins / Temporary sessions),
-  current-project identity, thread titles, and composer chips must remain
+  current-project identity, thread titles, and composer controls must remain
   readable dark-on-light (≥4.5:1). Never white/translucent text on the light
   sidebar.
 - Titlebar back/forward controls use dark ink on light chrome.
 
 ### US-UI-14 Semantic chrome tokens
 - Toggle theme system → light → dark without restart.
-- Shell chrome (sidebar items, chips, composer, icon buttons) follows semantic `--ds-text-*` / `--ds-bg-*` tokens in both themes; no hard-coded white (`gray-0`) text on light surfaces.
+- Shell chrome (sidebar items, composer runtime controls, icon buttons)
+  follows semantic `--ds-text-*` / `--ds-bg-*` tokens in both themes; no
+  hard-coded white (`gray-0`) text on light surfaces.
 
 ### US-UI-15 Codex density + elevation
 - Sidebar nav rows use ~32px height / 13px type with 8px horizontal padding (Codex `radius-token-row` 10px).
@@ -927,8 +987,9 @@ This test plan spec is accepted when:
 - Badge click remains available (local stand-in opens logs until real update channel lands).
 - Traffic lights sit at Codex `{x:16,y:16}` with 46px toolbar; back/forward nav lives in the drag row after lights.
 
-### US-UI-17 Codex home hero mark
-- On empty chat home, a 56px Codex cloud/glyph mark renders above the title at ~30% opacity (hover ~40%).
+### US-UI-17 PI-Desktop home hero logo
+- On empty chat home, the canonical PI-Desktop PNG renders at 56px above the
+  title with its native colors and no decorative hover state.
 - Title is 28px / weight 400; active project name uses dotted underline (1px, offset 4px).
 - Composer does not render attachment or appshot controls before their payload
   reaches pi end to end.
@@ -940,8 +1001,9 @@ This test plan spec is accepted when:
   Thinking state; exact reasoning-capable models expose their supported levels,
   unknown compatible models can explicitly enable thinking, and changes update
   the durable session.
-- Project name opens the project picker; Local and branch render as status text,
-  not clickable buttons.
+- Expect no project, Local, or branch context labels in the composer.
+- Every visible composer control changes the active session, opens its menu, or
+  submits/aborts the current turn.
 
 
 
@@ -973,7 +1035,7 @@ This test plan spec is accepted when:
   pinned indicator where supplied by the host, and active highlight.
 - Expand a non-active project and open one of its sessions; expect the app to
   activate that project before selecting the session, so workspace tools and
-  composer context use the same project.
+  session scope use the same project.
 
 ### US-UI-24 Settings full-page shell
 - Open Settings (footer profile → Settings).
@@ -991,8 +1053,7 @@ This test plan spec is accepted when:
 
 ### US-UI-28 Home empty composer association
 - On empty chat home (light + dark), expect hero in the upper grow region and composer in the lower grow region (Codex dual-grow), not a large empty gap with a wrongly absolute-docked box.
-- When present, the workspace context rail is visually integrated into the
-  composer plate rather than floating above it.
+- The composer remains a standalone plate without an attached workspace rail.
 - Starting a transcript restores the bottom-docked composer with fade veil.
 
 ### US-UI-29 Light composer plate legibility
@@ -1003,7 +1064,7 @@ This test plan spec is accepted when:
 - Toolbar controls and placeholder remain legible (not pure white-on-white).
 
 ### US-UI-30 Composer placeholder copy
-- Empty composer shows Codex placeholder copy: EN `Ask Codex to do anything`, zh-CN `向 Codex 下达任意指令`.
+- Empty composer shows PI-Desktop placeholder copy: EN `Ask PI-Desktop to do anything`, zh-CN `向 PI-Desktop 下达任意指令`.
 - Placeholder ink is legible on light and dark floating plates.
 
 ### US-UI-31 Home split-grow vertical layout
@@ -1014,10 +1075,12 @@ This test plan spec is accepted when:
 
 ### US-UI-33 Scoped sidebar session groups
 - The home sidebar has no Recents aggregate.
-- It shows one current-project header with nested sessions and one
-  `Temporary sessions` / `临时会话` header for path-less sessions.
-- Both headers expose a compact scope-specific `+`; nav row pitch remains
-  ~32px and session row pitch ~28–31px.
+- It shows one independently collapsible header per retained project path with
+  nested sessions and one `Temporary sessions` / `临时会话` header for
+  path-less sessions.
+- Project and Temporary headers expose compact scope-specific `+` controls;
+  project/session overflow menus expose pin/archive actions; nav row pitch
+  remains ~32px and session row pitch ~28–31px.
 
 ### US-UI-34 Home suggestion cards
 - On empty chat home (light + dark), four ambient suggestion cards render in an auto-fit row under the hero (portal), not only as a 2x2 stack that collides with the composer.
@@ -1032,14 +1095,14 @@ This test plan spec is accepted when:
 ### US-UI-36 Hero Y + night box elevation
 - At ~1200×690 light home, hero first dark ink is near y≈300 (±12px) vs Codex gold.
 - Dark home composer plate reads as elevated-primary `#212121f5` with elevation-prominent against `#181818` (not flat same-surface).
-- Light workspace context rail shares the solid composer surface and has no
-  independent elevation.
+- Light composer renders as one uninterrupted solid surface with no context
+  rail or independent top elevation.
 - Model chip shows the active model ID; its menu contains only runnable
   provider/model choices and Configuration.
 - Placeholder and approval chip remain legible on light and dark plates.
 
 ### US-UI-39 Home mark + hero title optical
-- Empty-home Codex mark is visible (not near-invisible); stroke density closer to Codex gold than a 0.3 ghost.
+- Empty-home PI-Desktop mark is visible (not near-invisible); stroke density remains readable without a decorative ghost effect.
 - Empty-home title with a project uses a readable project label span (short basenames may display as `PI-Desktop` for optical parity).
 
 ### US-UI-40 Home content width vs rem root
@@ -1081,12 +1144,15 @@ This test plan spec is accepted when:
   independent Plugins destination.
 - Dark: rail `#000`, main `#181818`, cards elevated `#212121`.
 
-### US-UI-38 Home chips without project
-- On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).
-- Starting a transcript restores the workspace capsule above the docked composer.
+### US-UI-38 Composer workspace context omitted
+- On empty home, project home, and after starting a transcript, the composer
+  never renders a project / Local / branch capsule.
+- Workspace identity remains visible through the home hero or sidebar rather
+  than being duplicated above the prompt.
 
-### US-UI-37 Empty draft infinity + resize
-- Empty composer shows a left ∞ cue and visible placeholder ink (not a blank white/night hole).
+### US-UI-37 Empty draft brand logo + resize
+- Empty composer shows the 15px shared brand logo and visible placeholder ink
+  (not a blank white/night hole).
 - Auto-resize never collapses empty textarea below ~28px.
 - Disabled send control is a solid gray chip on light (`#8e8e90`), full opacity with white arrow.
 - Dark night plate remains elevated-primary `#212121f5` with readable elevation-prominent on `#181818`.
@@ -1098,9 +1164,8 @@ This test plan spec is accepted when:
 
 ### US-UI-46 Home-with-project composer chrome
 - Open a project on empty home (no transcript).
-- Expect workspace controls (project / Local / branch) attached to the plate as
-  one seamless context rail; no ∞ draft mark; placeholder is Ask anything /
-  随心输入.
+- Expect no workspace controls attached to the plate; there is no legacy draft
+  mark, and the placeholder uses the PI-Desktop copy.
 - Model chip shows the active model ID; footer profile uses gear + Custom and
   help control.
 
@@ -1148,7 +1213,8 @@ This test plan spec is accepted when:
   the `#212121` card surface; they must not fall back to low-contrast muted ink.
 
 ### US-UI-54 Toast variants + lifecycle (D085)
-- Trigger a success (save provider), an error (run with an invalid key), and an info toast (branch chip).
+- Trigger a success (save provider), an error (run with an invalid key), and an
+  info toast from a test plugin.
 - Expect a top-center stack on an elevated plate with a tinted variant icon (green ✓ / red ! / info) and an X dismiss per card; newest enters at the top-center anchor and pushes older cards down.
 - Success/info auto-dismiss ~4s, error lingers ~8s; hovering a card pauses its countdown; X removes it immediately.
 - Repeating the same action restarts the existing toast instead of stacking a duplicate; stack never exceeds 4.
@@ -1183,7 +1249,8 @@ This test plan spec is accepted when:
 - Expect one path-keyed group per retained project, an active-state marker on
   exactly one group, and a separate Temporary sessions group.
 - Collapse A, activate B, then return to A. Only A's child rows collapse; the
-  active project, topbar path, and transcript switch together.
+  active project, topbar path, and transcript switch together; the composer
+  remains free of workspace identity chrome.
 - Close B and reopen it from Projects. Closing removes only the sidebar tab;
   durable project/session rows remain available.
 
@@ -1201,7 +1268,7 @@ This test plan spec is accepted when:
 ### US-UI-59 Session-rooted background tools
 - Start a visible turn in project A, switch to project B while it runs, and
   inspect both sidebar status indicators.
-- Expect A's turn to continue in the background, B's visible workspace and transcript to show
+- Expect A's turn to continue in the background, B's composer/context to show
   only B, and tool output/artifacts from A to remain rooted in A.
 - Open a Temporary session and invoke a workspace-required tool; expect the
   normal `WORKSPACE_REQUIRED` result rather than inheritance from B.

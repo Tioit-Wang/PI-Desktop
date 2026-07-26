@@ -5,30 +5,32 @@
 > Interaction behavior: [09-interaction-patterns.md](09-interaction-patterns.md)
 
 
-> Shell layout is Codex-aligned: left thread sidebar (~275px), main transcript, floating bottom composer with project/model chips. Prefer neutral charcoal surfaces over blue-slate chrome.
+> Shell layout is Codex-aligned: left thread sidebar (~275px), main transcript, floating bottom composer with mode/model controls. Prefer neutral charcoal surfaces over blue-slate chrome.
 >
 > **Precedence rule**: where a metric or copy string below disagrees with a
 > Codex parity decision in [decisions-log §D](../08-meta/decisions-log.md)
 > (D034+), the decision log wins — it tracks the live gold captures. Known
 > updated values: sidebar ~275px (not 240px), toolbar 46px (not 44px),
-> composer placeholder per D046/D066, home split-grow per D045/D047,
+> composer placeholder per D094/D066, home split-grow per D045/D047,
 > Projects index table per D066, settings full-page shell per D063 with the
 > compact four-destination directory from D090, and retained path-keyed
 > project groups per D093 (which preserves D088's Temporary/exact-path boundary
-> while restoring scoped project and conversation organization actions).
+> while restoring scoped project and conversation organization actions), and
+> product branding/icon contract per D094.
 
 ## 1. AppShell
 
 ### 1.1 Purpose
 
-Outer frame that positions Topbar, Sidebar, MainChat, and ContextPanel. Owns resize logic, responsive collapse, and theme class.
+Outer frame that positions Topbar, Sidebar, MainChat, and WorkPanel. Owns resize logic, responsive collapse, and theme class.
 
 ### 1.2 Anatomy
 
 ```text
 +------------------+------------------------------+------------------+
-| Sidebar          | MainChat                     | ContextPanel     |
-| (275px / 48px)   | (flex-1)                     | (280px / hidden) |
+| Sidebar          | MainChat                     | WorkPanel        |
+| (275px / 48px)   | (flex-1)                     | (320–720px /     |
+|                  |                              |  hidden)         |
 +------------------+------------------------------+------------------+
 | Titlebar row: 46px, traffic lights at {x:16,y:16} (D034/D070)      |
 +--------------------------------------------------------------------+
@@ -38,25 +40,26 @@ Outer frame that positions Topbar, Sidebar, MainChat, and ContextPanel. Owns res
 
 | State | Behavior |
 |---|---|
-| Default | Sidebar expanded, context hidden |
-| Narrow (<800px) | Context auto-collapses |
+| Default | Sidebar expanded, work panel hidden |
 | Narrow (<640px) | Sidebar auto-collapses to icon rail |
-| Fullscreen | Topbar remains; sidebar/context toggle |
+| Narrow window with panel open | Work panel width re-clamps to 60vw |
+| Fullscreen | Topbar remains; sidebar/panel toggle |
 
 ### 1.4 Interactions
 
 - Sidebar toggle: keyboard shortcut + hamburger button in topbar
-- Context panel toggle: keyboard shortcut + panel button in topbar
+- Work panel toggle: Cmd/Ctrl+J + panel button in topbar
+- Work panel resize: left-edge drag handle (§5.4)
 - Window resize: responsive collapse per [07-ui-design-system.md](07-ui-design-system.md) §10.1
 
 ### 1.5 Accessibility
 
-- Landmark roles: `<nav>` for sidebar, `<main>` for chat, `<aside>` for context panel, `<header>` for topbar
-- Tab sequence: topbar → sidebar → main chat → context panel → composer
+- Landmark roles: `<nav>` for sidebar, `<main>` for chat, `<aside>` for work panel, `<header>` for topbar
+- Tab sequence: topbar → sidebar → main chat → work panel → composer
 
 ### 1.6 MVP constraints
 
-- No drag-to-resize panel widths (fixed values)
+- Sidebar width is fixed; only the work panel drag-resizes
 - The main pane renders one active transcript and one selected workspace while
   the sidebar may retain several project tabs/groups
 - No status bar (deferred)
@@ -111,10 +114,6 @@ Global controls bar: project identity, model selection, mode indicator, abort bu
 
 ### 3.1 Purpose
 
-- `BrandLogo` imports canonical `build/icon_1024.png` through Vite. The
-
-- The visible shell name is `PI-Desktop`; Codex is not used as the renderer
-
 Scoped project and session navigation and management. The expanded sidebar
 shows every retained project tab as an independently collapsible group plus
 path-less Temporary sessions; the collapsed state is an icon rail. Retained
@@ -127,7 +126,8 @@ and Scheduled are not rendered in the sidebar.
 ```text
 Expanded (~275px, D034/D070):
 +---------------------------+
-| [+ New Chat] button       |
+| [π] PI-Desktop            |
+| [message+ New Chat] button |
 | Projects / Plugins        |
 | project-A      [v] [+] … |
 |   • Project session      |
@@ -157,7 +157,7 @@ Collapsed (48px):
 | Collapsed | Icon rail — hover shows tooltip with session title |
 | Active session | Accent background highlight on current session item |
 | Hover session | bg-tertiary background |
-| Active project | Header carries active state; topbar follows that workspace |
+| Active project | Header carries active state; topbar follows that workspace; composer exposes no workspace identity |
 | Collapsed project | Header remains visible; child conversations are hidden |
 | Archived row | Hidden by default; visible in the explicit archived view |
 | No retained project | Compact Open project entry; Temporary rows remain available |
@@ -170,7 +170,7 @@ Collapsed (48px):
 - Click project disclosure: expand/collapse only that group
 - Click session: activate its bound project when necessary, switch the active
   session, and scroll to the last message
-- Click New Chat: create/reuse a draft in the current workspace scope
+- Click the message-plus New Chat control: create/reuse a draft in the current workspace scope
 - Click project `+`: activate that project and create/reuse a session bound to
   its exact path
 - Click Temporary sessions `+`: clear the workspace and create/reuse a
@@ -194,13 +194,26 @@ Collapsed (48px):
 - Keyboard: arrow keys navigate session list
 
 
-### 3.6 MVP constraints
+### 3.6 Brand and icon contract
+
+- The visible shell name is `PI-Desktop`; Codex is not used as the renderer
+  identity.
+- `BrandLogo` imports canonical `build/icon_1024.png` through Vite. The
+  empty-home hero renders it at 56px, the expanded/collapsed sidebar at
+  15px/18px, and the docked composer at 15px.
+- The expanded/collapsed New task control and project/Temporary session
+  creation controls render the dedicated message-plus session icon. Generic
+  `IconPlus` remains reserved for adding non-session entities.
+- Icons are decorative when a localized text label or accessible name is
+  present; click, keyboard, and focus behavior remain unchanged.
+
+### 3.7 MVP constraints
 
 - No sidebar search (deferred per [01-ui-ia.md](01-ui-ia.md))
 - No drag-to-reorder contract; `manual` is a persisted compatibility value
 - Project tabs do not create another host workspace or a second main pane
 
-### 3.7 Project group contract
+### 3.8 Project group contract
 
 Each retained project is one labeled `section` keyed by normalized full path.
 The header owns project-level controls; the child list owns conversation-level
@@ -267,45 +280,62 @@ Primary chat area containing ChatTranscript and Composer. Scrollable, center of 
 
 ---
 
-## 5. ContextPanel
+## 5. WorkPanel
+
+> Replaces the former ContextPanel overlay. The workspace/model/status
+> summary it carried lives in the composer chips and Settings.
 
 ### 5.1 Purpose
 
-Secondary panel for project metadata, workspace status, and session details. Collapsed by default in MVP.
+Docked right work column for inspecting and steering the agent's workspace:
+Review (working-tree diff), Terminal (interactive PTY), Browser (embedded
+preview), and Files (workspace browser). Codex-parity surface.
 
 ### 5.2 Anatomy
 
 ```text
-+--------------------+
-| Project name       |
-| Workspace path     |
-| ──────────────     |
-| Session grants     |
-|   toolName ×      |
-|   grantedAt        |
-| ──────────────     |
-| Status indicators  |
-+--------------------+
++--------------------------------------+
+| [审阅|终端|浏览器|文件]        [×]   |  header 46px, drag region
++--------------------------------------+
+| Active tab body                      |
+|  Review: file cards + unified diff   |
+|  Terminal: xterm host                |
+|  Browser: URL bar + preview surface  |
+|  Files: tree + file viewer           |
++--------------------------------------+
+^ 6px resize handle on the left edge
 ```
 
 ### 5.3 States
 
 | State | Behavior |
 |---|---|
-| No project | "Open a project" prompt with action link |
-| Active project | Project name, path, workspace stats |
-| Has grants | Grant list with clear buttons per [03-permission-ux.md](03-permission-ux.md) §8 |
+| Closed (default) | Not rendered; titlebar toggle inactive |
+| Open | Docked flex column right of the main pane; width 320–min(720, 60vw) |
+| Resizing | Live width follows pointer; committed (and persisted) on release |
+| No workspace | Each tab renders its own "open a project" empty state |
+| Narrow window | Width re-clamps on window resize |
 
-### 5.4 Accessibility
+### 5.4 Interactions
 
-- `role="complementary"` landmark
-- Close button with `aria-label="Close context panel"`
+- Toggle: titlebar panel button or Cmd/Ctrl+J; close button in the header.
+- Tab switch: segmented control; selecting a tab also opens the panel when
+  driven programmatically. Terminal stays mounted across switches so the PTY
+  and scrollback survive; other tabs mount on demand.
+- Resize: pointer drag on the left-edge handle.
+- Persistence: `{open, tab, width}` in localStorage `pi.desktop.workPanel`.
 
-### 5.5 MVP constraints
+### 5.5 Accessibility
 
-- No file tree view (deferred per [01-ui-ia.md](01-ui-ia.md) §11)
-- No diff editor view
-- No terminal matrix
+- `<aside>` landmark; tab strip is a `nav` with `aria-label`
+- Resize handle: `role="separator"` `aria-orientation="vertical"`
+- Close button and every tab expose localized titles
+
+### 5.6 MVP constraints
+
+- Tab content specs: Review diff is read-only (no line comments yet);
+  Browser is user-driven (no agent control); Files is read-only
+- Single panel instance; no per-tab detach or split
 
 ---
 
@@ -711,9 +741,8 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 
 - Height: compact one-line shell by default; textarea auto-grows through seven
   visible lines, then the textarea scrolls internally
-- Workspace context rail: attached to the shell's upper-left edge with zero
-  visible gap; project / Local / branch retain internal separators but share
-  the shell surface and its single elevation
+- Workspace context: no project, Local, or branch rail is rendered or
+  reserved above the shell in either home or thread-docked mode (D095)
 - Background: one solid semantic composer surface; no internal gradient,
   background image, or decorative wash
 - Elevation: 20px radius with a hairline stroke and restrained soft shadow;

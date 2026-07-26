@@ -25,6 +25,10 @@ Principles:
 | `log` | Diagnostics that the frontend can display |
 | `plugin` | Plugin install/enable-disable/query/permissions |
 | `commandPalette` | Command palette search and execution |
+| `workspace` | Working-tree inspection for the work panel (diff) |
+| `terminal` | Work panel PTY create/write/resize/dispose + data/exit events |
+| `browser` | Work panel embedded preview navigation/bounds/visibility + state events |
+| `fs` | Work panel workspace file listing/reading/reveal (read-only) |
 
 ## 3. Channel Conventions
 
@@ -313,6 +317,47 @@ type PluginSummary = {
 Command sources:
 - Built-in commands
 - Plugin contributes.commands
+
+## 13a. Work Panel APIs
+
+Work panel channels are Electron-main implementations (no host-core hop);
+all of them resolve the workspace root from `workspace.get` and fail closed
+without one.
+
+### workspace
+
+- `workspace/diff()` → `WorkspaceDiff { repo, clean, files: DiffFile[], truncated? }`.
+  Working tree vs `HEAD` (empty tree before the first commit) plus untracked
+  files, collected via the git CLI with rename detection. Caps: 100 files,
+  200KB per patch (`tooLarge`), binary detection; capped entries keep their
+  path row but omit hunks (D098).
+
+### terminal (D099)
+
+- `terminal/create({cwd, cols?, rows?})` → `{termId, replay}` — one PTY per
+  workspace path, reused while alive; `replay` restores recent scrollback.
+- `terminal/write({termId, data})`, `terminal/resize({termId, cols, rows})`,
+  `terminal/dispose({termId})`
+- events: `terminal/event/data {termId, data}`, `terminal/event/exit {termId, exitCode}`
+
+### browser (D100)
+
+- `browser/navigate({url})` (scheme-normalized, http/https only),
+  `browser/action({action: back|forward|reload|stop})`,
+  `browser/setBounds({x,y,width,height})` (renderer-measured content rect),
+  `browser/setVisible({visible})`, `browser/openExternal()`,
+  `browser/getState()`
+- event: `browser/event/state {url, title, isLoading, canGoBack, canGoForward}`
+
+### fs (read-only)
+
+- `fs/list({path})` → entries sorted dirs-first; ignores `.git`,
+  `node_modules`, and the default ignore subset of
+  [15-workspace-ignore-rules](15-workspace-ignore-rules.md)
+- `fs/read({path})` → text (≤512KB) / image data URL (≤5MB) / binary / tooLarge
+- `fs/reveal({path})` → reveal in Finder
+- Every path resolves inside the workspace root; traversal outside is
+  rejected (`INVALID_ARGUMENT`).
 
 ## 14. Error Codes — Initial registry (extensible)
 

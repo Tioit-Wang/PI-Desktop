@@ -850,14 +850,11 @@ textarea:disabled {
   align-items: center;
   justify-content: center;
   color: var(--ds-text-primary);
-  /* Icon mass already near gold; keep slightly soft */
   opacity: 1;
-  transition: opacity 120ms ease, transform 180ms ease;
   cursor: default;
   -webkit-user-select: none;
   user-select: none;
 }
-
 
 .empty-hero h1 {
   margin: 0;
@@ -975,7 +972,6 @@ textarea:disabled {
   -webkit-user-select: none;
   user-select: none;
 }
-
 
 .composer-input {
   width: 100%;
@@ -3126,7 +3122,7 @@ textarea:disabled {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  opacity: 1;
+  opacity: 0.9;
 }
 
 .settings-nav-label {
@@ -3895,6 +3891,7 @@ textarea:disabled {
 
 .projects-empty-title {
   color: var(--ds-text-primary);
+  font-size: var(--text-base-plus);
   font-weight: var(--font-weight-strong);
 }
 
@@ -4319,4 +4316,309 @@ textarea:disabled {
 
 .projects-row-block.archived {
   opacity: 0.68;
+}
+
+/* ---------- Work panel (review / terminal / browser / files) ---------- */
+
+.work-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-width: 320px;
+  height: 100%;
+  min-height: 0;
+  background: var(--ds-bg-primary);
+  border-left: 1px solid var(--ds-border-subtle);
+}
+
+.work-panel-resize {
+  position: absolute;
+  inset-block: 0;
+  left: -3px;
+  width: 6px;
+  z-index: 30;
+  cursor: col-resize;
+}
+
+.work-panel-resize:hover,
+.work-panel-resize:active {
+  background: color-mix(in oklab, var(--ds-accent) 28%, transparent);
+}
+
+.work-panel-header {
+  display: flex;
+  height: 46px; /* aligns with .main-titlebar */
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 0 10px 0 12px;
+  border-bottom: 1px solid var(--ds-border-subtle);
+  -webkit-app-region: drag;
+}
+
+.work-panel-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--ds-text-primary) 4%, transparent);
+}
+
+.work-panel-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-2xs);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--ds-text-muted);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.work-panel-tab:hover {
+  color: var(--ds-text-primary);
+}
+
+.work-panel-tab.active {
+  color: var(--ds-text-primary);
+  background: var(--ds-bg-primary);
+  box-shadow: 0 0 0 1px var(--ds-border-subtle);
+}
+
+.work-panel-body {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.work-panel-tabpane {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.work-panel-tabpane.is-hidden {
+  display: none;
+}
+
+.work-tab-empty {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: var(--ds-text-muted);
+  text-align: center;
+}
+
+.work-tab-empty p {
+  font-size: var(--text-md);
+  line-height: var(--leading-body);
+  max-width: 240px;
+}
+
+.work-terminal-host {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Work panel — review tab */
+
+.review-tab {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.review-toolbar {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ds-border-subtle);
+}
+
+.review-summary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  color: var(--ds-text-muted);
+}
+
+.review-truncated {
+  padding: 6px 12px;
+  font-size: var(--text-sm);
+  color: var(--ds-warning);
+  border-bottom: 1px solid var(--ds-border-subtle);
+}
+
+.review-scroll {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 8px 10px 16px;
+}
+
+.diff-file {
+  margin-bottom: 8px;
+  border: 1px solid var(--ds-border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--ds-bg-primary);
+  overflow: hidden;
+}
+
+.diff-file-header {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: var(--text-sm);
+  color: var(--ds-text-primary);
+}
+
+.diff-file-header:hover:not(:disabled) {
+  background: var(--ds-bg-hover);
+}
+
+.diff-file-caret {
+  display: inline-flex;
+  width: 12px;
+  flex: 0 0 auto;
+  color: var(--ds-text-muted);
+  transition: transform 120ms ease;
+}
+
+.diff-file.open .diff-file-caret {
+  transform: rotate(90deg);
+}
+
+.diff-file-status {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-2xs);
+  font-weight: var(--font-weight-medium);
+  background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
+  color: var(--ds-text-muted);
+}
+
+.diff-file-status.is-added,
+.diff-file-status.is-untracked {
+  background: color-mix(in oklab, var(--ds-success) 14%, transparent);
+  color: var(--ds-success);
+}
+
+.diff-file-status.is-deleted {
+  background: color-mix(in oklab, var(--ds-error) 14%, transparent);
+  color: var(--ds-error);
+}
+
+.diff-file-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  direction: rtl;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-plus);
+}
+
+.diff-file-counts {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 6px;
+  font-size: var(--text-2xs);
+  font-family: var(--font-mono);
+}
+
+.diff-count-add {
+  color: var(--ds-success);
+}
+
+.diff-count-del {
+  color: var(--ds-error);
+}
+
+.diff-file-body {
+  border-top: 1px solid var(--ds-border-subtle);
+  overflow-x: auto;
+}
+
+.diff-file-note {
+  padding: 8px 10px;
+  font-size: var(--text-sm);
+  color: var(--ds-text-muted);
+}
+
+.diff-hunk {
+  border-bottom: 1px solid var(--ds-border-subtle);
+}
+
+.diff-hunk:last-child {
+  border-bottom: none;
+}
+
+.diff-line {
+  display: flex;
+  min-width: max-content;
+  align-items: stretch;
+  font-family: var(--font-mono);
+  font-size: var(--text-xs-plus);
+  line-height: var(--leading-relaxed);
+  white-space: pre;
+}
+
+.diff-line-sign {
+  flex: 0 0 auto;
+  width: 18px;
+  text-align: center;
+  user-select: none;
+  color: var(--ds-text-muted);
+}
+
+.diff-line-text {
+  flex: 1;
+  padding-right: 12px;
+}
+
+.diff-line.add {
+  background: color-mix(in oklab, var(--ds-success) 12%, transparent);
+}
+
+.diff-line.add .diff-line-sign {
+  color: var(--ds-success);
+}
+
+.diff-line.del {
+  background: color-mix(in oklab, var(--ds-error) 12%, transparent);
+}
+
+.diff-line.del .diff-line-sign {
+  color: var(--ds-error);
+}
+
+.diff-line.hunk {
+  padding: 2px 8px;
+  background: color-mix(in oklab, var(--ds-text-primary) 4%, transparent);
+  color: var(--ds-text-muted);
+  font-size: var(--text-2xs);
 }

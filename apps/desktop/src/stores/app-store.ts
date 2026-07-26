@@ -56,6 +56,61 @@ export type ToastOptions = {
   duration?: number;
 };
 
+export type WorkPanelTab = "review" | "terminal" | "browser" | "files";
+
+const WORK_PANEL_STORAGE_KEY = "pi.desktop.workPanel";
+const WORK_PANEL_TABS: WorkPanelTab[] = ["review", "terminal", "browser", "files"];
+export const WORK_PANEL_MIN_WIDTH = 320;
+export const WORK_PANEL_DEFAULT_WIDTH = 420;
+
+function loadWorkPanelPreferences(): {
+  open: boolean;
+  tab: WorkPanelTab;
+  width: number;
+} {
+  const fallback = {
+    open: false,
+    tab: "review" as WorkPanelTab,
+    width: WORK_PANEL_DEFAULT_WIDTH,
+  };
+  try {
+    const raw = localStorage.getItem(WORK_PANEL_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const width = Number(parsed.width);
+    return {
+      open: parsed.open === true,
+      tab: WORK_PANEL_TABS.includes(parsed.tab as WorkPanelTab)
+        ? (parsed.tab as WorkPanelTab)
+        : fallback.tab,
+      width: Number.isFinite(width)
+        ? Math.max(WORK_PANEL_MIN_WIDTH, Math.min(720, width))
+        : fallback.width,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveWorkPanelPreferences(state: Pick<
+  AppState,
+  "workPanelOpen" | "workPanelTab" | "workPanelWidth"
+>) {
+  try {
+    localStorage.setItem(
+      WORK_PANEL_STORAGE_KEY,
+      JSON.stringify({
+        open: state.workPanelOpen,
+        tab: state.workPanelTab,
+        width: state.workPanelWidth,
+      }),
+    );
+  } catch {
+    // best-effort persistence
+  }
+}
+
+
 // Design-system §11.8: default 4s auto-dismiss, errors linger 8s.
 const TOAST_DURATION_MS = 4000;
 const TOAST_ERROR_DURATION_MS = 8000;
@@ -177,9 +232,26 @@ export type AppState = {
   composerPrefill: string | null;
   prefillComposer: (text: string) => void;
   clearComposerPrefill: () => void;
+  workPanelOpen: boolean;
+  workPanelTab: WorkPanelTab;
+  workPanelWidth: number;
+  /** Bumped on agent Write/Edit/Bash completion; review tab refetches. */
+  reviewRev: number;
+  toggleWorkPanel: () => void;
+  setWorkPanelOpen: (open: boolean) => void;
+  setWorkPanelTab: (tab: WorkPanelTab) => void;
+  setWorkPanelWidth: (width: number) => void;
 };
 
 const initialSidebarPreferences = loadSidebarPreferences();
+const initialWorkPanelPreferences = loadWorkPanelPreferences();
+
+// tool_end events carry no tool name, and cross-session tool calls never
+// enter `messages`, so remember names from tool_start envelopes here.
+const WORKSPACE_MUTATING_TOOLS = new Set(["Write", "Edit", "Bash"]);
+const toolNamesByCallId = new Map<string, string>();
+const TOOL_NAME_CACHE_LIMIT = 512;
+
 function decorateSessions(
   sessions: SessionSummary[],
   meta: Record<string, SessionMeta>,
@@ -260,6 +332,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       .filter(([, meta]) => meta.collapsed === true)
       .map(([path]) => [path, true]),
   ),
+  workPanelOpen: initialWorkPanelPreferences.open,
+  workPanelTab: initialWorkPanelPreferences.tab,
+  workPanelWidth: initialWorkPanelPreferences.width,
+  reviewRev: 0,
   projectSort: initialSidebarPreferences.projectSort,
   messages: [],
   isRunning: false,
@@ -939,6 +1015,21 @@ export const useAppStore = create<AppState>((set, get) => ({
         runningSessions: { ...s.runningSessions, [envelope.sessionId]: false },
       }));
     }
+    // Any session's workspace mutation invalidates the review diff; this
+    // must precede the cross-session early-return below.
+    if (event.type === "tool_start") {
+      if (toolNamesByCallId.size >= TOOL_NAME_CACHE_LIMIT) {
+        const oldest = toolNamesByCallId.keys().next().value;
+        if (oldest !== undefined) toolNamesByCallId.delete(oldest);
+      }
+      toolNamesByCallId.set(event.toolCallId, event.toolName);
+    } else if (event.type === "tool_end") {
+      const toolName = toolNamesByCallId.get(event.toolCallId);
+      toolNamesByCallId.delete(event.toolCallId);
+      if (toolName && WORKSPACE_MUTATING_TOOLS.has(toolName)) {
+        set((s) => ({ reviewRev: s.reviewRev + 1 }));
+      }
+    }
     if (envelope.sessionId !== get().activeSessionId) {
       // Cross-session events must not bleed into the visible transcript.
       // Only global concerns pass: permission prompts (dialog is global)
@@ -1158,6 +1249,25 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   dismissToast: (id) =>
     set((state) => ({ toasts: state.toasts.filter((item) => item.id !== id) })),
+
+  toggleWorkPanel: () => {
+    set((state) => ({ workPanelOpen: !state.workPanelOpen }));
+    saveWorkPanelPreferences(get());
+  },
+  setWorkPanelOpen: (open) => {
+    set({ workPanelOpen: open });
+    saveWorkPanelPreferences(get());
+  },
+  setWorkPanelTab: (tab) => {
+    set({ workPanelTab: tab, workPanelOpen: true });
+    saveWorkPanelPreferences(get());
+  },
+  setWorkPanelWidth: (width) => {
+    set({
+      workPanelWidth: Math.max(WORK_PANEL_MIN_WIDTH, Math.min(720, width)),
+    });
+    saveWorkPanelPreferences(get());
+  },
 
   prefillComposer: (text) => set({ composerPrefill: text }),
   clearComposerPrefill: () => set({ composerPrefill: null }),

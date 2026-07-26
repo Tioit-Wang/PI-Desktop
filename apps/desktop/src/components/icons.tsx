@@ -23,6 +23,7 @@ import {
   Copy,
   Dot,
   ExternalLink,
+  FileDiff,
   FileText,
   Folder,
   Globe2,
@@ -94,6 +95,7 @@ export const IconAt = icon(AtSign);
 export const IconSettings = icon(Settings);
 export const IconHelp = icon(CircleHelp);
 export const IconPanel = icon(PanelRight);
+export const IconDiff = icon(FileDiff);
 export const IconSidebar = icon(PanelLeft);
 export const IconArrowUp = icon(ArrowUp);
 export const IconArrowDown = icon(ArrowDown);

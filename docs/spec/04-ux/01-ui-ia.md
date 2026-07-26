@@ -13,19 +13,19 @@ destination, chat as the home surface, tools and permissions inline.
 ## 2. Shell regions
 
 ```text
-+--------------------------------------------------------------+
-| Titlebar row (46px): traffic lights · back/forward · actions |
-+------------------+-------------------------------------------+
-| Sidebar (~275px) | Main pane (active destination)            |
-|  New task        |  chat home / transcript                   |
-|  Projects        |  or Projects / Plugins page               |
-|  Plugins         |  [Context panel overlays on toggle]       |
-|  Open projects   |                                           |
-|   Project A      |                                           |
-|   Project B      |                                           |
-|  Temporary       |                                           |
-|  Footer: Custom  |  Floating composer (chat destination)     |
-+------------------+-------------------------------------------+
++----------------------------------------------------------------------+
+| Titlebar row (46px): traffic lights · back/forward · actions         |
++------------------+--------------------------------+------------------+
+| Sidebar (~275px) | Main pane (active destination) | Work panel       |
+|  New task        |  chat home / transcript        |  (optional,      |
+|  Projects        |  or Projects / Plugins page    |   resizable      |
+|  Plugins         |                                |   320–720px)     |
+|  Open projects   |                                |  Review          |
+|   Project A      |                                |  Terminal        |
+|   Project B      |                                |  Browser         |
+|  Temporary       |                                |  Files           |
+|  Footer: Custom  |  Floating composer (chat)      |                  |
++------------------+--------------------------------+------------------+
 ```
 
 - **Sidebar**: primary navigation — New task, destination entries
@@ -44,9 +44,17 @@ destination, chat as the home surface, tools and permissions inline.
 - **Main pane**: exactly one destination at a time; destinations replace the
   pane (they are pages, not modals).
 - **Titlebar**: hiddenInset traffic lights; back/forward controls traverse
-  destination history; context-panel toggle on the right.
-- **Composer**: floating pill anchored to the chat destination — split-grow
-  centered on the empty home (D045/D047), bottom-docked in a transcript.
+  destination history; work-panel toggle on the right.
+- **Work panel**: docked right column (not an overlay) toggled from the
+  titlebar or Cmd/Ctrl+J. Four tabs — Review (working-tree diff), Terminal
+  (interactive PTY), Browser (embedded preview), Files (workspace browser).
+  Width is drag-resizable (320px–min(720px, 60vw)); open state, active tab,
+  and width persist across launches. Replaces the former context-panel
+  overlay; workspace/model/status info lives in the composer chips and
+  Settings instead.
+- **Composer**: workspace-agnostic floating pill anchored to the chat
+  destination — split-grow centered on the empty home (D045/D047),
+  bottom-docked in a transcript, with no project / Local / branch rail (D095).
 - **Backend status capsule**: appears under the titlebar while the backend
   restarts or is fatally degraded (D080), with an Open-logs action.
 
@@ -117,7 +125,6 @@ independent Plugins destination described in §3.5.
 |---|---|---|
 | Command palette | Cmd/Ctrl+K (also Cmd/Ctrl+Shift+P per D014) | builtin + plugin commands |
 | Permission dialog | tool permission request | risk copy, args preview, allow-once / allow-session / deny, 120s countdown → deny |
-| Context panel | titlebar toggle | project/status/context info |
 | Model menu | composer model chip | configured provider/model choices + settings entry (D091) |
 | Profile menu | sidebar footer | Settings / Logs / Theme cycle (D041) |
 | Toasts | events (plugin toast, backend restored, copy) | top-center; 4s default, 8s for errors |
@@ -140,6 +147,7 @@ independent Plugins destination described in §3.5.
 |---|---|
 | Cmd/Ctrl+K, Cmd/Ctrl+Shift+P | command palette |
 | Cmd/Ctrl+B | toggle sidebar |
+| Cmd/Ctrl+J | toggle work panel |
 | Cmd/Ctrl+. | abort current run |
 | Enter / Shift+Enter | send / newline (configurable Enter-to-send) |
 | Esc | dismiss overlay/menu |
@@ -148,8 +156,8 @@ independent Plugins destination described in §3.5.
 
 - No provider configured → blocking guidance toward Settings before first run
   (`MODEL_NOT_CONFIGURED`).
-- No workspace → home hero without project underline; composer chips hidden
-  on empty home (D056); Pull requests shows workspace-required empty state.
+- No workspace → home hero without project underline; Pull requests shows a
+  workspace-required empty state. The composer never renders a workspace rail.
 - Background project session → the originating project row retains its
   running/error indicator. Selected shell state can move independently while
   the session tool root remains bound to its durable project.

@@ -1,7 +1,7 @@
 import { Component, useEffect, useMemo, useState, type ErrorInfo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "./components/Sidebar";
-import { ContextPanel } from "./components/ContextPanel";
+import { WorkPanel } from "./components/workpanel/WorkPanel";
 import { ChatTranscript } from "./components/ChatTranscript";
 import { Composer } from "./components/Composer";
 import { HomeSuggestions } from "./components/HomeSuggestions";
@@ -75,10 +75,11 @@ function AppShell() {
   const settings = useAppStore((s) => s.settings);
   const workspace = useAppStore((s) => s.workspace);
   const openProject = useAppStore((s) => s.openProject);
+  const workPanelOpen = useAppStore((s) => s.workPanelOpen);
+  const toggleWorkPanel = useAppStore((s) => s.toggleWorkPanel);
 
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [contextOpen, setContextOpen] = useState(false);
   const [backendDown, setBackendDown] = useState<
     { fatal: boolean; component?: string } | null
   >(null);
@@ -140,6 +141,10 @@ function AppShell() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "b") {
         e.preventDefault();
         setSidebarCollapsed((v) => !v);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "j") {
+        e.preventDefault();
+        useAppStore.getState().toggleWorkPanel();
       }
     };
     window.addEventListener("keydown", onKey);
@@ -357,9 +362,9 @@ function AppShell() {
         <div className="main-titlebar">
           <div className="main-titlebar-right no-drag">
             <button
-              className={`title-nav-btn ${contextOpen ? "active" : ""}`}
-              title={t("nav.toggleContext")}
-              onClick={() => setContextOpen((v) => !v)}
+              className={`title-nav-btn ${workPanelOpen ? "active" : ""}`}
+              title={t("nav.toggleWorkPanel")}
+              onClick={toggleWorkPanel}
             >
               <IconPanel size={14} />
             </button>
@@ -472,8 +477,9 @@ function AppShell() {
             )}
           </>
         )}
-        {contextOpen && <ContextPanel onClose={() => setContextOpen(false)} />}
       </section>
+
+      {workPanelOpen && <WorkPanel />}
 
       <PermissionDialog />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
