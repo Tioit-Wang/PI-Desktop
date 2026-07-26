@@ -264,6 +264,13 @@ export const en = {
     maxOutputTokensHint: "Per-response output cap. Blank uses 8192.",
     temperature: "Temperature",
     temperatureHint: "Sampling temperature 0–2. Blank keeps the provider default.",
+    fetchModels: "Fetch models",
+    fetchingModels: "Fetching…",
+    fetchModelsFailed: "Couldn't fetch the model list",
+    fetchModelsCount: "Found {{count}} models",
+    fetchModelsCount_one: "Found 1 model",
+    fetchModelsCount_other: "Found {{count}} models",
+    modelManualEntry: "Enter manually…",
     providerUpdated: "Provider updated",
     providerEnabled: "Provider enabled",
     providerDisabled: "Provider disabled",
@@ -514,7 +521,21 @@ export const en = {
     TOOL_DENIED: "Tool permission denied",
     PROVIDER_SECRET_MISSING: "This provider needs an API key before it can run.",
     PROTOCOL_MISMATCH: "App components are out of sync. Reinstall or rebuild the app.",
-    action: { openSettings: "Open settings", retry: "Retry" },
+    PROVIDER_UNAUTHORIZED:
+      "The provider rejected the API key. Check the key in settings.",
+    PROVIDER_RATE_LIMITED:
+      "The provider is rate-limiting requests. Wait a moment and retry.",
+    PROVIDER_ERROR: "The model provider returned an error.",
+    NETWORK_ERROR:
+      "Can't reach the model provider. Check your network or the base URL.",
+    TIMEOUT: "The request to the model provider timed out.",
+    STREAM_FAILED: "The model response stream was interrupted.",
+    CONTEXT_TOO_LARGE:
+      "The conversation exceeds the model's context window. Start a new session or shorten the prompt.",
+    AGENT_BUSY:
+      "This session is already running a turn. Wait for it to finish or stop it first.",
+    TURN_ABORTED: "Generation stopped.",
+    action: { openSettings: "Open settings", retry: "Retry", dismiss: "Dismiss" },
   },
 } as const;
 

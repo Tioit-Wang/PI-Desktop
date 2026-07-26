@@ -68,6 +68,7 @@ function AppShell() {
   const messages = useAppStore((s) => s.messages);
   const error = useAppStore((s) => s.error);
   const errorCode = useAppStore((s) => s.errorCode);
+  const errorRetriable = useAppStore((s) => s.errorRetriable);
   const showToast = useAppStore((s) => s.showToast);
   const handleAgentEvent = useAppStore((s) => s.handleAgentEvent);
   const isRunning = useAppStore((s) => s.isRunning);
@@ -496,13 +497,16 @@ function AppShell() {
             {error && (
               <div className="absolute inset-x-0 bottom-[150px] z-10 flex justify-center px-4">
                 <div className="flex max-w-[820px] items-center gap-3 rounded-md-plus border border-error/30 bg-bg-secondary px-3 py-2 text-md text-error">
-                  <span>
+                  {/* Localized text when the code is known; raw provider
+                      detail stays reachable via the tooltip. */}
+                  <span title={error ?? undefined}>
                     {errorCode && i18nHasError(t, errorCode)
                       ? t(`errors.${errorCode}`)
                       : error}
                   </span>
                   {(errorCode === "MODEL_NOT_CONFIGURED" ||
-                    errorCode === "PROVIDER_SECRET_MISSING") && (
+                    errorCode === "PROVIDER_SECRET_MISSING" ||
+                    errorCode === "PROVIDER_UNAUTHORIZED") && (
                     <button
                       type="button"
                       className="flex-none rounded-md border border-border-strong px-2 py-1 text-sm-plus text-text-primary hover:bg-bg-hover"
@@ -514,6 +518,25 @@ function AppShell() {
                       {t("errors.action.openSettings")}
                     </button>
                   )}
+                  {errorRetriable && !isRunning && (
+                    <button
+                      type="button"
+                      className="flex-none rounded-md border border-border-strong px-2 py-1 text-sm-plus text-text-primary hover:bg-bg-hover"
+                      onClick={() => {
+                        void useAppStore.getState().retryLastPrompt();
+                      }}
+                    >
+                      {t("errors.action.retry")}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    aria-label={t("errors.action.dismiss")}
+                    className="flex-none rounded-md px-1.5 py-1 text-sm-plus text-text-secondary hover:bg-bg-hover hover:text-text-primary"
+                    onClick={() => useAppStore.getState().clearError()}
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
             )}
