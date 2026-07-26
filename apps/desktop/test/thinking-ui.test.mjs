@@ -60,10 +60,9 @@ test("main resolves reasoning from each session's exact selected model", () => {
   assert.match(mainSource, /sessions:\s*result\.sessions\.map/);
   assert.match(mainSource, /enrichProvider\(provider, modelId\)/);
   // Discovered models are stamped with reasoning capability per model id.
-  assert.match(
-    mainSource,
-    /thinking\.supportsReasoning \? \["text", "reasoning"\] : \["text"\]/,
-  );
+  assert.match(mainSource, /thinking\.supportsReasoning/);
+  assert.match(mainSource, /capabilities\.add\("reasoning"\)/);
+  assert.match(mainSource, /capabilities\.delete\("reasoning"\)/);
 });
 
 test("transcript keeps assistant thinking in a separate disclosure", () => {

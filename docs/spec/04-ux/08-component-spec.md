@@ -886,11 +886,13 @@ Dropdown in Topbar showing current provider/model pair. Allows switching models 
 | Configured | shows current provider/model, clickable |
 | No provider | "Add provider" muted text + link to settings |
 | Running | disabled, shows current model |
-| Dropdown open | list of available models grouped by provider |
+| Dropdown open | cached available models grouped by provider; refreshes in background |
 
 ### 12.4 Interactions
 
 - Click: opens dropdown with provider/model list
+- Cached provider models are available on the first open after restart; a
+  background refresh updates the list without clearing it first
 - Select: switches model for current session
 - Keyboard: up/down arrow in dropdown, Enter to select, Escape to close
 

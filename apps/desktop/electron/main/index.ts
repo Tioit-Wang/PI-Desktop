@@ -1615,11 +1615,12 @@ function registerIpc() {
     async (
       input?:
         | string
-        | {
+          | {
             providerId?: string;
             baseUrl?: string;
             apiKey?: string;
             apiStyle?: string;
+            source?: "cache" | "refresh";
           },
     ) => {
       if (!host) throw new Error("host unavailable");
@@ -1630,6 +1631,57 @@ function registerIpc() {
         : undefined;
       const baseUrl = (req.baseUrl ?? provider?.baseUrl ?? "").trim();
       const apiStyle = req.apiStyle ?? provider?.apiStyle ?? "chat_completions";
+      const decorate = (model: {
+        modelId: string;
+        displayName: string;
+        capabilities?: string[];
+        contextWindow?: number;
+        source?: "bundled" | "discovered" | "user";
+      }) => {
+        const capabilities = new Set(model.capabilities ?? ["text"]);
+        capabilities.add("text");
+        const thinking = resolveThinkingCapabilities({
+          vendorKey: provider?.vendorKey || "custom",
+          modelId: model.modelId,
+          supportsReasoning: provider?.supportsReasoning,
+          supportedThinkingLevels: provider?.supportedThinkingLevels,
+        });
+        if (thinking.supportsReasoning) capabilities.add("reasoning");
+        else capabilities.delete("reasoning");
+        return {
+          modelId: model.modelId,
+          displayName: model.displayName,
+          providerId: provider?.id ?? "",
+          contextWindow: model.contextWindow,
+          capabilities: [...capabilities],
+          supportedThinkingLevels: thinking.supportedThinkingLevels,
+          source: model.source ?? ("discovered" as const),
+        };
+      };
+
+      if (req.source === "cache" && provider) {
+        const cached = await host.call<{
+          models: Array<{
+            modelId: string;
+            displayName: string;
+            capabilities?: string[];
+            contextWindow?: number;
+            source?: "bundled" | "discovered" | "user";
+          }>;
+        }>("providers.listModels", { providerId: provider.id });
+        if (cached.models.length > 0) {
+          return { models: cached.models.map(decorate), source: "cache" as const };
+        }
+        const fallback = provider.defaultModelId
+          ? [decorate({
+              modelId: provider.defaultModelId,
+              displayName: provider.defaultModelId,
+              source: "user",
+            })]
+          : [];
+        return { models: fallback, source: "fallback" as const };
+      }
+
       // Dialog edits can omit the key to reuse the stored secret; the raw key
       // never travels back to the renderer either way.
       let apiKey = req.apiKey ?? "";
@@ -1639,28 +1691,43 @@ function registerIpc() {
         });
         apiKey = secret.value ?? "";
       }
-      const decorate = (model: { modelId: string; displayName: string }) => {
-        const thinking = resolveThinkingCapabilities({
-          vendorKey: provider?.vendorKey || "custom",
-          modelId: model.modelId,
-          supportsReasoning: provider?.supportsReasoning,
-          supportedThinkingLevels: provider?.supportedThinkingLevels,
-        });
-        return {
-          modelId: model.modelId,
-          displayName: model.displayName,
-          providerId: provider?.id ?? "",
-          capabilities: thinking.supportsReasoning ? ["text", "reasoning"] : ["text"],
-          supportedThinkingLevels: thinking.supportedThinkingLevels,
-          source: "discovered" as const,
-        };
-      };
       let discoveryError: string | undefined;
       if (baseUrl) {
         try {
           const discovered = await discoverProviderModels({ baseUrl, apiKey, apiStyle });
           if (discovered.length > 0) {
-            return { models: discovered.map(decorate), source: "remote" };
+            const models = discovered.map(decorate);
+            const savedBaseUrl = (provider?.baseUrl ?? "").trim().replace(/\/+$/, "");
+            const requestBaseUrl = baseUrl.replace(/\/+$/, "");
+            const usesSavedEndpoint =
+              !!provider &&
+              requestBaseUrl === savedBaseUrl &&
+              apiStyle === (provider.apiStyle ?? "chat_completions");
+            if (usesSavedEndpoint) {
+              try {
+                const latestProvider = (await listRuntimeProviders()).find(
+                  (candidate) => candidate.id === provider.id,
+                );
+                const endpointStillCurrent =
+                  (latestProvider?.baseUrl ?? "").trim().replace(/\/+$/, "") ===
+                    requestBaseUrl &&
+                  (latestProvider?.apiStyle ?? "chat_completions") === apiStyle;
+                if (endpointStillCurrent) {
+                  await host.call("providers.cacheModels", {
+                    providerId: provider.id,
+                    models,
+                  });
+                }
+              } catch (e) {
+                logger.app("warn", "model cache update failed", {
+                  data: {
+                    providerId: provider.id,
+                    error: e instanceof Error ? e.message : String(e),
+                  },
+                });
+              }
+            }
+            return { models, source: "remote" as const };
           }
         } catch (e) {
           discoveryError = e instanceof Error ? e.message : String(e);

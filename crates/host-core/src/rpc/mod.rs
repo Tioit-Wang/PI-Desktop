@@ -10,7 +10,7 @@ use tokio::sync::{mpsc, Mutex};
 use crate::artifacts;
 use crate::audit;
 use crate::permissions::{PermissionDecision, PermissionManager};
-use crate::providers::{self, ProviderCreateInput, ProviderUpdateInput};
+use crate::providers::{self, DiscoveredModelInput, ProviderCreateInput, ProviderUpdateInput};
 use crate::scheduled;
 use crate::scratch;
 use crate::sessions::{self, UiMessage};
@@ -48,6 +48,13 @@ struct JsonRpcNotification {
     jsonrpc: &'static str,
     method: String,
     params: Value,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CacheModelsParams {
+    provider_id: String,
+    models: Vec<DiscoveredModelInput>,
 }
 
 pub async fn serve(state: Arc<Mutex<AppState>>) -> Result<()> {
@@ -500,30 +507,20 @@ async fn handle_request(
         "providers.listModels" => {
             let provider_id = params.get("providerId").and_then(|v| v.as_str());
             let st = state.lock().await;
-            let providers = providers::list_providers(&st.db, &st.secrets, true)
+            let models = providers::list_models(&st.db, provider_id)
                 .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
-            let mut models = Vec::new();
-            for p in providers {
-                if let Some(pid) = provider_id {
-                    if p.id != pid {
-                        continue;
-                    }
-                }
-                if let Some(model) = p.default_model_id {
-                    let mut capabilities = vec!["text"];
-                    if p.supports_reasoning == Some(true) {
-                        capabilities.push("reasoning");
-                    }
-                    models.push(json!({
-                        "modelId": model,
-                        "displayName": model,
-                        "providerId": p.id,
-                        "source": "user",
-                        "capabilities": capabilities
-                    }));
-                }
-            }
             Ok(json!({ "models": models }))
+        }
+        "providers.cacheModels" => {
+            let input: CacheModelsParams = serde_json::from_value(params)
+                .map_err(|e| rpc_err(1002, e.to_string(), "INVALID_PARAMS"))?;
+            let st = state.lock().await;
+            let cached =
+                providers::cache_discovered_models(&st.db, &input.provider_id, &input.models)
+                    .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            let models = providers::list_models(&st.db, Some(&input.provider_id))
+                .map_err(|e| rpc_err(1000, e.to_string(), "INTERNAL"))?;
+            Ok(json!({ "cached": cached, "models": models }))
         }
         "providers.testConnection" => {
             let id = params
@@ -1370,8 +1367,12 @@ async fn handle_request(
 #[cfg(test)]
 mod tests {
     use std::fs;
+    use std::sync::Arc;
 
-    use super::resolve_tool_workspace;
+    use serde_json::json;
+    use tokio::sync::{mpsc, Mutex};
+
+    use super::{handle_request, resolve_tool_workspace};
     use crate::sessions;
     use crate::state::AppState;
 
@@ -1424,5 +1425,65 @@ mod tests {
             resolve_tool_workspace(&state, "legacy-missing-session").unwrap(),
             state.workspace.path
         );
+    }
+
+    #[tokio::test]
+    async fn provider_model_cache_roundtrips_through_rpc() {
+        let data_dir = tempfile::tempdir().unwrap();
+        let mut app_state = AppState::open(data_dir.path()).unwrap();
+        app_state.handshook = true;
+        let state = Arc::new(Mutex::new(app_state));
+        let (tx, _rx) = mpsc::unbounded_channel();
+
+        let created = handle_request(
+            state.clone(),
+            "providers.create",
+            json!({
+                "name": "Local catalog",
+                "baseUrl": "http://localhost:11434/v1",
+                "authKind": "none",
+                "defaultModelId": "model-a"
+            }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        let provider_id = created["provider"]["id"].as_str().unwrap();
+
+        let cached = handle_request(
+            state.clone(),
+            "providers.cacheModels",
+            json!({
+                "providerId": provider_id,
+                "models": [
+                    {
+                        "modelId": "model-a",
+                        "displayName": "Model A",
+                        "capabilities": ["text"]
+                    },
+                    {
+                        "modelId": "model-b",
+                        "displayName": "Model B",
+                        "capabilities": ["text", "reasoning"]
+                    }
+                ]
+            }),
+            tx.clone(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(cached["cached"], 2);
+
+        let listed = handle_request(
+            state,
+            "providers.listModels",
+            json!({ "providerId": provider_id }),
+            tx,
+        )
+        .await
+        .unwrap();
+        assert_eq!(listed["models"].as_array().unwrap().len(), 2);
+        assert_eq!(listed["models"][1]["modelId"], "model-b");
+        assert_eq!(listed["models"][1]["capabilities"][1], "reasoning");
     }
 }

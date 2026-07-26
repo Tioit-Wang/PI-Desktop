@@ -130,10 +130,11 @@ export const api = {
     baseUrl?: string;
     apiKey?: string;
     apiStyle?: string;
+    source?: "cache" | "refresh";
   }) =>
     invoke<{
       models: ModelInfo[];
-      source: "remote" | "fallback";
+      source: "cache" | "remote" | "fallback";
       error?: string;
     }>(IPC.invoke.providersListModels, input),
   getProject: () =>

@@ -326,6 +326,9 @@ const initialWorkPanelPreferences = loadWorkPanelPreferences();
 const WORKSPACE_MUTATING_TOOLS = new Set(["Write", "Edit", "Bash"]);
 const toolNamesByCallId = new Map<string, string>();
 const TOOL_NAME_CACHE_LIMIT = 512;
+const providerModelLoads = new Map<string, Promise<void>>();
+const refreshedProviderModels = new Set<string>();
+let providerModelsGeneration = 0;
 
 function decorateSessions(
   sessions: SessionSummary[],
@@ -461,6 +464,25 @@ export const useAppStore = create<AppState>((set, get) => ({
           errorCode: "PROTOCOL_MISMATCH",
         });
       }
+      const cachedProviderModels = Object.fromEntries(
+        (
+          await Promise.all(
+            providers.providers.map(async (provider) => {
+              try {
+                const cached = await api.listProviderModels({
+                  providerId: provider.id,
+                  source: "cache",
+                });
+                return cached.models.length > 0
+                  ? ([provider.id, cached.models] as const)
+                  : null;
+              } catch {
+                return null;
+              }
+            }),
+          )
+        ).filter((entry): entry is readonly [string, ModelInfo[]] => entry !== null),
+      );
       const currentWorkspace = project.workspace;
       const persistedPaths = get().openProjectPaths;
       // Only explicitly retained tabs are restored. Historical sessions stay
@@ -481,6 +503,7 @@ export const useAppStore = create<AppState>((set, get) => ({
         settings,
         sessions: hydratedSessions,
         providers: providers.providers,
+        providerModels: cachedProviderModels,
         workspace: currentWorkspace,
         activeProjectPath: currentWorkspace?.path,
         openProjectPaths,
@@ -1311,9 +1334,12 @@ export const useAppStore = create<AppState>((set, get) => ({
       api.getSettings(),
       api.getOnboarding(),
     ]);
+    providerModelsGeneration += 1;
+    refreshedProviderModels.clear();
     set((state) => ({
       providers: providers.providers,
-      // Provider edits may change baseUrl/apiStyle — drop stale model lists.
+      // Provider edits may change discovery settings. The next load hydrates
+      // from SQLite first, then refreshes without presenting an empty menu.
       providerModels: {},
       sessions: decorateSessions(sessions.sessions, state.sessionMeta),
       settings,
@@ -1322,17 +1348,74 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   loadProviderModels: async (providerId) => {
-    if (get().providerModels[providerId]) return;
+    if (refreshedProviderModels.has(providerId)) return;
+    const generation = providerModelsGeneration;
+    const existing = providerModelLoads.get(providerId);
+    if (existing) {
+      await existing;
+      if (providerModelLoads.get(providerId) === existing) {
+        providerModelLoads.delete(providerId);
+      }
+      if (!refreshedProviderModels.has(providerId)) {
+        await get().loadProviderModels(providerId);
+      }
+      return;
+    }
+
+    const load = (async () => {
+      let hydrated = (get().providerModels[providerId]?.length ?? 0) > 0;
+      if (!hydrated) {
+        try {
+          const cached = await api.listProviderModels({ providerId, source: "cache" });
+          if (generation !== providerModelsGeneration) return;
+          hydrated = cached.models.length > 0;
+          set((state) => ({
+            providerModels: {
+              ...state.providerModels,
+              [providerId]: cached.models,
+            },
+          }));
+        } catch {
+          // Continue to live discovery when the local cache is unavailable.
+        }
+      }
+
+      try {
+        const refreshed = await api.listProviderModels({
+          providerId,
+          source: "refresh",
+        });
+        if (generation !== providerModelsGeneration) return;
+        if (refreshed.source === "remote" && refreshed.models.length > 0) {
+          set((state) => ({
+            providerModels: {
+              ...state.providerModels,
+              [providerId]: refreshed.models,
+            },
+          }));
+        } else if (!hydrated && refreshed.models.length > 0) {
+          set((state) => ({
+            providerModels: {
+              ...state.providerModels,
+              [providerId]: refreshed.models,
+            },
+          }));
+        }
+      } catch {
+        // Keep the cached catalog; the menu already has a usable fallback.
+      } finally {
+        if (generation === providerModelsGeneration) {
+          refreshedProviderModels.add(providerId);
+        }
+      }
+    })();
+    providerModelLoads.set(providerId, load);
     try {
-      const result = await api.listProviderModels({ providerId });
-      set((state) => ({
-        providerModels: {
-          ...state.providerModels,
-          [providerId]: result.models,
-        },
-      }));
-    } catch {
-      // Menu falls back to the provider's configured model.
+      await load;
+    } finally {
+      if (providerModelLoads.get(providerId) === load) {
+        providerModelLoads.delete(providerId);
+      }
     }
   },
 

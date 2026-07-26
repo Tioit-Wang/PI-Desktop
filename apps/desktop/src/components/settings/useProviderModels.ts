@@ -63,6 +63,23 @@ export function useProviderModels(
     }));
 
     const run = async () => {
+      let cachedModels: ModelInfo[] = [];
+      if (editingProvider) {
+        try {
+          const cached = await api.listProviderModels({
+            providerId: editingProvider.id,
+            source: "cache",
+          });
+          if (requestSeq.current !== requestId) return;
+          cachedModels = cached.models;
+          if (cachedModels.length > 0) {
+            setState({ status: "loading", models: cachedModels });
+          }
+        } catch {
+          // Live discovery remains available when the local cache read fails.
+        }
+      }
+
       try {
         const result = await api.listProviderModels({
           providerId: editingProvider?.id,
@@ -74,11 +91,11 @@ export function useProviderModels(
         if (result.source === "remote" && result.models.length > 0) {
           setState({ status: "ready", models: result.models });
         } else {
-          setState({ status: "error", models: [] });
+          setState({ status: "error", models: cachedModels });
         }
       } catch {
         if (requestSeq.current !== requestId) return;
-        setState({ status: "error", models: [] });
+        setState({ status: "error", models: cachedModels });
       }
     };
 
