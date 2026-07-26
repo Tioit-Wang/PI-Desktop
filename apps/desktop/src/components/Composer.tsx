@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import type { ProviderPublic, ThinkingLevel } from "@pi-desktop/shared";
+import type {
+  PermissionMode,
+  ProviderPublic,
+  ThinkingLevel,
+} from "@pi-desktop/shared";
+import { PERMISSION_MODES } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import { BrandLogo } from "./BrandLogo";
@@ -54,6 +59,20 @@ const THINKING_LEVEL_I18N_KEYS: Record<ThinkingLevel, string> = {
 function isThinkingLevel(value: unknown): value is ThinkingLevel {
   return typeof value === "string" && THINKING_LEVELS.includes(value as ThinkingLevel);
 }
+
+function isPermissionMode(value: unknown): value is PermissionMode {
+  return (
+    typeof value === "string" &&
+    PERMISSION_MODES.includes(value as PermissionMode)
+  );
+}
+
+const PERMISSION_MODE_I18N_KEYS: Record<PermissionMode, string> = {
+  inherit: "chat.permissionInherit",
+  ask: "chat.permissionAsk",
+  "accept-edits": "chat.permissionAcceptEdits",
+  auto: "chat.permissionAuto",
+};
 
 function providerThinkingLevels(provider?: ProviderPublic | null): ThinkingLevel[] {
   if (!provider?.supportsReasoning) return [];
@@ -110,6 +129,8 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
   const composerPrefill = useAppStore((s) => s.composerPrefill);
   const clearComposerPrefill = useAppStore((s) => s.clearComposerPrefill);
   const [value, setValue] = useState("");
+  const [permissionOpen, setPermissionOpen] = useState(false);
+  const permissionRef = useRef<HTMLDivElement>(null);
   const [modelOpen, setModelOpen] = useState(false);
   const [modelQuery, setModelQuery] = useState("");
   const [modelHighlight, setModelHighlight] = useState(-1);
@@ -193,8 +214,39 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
     requestAnimationFrame(() => modelSearchRef.current?.focus());
   }, [modelOpen]);
 
+  useEffect(() => {
+    if (!permissionOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!permissionRef.current?.contains(e.target as Node))
+        setPermissionOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPermissionOpen(false);
+    };
+    window.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [permissionOpen]);
+
   const activeSession = sessions.find((session) => session.id === activeSessionId);
   const mode = activeSession?.mode ?? settings?.defaultMode ?? "agent";
+  // Permission mode (D115): the chip shows the effective mode — session
+  // override, else the global default. `inherit` renders as the global value
+  // with an "(default)" marker in the menu.
+  const globalPermissionMode: PermissionMode =
+    settings?.defaultPermissionMode ?? "ask";
+  const sessionPermissionMode: PermissionMode = isPermissionMode(
+    activeSession?.permissionMode,
+  )
+    ? activeSession.permissionMode
+    : "inherit";
+  const effectivePermissionMode: Exclude<PermissionMode, "inherit"> =
+    sessionPermissionMode === "inherit"
+      ? (globalPermissionMode as Exclude<PermissionMode, "inherit">)
+      : sessionPermissionMode;
   const provider = providers.find(
     (candidate) =>
       candidate.id ===
@@ -443,6 +495,68 @@ export function Composer({ variant = "docked" }: { variant?: "home" | "docked" }
                     : t("settings.modeAgent")}
                 </span>
               </button>
+              {mode === "agent" ? (
+                <div className="composer-permission" ref={permissionRef}>
+                  <button
+                    className={`icon-btn mode-chip ${permissionOpen ? "active" : ""}`}
+                    title={t("chat.permissionMode")}
+                    aria-haspopup="menu"
+                    aria-expanded={permissionOpen}
+                    disabled={isRunning || !activeSession}
+                    onClick={() => setPermissionOpen((v) => !v)}
+                  >
+                    <span className="text-sm">
+                      {t(PERMISSION_MODE_I18N_KEYS[effectivePermissionMode])}
+                    </span>
+                    <IconChevronDown size={12} />
+                  </button>
+                  {permissionOpen && (
+                    <div className="composer-model-menu composer-permission-menu" role="menu">
+                      {(["inherit", "ask", "accept-edits", "auto"] as const).map(
+                        (candidate) => (
+                          <button
+                            key={candidate}
+                            type="button"
+                            role="menuitemradio"
+                            aria-checked={sessionPermissionMode === candidate}
+                            className={`composer-plus-item ${
+                              sessionPermissionMode === candidate ? "active" : ""
+                            }`}
+                            onClick={async () => {
+                              setPermissionOpen(false);
+                              try {
+                                await configureActiveSession({
+                                  mode,
+                                  providerId: provider?.id,
+                                  modelId,
+                                  thinkingLevel,
+                                  permissionMode: candidate,
+                                });
+                              } catch (e) {
+                                showToast(
+                                  e instanceof Error ? e.message : String(e),
+                                  { variant: "error" },
+                                );
+                              }
+                            }}
+                          >
+                            <span className="flex-1 text-left">
+                              {candidate === "inherit"
+                                ? `${t(PERMISSION_MODE_I18N_KEYS[globalPermissionMode])} · ${t(
+                                    "chat.permissionInherit",
+                                  )}`
+                                : t(PERMISSION_MODE_I18N_KEYS[candidate])}
+                            </span>
+                            {sessionPermissionMode === candidate ? (
+                              <IconCheck size={13} />
+                            ) : null}
+                          </button>
+                        ),
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
 
             <div className="composer-right">

@@ -810,6 +810,41 @@ function ConfigurationSection() {
           </div>
         </SettingsRow>
         <SettingsRow
+          title={t("settings.permissionMode")}
+          description={t("settings.permissionModeDesc")}
+        >
+          <div
+            className="settings-segment"
+            role="group"
+            aria-label={t("settings.permissionMode")}
+          >
+            {([
+              ["ask", "settings.permissionModeAsk"],
+              ["accept-edits", "settings.permissionModeAcceptEdits"],
+              ["auto", "settings.permissionModeAuto"],
+            ] as const).map(([value, labelKey]) => (
+              <button
+                key={value}
+                type="button"
+                className={cx(
+                  "settings-segment-item",
+                  (settings.defaultPermissionMode ?? "ask") === value && "active",
+                )}
+                aria-pressed={(settings.defaultPermissionMode ?? "ask") === value}
+                onClick={async () => {
+                  await api.setSettings({
+                    ...settings,
+                    defaultPermissionMode: value,
+                  });
+                  await refreshProviders();
+                }}
+              >
+                {t(labelKey)}
+              </button>
+            ))}
+          </div>
+        </SettingsRow>
+        <SettingsRow
           title={t("settings.defaultModel")}
           description={t("settings.defaultModelDesc")}
         >

@@ -7,6 +7,7 @@ import type {
   ModelInfo,
   OnboardingState,
   PluginSummary,
+  PermissionMode,
   ProjectWorkspace,
   ProviderPublic,
   SessionSummary,
@@ -213,6 +214,7 @@ export type AppState = {
     providerId?: string;
     modelId?: string;
     thinkingLevel: ThinkingLevel;
+    permissionMode?: PermissionMode;
   }) => Promise<void>;
   sendPrompt: (content: string) => Promise<void>;
   retryAssistantMessage: (messageId: string) => Promise<void>;

@@ -1445,98 +1445,6 @@ textarea:disabled {
 }
 
 /* Thinking follows the transcript's lightweight disclosure language. */
-.thinking-disclosure {
-  width: min(100%, 720px);
-  margin: 2px 0 9px;
-}
-
-.thinking-disclosure-header {
-  display: inline-flex;
-  min-height: 26px;
-  max-width: 100%;
-  align-items: center;
-  gap: 5px;
-  padding: 2px 3px;
-  border-radius: var(--radius-sm);
-  color: var(--ds-text-secondary);
-  font-size: var(--text-sm-plus);
-  text-align: left;
-  transition:
-    color 120ms ease,
-    background 120ms ease;
-}
-
-.thinking-disclosure-header:hover {
-  background: var(--ds-bg-hover);
-  color: var(--ds-text-primary);
-}
-
-.thinking-disclosure-icon,
-.thinking-disclosure-caret {
-  display: inline-flex;
-  flex: none;
-  color: var(--ds-text-muted);
-}
-
-.thinking-disclosure-icon {
-  opacity: 0.8;
-}
-
-.thinking-disclosure-label {
-  font-weight: var(--font-weight-medium);
-}
-
-.thinking-disclosure-label.running {
-  background: linear-gradient(
-    90deg,
-    var(--ds-text-secondary) 30%,
-    var(--ds-text-primary) 50%,
-    var(--ds-text-secondary) 70%
-  );
-  background-size: 200% 100%;
-  background-clip: text;
-  color: transparent;
-  animation: shimmer 1.7s linear infinite;
-}
-
-.thinking-disclosure-caret {
-  opacity: 0.65;
-  transition: transform 120ms ease;
-}
-
-.thinking-disclosure.open .thinking-disclosure-caret {
-  transform: rotate(90deg);
-}
-
-.thinking-disclosure-collapse {
-  display: grid;
-  grid-template-rows: 0fr;
-  opacity: 0;
-  visibility: hidden;
-  transition:
-    grid-template-rows 180ms ease,
-    opacity 140ms ease,
-    visibility 0s linear 180ms;
-}
-
-.thinking-disclosure.open .thinking-disclosure-collapse {
-  grid-template-rows: 1fr;
-  opacity: 1;
-  visibility: visible;
-  transition-delay: 0s;
-}
-
-.thinking-disclosure-collapse-inner {
-  min-height: 0;
-  overflow: hidden;
-}
-
-.thinking-disclosure-body {
-  margin: 3px 0 4px 7px;
-  border-left: 1px solid var(--ds-border-default);
-  padding: 2px 0 2px 12px;
-}
-
 .thinking-prose {
   color: var(--ds-text-secondary);
   font-size: var(--text-sm-plus);
@@ -1609,6 +1517,17 @@ textarea:disabled {
 
 .tool-activity-count {
   min-width: 0;
+  overflow: hidden;
+  color: var(--ds-text-muted);
+  font-size: var(--text-xs-plus);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Live tail while running: last thought line / current tool, single line. */
+.tool-activity-preview {
+  max-width: min(100%, 720px);
+  margin: 1px 0 0 26px;
   overflow: hidden;
   color: var(--ds-text-muted);
   font-size: var(--text-xs-plus);
@@ -2408,7 +2327,6 @@ textarea:disabled {
     animation: none;
   }
   .shimmer-text,
-  .thinking-disclosure-label.running,
   .tool-row-name.running,
   .tool-activity-label.running {
     animation: none;
@@ -2425,10 +2343,6 @@ textarea:disabled {
     transition: none;
   }
   .tool-activity-collapse {
-    transition: none;
-  }
-  .thinking-disclosure-caret,
-  .thinking-disclosure-collapse {
     transition: none;
   }
   .footer-profile-chevron {
@@ -2835,6 +2749,17 @@ textarea:disabled {
 
 .composer-model {
   position: relative;
+}
+
+/* Permission-mode chip menu (D115): anchored left above the mode chips. */
+.composer-permission {
+  position: relative;
+}
+
+.composer-permission-menu {
+  left: 0;
+  right: auto;
+  width: min(260px, calc(100vw - 24px));
 }
 
 .composer-model-menu {
