@@ -384,7 +384,7 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
 - Column `flex: 1; min-height: 0; overflow: hidden` (not a single optical-center stack)
 - **Upper grow** (`.home-upper`): `flex: 1 1 0; align-items: flex-end; justify-content: center; padding-bottom: 96px` holds hero (icon + `heading-xl`)
 - **Upper grow**: `min-h-fit grow basis-0 items-end justify-center` with ~62px bottom pad (tuned from pb-24 so hero first-ink ≈y305 at 1200×690); ambient suggestion cards portal under hero (`absolute top-full mt-8`) so they do not steal lower flex height
-- **Lower grow**: `min-h-fit shrink-0 grow basis-0 flex-col justify-end` holds workspace chips + floating composer only (`pt-3 pb-4`)
+- **Lower grow**: `min-h-fit shrink-0 grow basis-0 flex-col justify-end` holds the floating composer only (`pt-3 pb-4`)
 - Suggestion cards: Codex auto-fit grid (`minmax(10rem,1fr)`, often **4-up single row** at desktop width), `min-height: 104px` (`min-h-26`), `rounded-2xl`; electron ring `0.5px` border-heavy + `shadow-md-strong`; dark uses elevated-secondary wash on `#181818`
 - Card actions prefill composer with Codex starter prompts (Explore / Build / Review / Fix)
 - Composer is **not** absolute-docked on empty home; thread mode keeps the bottom dock + fade veil
@@ -407,15 +407,13 @@ Empty chat home matches Codex electron **split grow** layout inside `home-main-c
   separation; the docked transcript fade remains outside the input surface.
 - Dark elevated shell reads as elevated-primary (`#212121f5` / gray-800 96%) on `#181818` with standard elevation-prominent
 
-## 8.1 Composer workspace chips (Codex parity)
+## 8.1 Composer workspace context
 
-The project / Local / branch controls share one context rail (not three
-independent pills). The rail docks directly into the composer shell with no
-visible gap, uses the same theme surface, and has no independent drop shadow
-or bottom edge. Its rounded top corners, the shell outline, and the shell's
-single elevation read as one immersive composite surface. Internal 1px
-separators remain. On an empty home without a project the rail is omitted; it
-appears on project home and in the thread-docked composer.
+The composer does not render project, Local, or branch labels in either its
+home or thread-docked variant (D095). Workspace identity and switching remain
+available through the home hero, sidebar, and Projects destination. Removing
+the passive context rail keeps the prompt surface focused on controls that
+directly affect the active session.
 
 ## 8.2 Composer runtime controls
 
@@ -427,8 +425,6 @@ The composer renders only controls connected to the active pi session:
 - Both controls are disabled while the active session is running.
 - File, photo, appshot, and reasoning-effort controls remain hidden until their
   payload and capability contracts are implemented end to end.
-- Local and branch context are non-interactive status labels; the project name
-  remains an action because it opens the project picker.
 
 
 ## 9. Z-index layers
@@ -657,8 +653,6 @@ Full component contract and usage rules: [08-component-spec.md §17](08-componen
 - Main surface: `#181818` (`gray-900`)
 - Sidebar / surface-under: `#000000`
 - Floating composer plate: Codex elevated-primary (`#212121f5` / `color-mix(gray-800 96%, transparent)`) with standard elevation-prominent (`0 0 0 .5px` stroke + `0 3px 7.5px #0000000a` + `0 0 20px #0000000d`); no heavier night-only lift
-- Light workspace chips capsule: elevated gray `#f4f4f4` (not pure white-on-white)
-- Combined workspace chips: elevated translucent plate over main, not flat main gray
 - Stage Manager: host re-asserts min bounds while collapsed (permanent watchdog)
 
 ## Destination pages

@@ -37,8 +37,9 @@ destination, chat as the home surface, tools and permissions inline.
   pane (they are pages, not modals).
 - **Titlebar**: hiddenInset traffic lights; back/forward controls traverse
   destination history; context-panel toggle on the right.
-- **Composer**: floating pill anchored to the chat destination — split-grow
-  centered on the empty home (D045/D047), bottom-docked in a transcript.
+- **Composer**: workspace-agnostic floating pill anchored to the chat
+  destination — split-grow centered on the empty home (D045/D047),
+  bottom-docked in a transcript, with no project / Local / branch rail (D095).
 - **Backend status capsule**: appears under the titlebar while the backend
   restarts or is fatally degraded (D080), with an Open-logs action.
 
@@ -56,7 +57,7 @@ Codex index table (search, name/sources/updated columns, expand, actions;
 D066). The durable D086 `projects` table is the index source of truth, so
 imported sessions with project paths immediately materialize corresponding
 project rows without switching the current workspace. Opening/switching a
-project rebinds the workspace for tools and chips.
+project rebinds the selected workspace and tool scope.
 
 ### 3.3 Pull requests
 Segmented Open/Draft/All filters with counts; rows carry icon plate, number,
@@ -116,8 +117,8 @@ independent Plugins destination described in §3.5.
 
 - No provider configured → blocking guidance toward Settings before first run
   (`MODEL_NOT_CONFIGURED`).
-- No workspace → home hero without project underline; composer chips hidden
-  on empty home (D056); Pull requests shows workspace-required empty state.
+- No workspace → home hero without project underline; Pull requests shows a
+  workspace-required empty state. The composer never renders a workspace rail.
 - Backend degraded → status capsule (restarting) or fatal banner with Open
   logs (D080); composer submits are rejected with readable errors while down.
 

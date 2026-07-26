@@ -673,7 +673,7 @@ This test plan spec is accepted when:
 - Open the desktop app on macOS dark theme.
 - Expect charcoal main surface (`#181818`), left sidebar with New task +
   current-project and Temporary session groups, and a floating bottom composer
-  with project/model chips.
+  with mode and model controls.
 - Expect no blue-slate marketing chrome; primary send control is a circular inverted button.
 
 ### US-UI-02 Empty thread hero
@@ -687,15 +687,17 @@ This test plan spec is accepted when:
 - Expect each destination to replace the main pane with a dedicated page (not only a toast).
 - From Projects, open/switch/close a local folder workspace.
 
-### US-UI-04 Composer context chips
-- With a git workspace open, composer shows project name, Local, and detected branch.
+### US-UI-04 Composer runtime controls
+- With a git workspace open, composer does not show project, Local, or branch
+  labels above the prompt surface.
 - Permission toggle switches between Agent and Request approval (chat mode).
 
 ### US-UI-05 Locale chrome
 - On a zh-CN system locale, sidebar labels render in Chinese (新建任务 / 项目 /
   插件 / 临时会话), without 拉取请求 or 已安排 entries.
 - Empty-thread hero remains English Codex copy: "What should we build?".
-- Composer shows 本地, Chat mode, and the active model ID on the right.
+- Composer omits the 本地 workspace label and shows Chat mode plus the active
+  model ID.
 
 ### US-UI-06 Session auto-title
 - Create a new task and send a first prompt such as "同步代码".
@@ -717,24 +719,26 @@ This test plan spec is accepted when:
   group and the home hero remains visible. Empty drafts in another scope are
   not reused.
 
-### US-UI-12 Combined workspace chips
-- On project home and in a thread, expect project / Local / branch controls to
-  share one context rail attached directly to the composer shell.
-- The rail and shell use one surface and one outer elevation with no visible
-  gap, independent rail shadow, or bottom seam; internal separators remain.
+### US-UI-12 Composer without workspace rail
+- On project home and in a thread, expect no project / Local / branch context
+  rail above the composer.
+- The prompt shell remains one uninterrupted rounded surface with no attached
+  top lip, rail shadow, or context separators.
 
 ### US-UI-13 Light theme shell parity
 - Set theme to system/light on a light macOS appearance.
 - Expect sidebar `#f3f3f3`, main `#ffffff`, text `#1a1c1f`, white floating composer, and home hero with project underline.
 - Sidebar nav labels (New task / Projects / Plugins / Temporary sessions),
-  current-project identity, thread titles, and composer chips must remain
+  current-project identity, thread titles, and composer controls must remain
   readable dark-on-light (≥4.5:1). Never white/translucent text on the light
   sidebar.
 - Titlebar back/forward controls use dark ink on light chrome.
 
 ### US-UI-14 Semantic chrome tokens
 - Toggle theme system → light → dark without restart.
-- Shell chrome (sidebar items, chips, composer, icon buttons) follows semantic `--ds-text-*` / `--ds-bg-*` tokens in both themes; no hard-coded white (`gray-0`) text on light surfaces.
+- Shell chrome (sidebar items, composer runtime controls, icon buttons) follows
+  semantic `--ds-text-*` / `--ds-bg-*` tokens in both themes; no hard-coded
+  white (`gray-0`) text on light surfaces.
 
 ### US-UI-15 Codex density + elevation
 - Sidebar nav rows use ~32px height / 13px type with 8px horizontal padding (Codex `radius-token-row` 10px).
@@ -757,8 +761,9 @@ This test plan spec is accepted when:
 - On chat home and a docked thread, inspect every composer control.
 - Expect no file, photo, appshot, or reasoning-effort control while those
   payloads are unsupported by the pi runtime.
-- Project name opens the project picker; Local and branch render as status text,
-  not clickable buttons.
+- Expect no project, Local, or branch context labels in the composer.
+- Every visible composer control changes the active session, opens its menu, or
+  submits/aborts the current turn.
 
 
 
@@ -790,7 +795,7 @@ This test plan spec is accepted when:
   pinned indicator where supplied by the host, and active highlight.
 - Expand a non-active project and open one of its sessions; expect the app to
   activate that project before selecting the session, so workspace tools and
-  composer context use the same project.
+  session scope use the same project.
 
 ### US-UI-24 Settings full-page shell
 - Open Settings (footer profile → Settings).
@@ -808,8 +813,7 @@ This test plan spec is accepted when:
 
 ### US-UI-28 Home empty composer association
 - On empty chat home (light + dark), expect hero in the upper grow region and composer in the lower grow region (Codex dual-grow), not a large empty gap with a wrongly absolute-docked box.
-- When present, the workspace context rail is visually integrated into the
-  composer plate rather than floating above it.
+- The composer remains a standalone plate without an attached workspace rail.
 - Starting a transcript restores the bottom-docked composer with fade veil.
 
 ### US-UI-29 Light composer plate legibility
@@ -849,8 +853,8 @@ This test plan spec is accepted when:
 ### US-UI-36 Hero Y + night box elevation
 - At ~1200×690 light home, hero first dark ink is near y≈300 (±12px) vs Codex gold.
 - Dark home composer plate reads as elevated-primary `#212121f5` with elevation-prominent against `#181818` (not flat same-surface).
-- Light workspace context rail shares the solid composer surface and has no
-  independent elevation.
+- Light composer renders as one uninterrupted solid surface with no context
+  rail or independent top elevation.
 - Model chip shows the active model ID; its menu contains only runnable
   provider/model choices and Configuration.
 - Placeholder and approval chip remain legible on light and dark plates.
@@ -898,9 +902,11 @@ This test plan spec is accepted when:
   independent Plugins destination.
 - Dark: rail `#000`, main `#181818`, cards elevated `#212121`.
 
-### US-UI-38 Home chips without project
-- On empty chat home, the project/Local/branch capsule is hidden (matches Codex empty gold).
-- Starting a transcript restores the workspace capsule above the docked composer.
+### US-UI-38 Composer workspace context omitted
+- On empty home, project home, and after starting a transcript, the composer
+  never renders a project / Local / branch capsule.
+- Workspace identity remains visible through the home hero or sidebar rather
+  than being duplicated above the prompt.
 
 ### US-UI-37 Empty draft infinity + resize
 - Empty composer shows a left ∞ cue and visible placeholder ink (not a blank white/night hole).
@@ -915,9 +921,8 @@ This test plan spec is accepted when:
 
 ### US-UI-46 Home-with-project composer chrome
 - Open a project on empty home (no transcript).
-- Expect workspace controls (project / Local / branch) attached to the plate as
-  one seamless context rail; no ∞ draft mark; placeholder is Ask anything /
-  随心输入.
+- Expect no workspace controls attached to the plate; there is no ∞ draft mark,
+  and the placeholder is Ask anything / 随心输入.
 - Model chip shows the active model ID; footer profile uses gear + Custom and
   help control.
 
@@ -963,7 +968,8 @@ This test plan spec is accepted when:
   the `#212121` card surface; they must not fall back to low-contrast muted ink.
 
 ### US-UI-54 Toast variants + lifecycle (D085)
-- Trigger a success (save provider), an error (run with an invalid key), and an info toast (branch chip).
+- Trigger a success (save provider), an error (run with an invalid key), and an
+  info toast from a test plugin.
 - Expect a top-center stack on an elevated plate with a tinted variant icon (green ✓ / red ! / info) and an X dismiss per card; newest enters at the top-center anchor and pushes older cards down.
 - Success/info auto-dismiss ~4s, error lingers ~8s; hovering a card pauses its countdown; X removes it immediately.
 - Repeating the same action restarts the existing toast instead of stacking a duplicate; stack never exceeds 4.

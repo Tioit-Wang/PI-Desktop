@@ -5,7 +5,7 @@
 > Interaction behavior: [09-interaction-patterns.md](09-interaction-patterns.md)
 
 
-> Shell layout is Codex-aligned: left thread sidebar (~275px), main transcript, floating bottom composer with project/model chips. Prefer neutral charcoal surfaces over blue-slate chrome.
+> Shell layout is Codex-aligned: left thread sidebar (~275px), main transcript, floating bottom composer with mode/model controls. Prefer neutral charcoal surfaces over blue-slate chrome.
 >
 > **Precedence rule**: where a metric or copy string below disagrees with a
 > Codex parity decision in [decisions-log §D](../08-meta/decisions-log.md)
@@ -304,7 +304,7 @@ Groups and session items:
   the folder basename.
 - Sessions from other projects are hidden here and remain accessible from the
   Projects index.
-- Selecting a temporary session clears the active workspace so composer and
+- Selecting a temporary session clears the active workspace so session and
   tool context do not imply project access.
 - Keyboard: arrow up/down, Enter to select
 - Delete: via command palette `builtin.session.delete`
@@ -640,9 +640,8 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 
 - Height: compact one-line shell by default; textarea auto-grows through seven
   visible lines, then the textarea scrolls internally
-- Workspace context rail: attached to the shell's upper-left edge with zero
-  visible gap; project / Local / branch retain internal separators but share
-  the shell surface and its single elevation
+- Workspace context: no project, Local, or branch rail is rendered above the
+  shell in either home or thread-docked mode (D095)
 - Background: one solid semantic composer surface; no internal gradient,
   background image, or decorative wash
 - Elevation: 20px radius with a hairline stroke and restrained soft shadow;
