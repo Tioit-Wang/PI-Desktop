@@ -137,6 +137,15 @@ The current project exposes `+` to start a pre-bound task and its path in a
 tooltip. Other projects stay in the Projects index; the home sidebar is not a
 multi-project tree.
 
+## 3.9 Transcript density and user-plate alignment
+WorkBuddy's task transcript keeps user turns as compact right-side plates and
+assistant turns as full-width transparent prose, with quiet hover actions under
+each turn. **Adopted in D101**: PI-Desktop keeps the developer-tool restraint
+(no mascot, no like/dislike) but densifies row spacing, right-aligns the user
+plate at `min(78%, 560px)`, softens the plate border/shadow, and shows copy
+chips only on hover/focus-within. Streaming assistant answers use a thin
+accent left rule instead of a heavy pulse frame.
+
 ## 4. Adapt with caution
 
 - **Assistant-with-integrations header** ("已连接: X"): good pattern for

@@ -448,11 +448,13 @@ The composer renders only controls connected to the active pi session:
 - File, photo, and appshot controls remain hidden until their payload contracts
   are implemented end to end.
 - The model menu always exposes a dedicated Thinking section with the current
-  level. Reasoning-capable models render their sparse supported level set in a
-  compact selector and persist changes without closing the menu. Unknown
-  Custom/OpenAI-compatible models expose an explicit Enable thinking action;
-  known non-reasoning models remain unavailable. Changing provider clamps or
-  resets the durable session value before the next turn.
+  level. Reasoning-capable models render only their real
+  `supportedThinkingLevels` set in a compact selector and persist changes
+  without closing the menu. Boolean-like custom models such as mimo may expose
+  only Off/High rather than a fake graded ladder. Unknown Custom/OpenAI-
+  compatible models expose an explicit Enable thinking action; known
+  non-reasoning models remain unavailable. Changing provider clamps or resets
+  the durable session value before the next turn.
 - Local and branch context are non-interactive status labels; the project name
   remains an action because it opens the project picker.
 
@@ -507,7 +509,7 @@ Codex parity decisions (D034/D070) supersede any older value here.
 | Context panel width (expanded) | 280px | Project/status panel |
 | Composer shell minimum | ~80px | One-line draft + toolbar padding |
 | Composer draft height | 1–7 text lines | Auto-grow; internal scroll beyond line 7 |
-| Chat message max width | 720px | Prevent eye-span over-stretch |
+| Chat message max width | 720px assistant / 560px user plate | Prevent eye-span over-stretch; user turns stay compact |
 | Window min width | 800px | Below this, hide context panel |
 | Window min height | 600px | Below this, compress sidebar |
 
@@ -645,7 +647,7 @@ Full component contract and usage rules: [08-component-spec.md §17](08-componen
 | Rule | Application |
 |---|---|
 | **Base padding 8px (space-2)** | Default inner padding for list items, form groups |
-| **Message gap 12px (space-3)** | Between chat messages — tight but scannable |
+| **Message gap 10px** | Between chat message rows — denser WorkBuddy-like transcript |
 | **Section gap 16px (space-4)** | Between distinct UI sections (sidebar sections, settings groups) |
 | **Panel gap 0px** | Panels touch edge-to-edge with border-subtle separator — no gutters |
 | **Compact list rows 28px height** | Sidebar session items, settings list rows |

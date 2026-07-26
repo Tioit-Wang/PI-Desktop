@@ -451,10 +451,12 @@ const MessageRow = memo(function MessageRow({
   const displayed = useTypewriter(message);
   const thinking = thinkingText(message);
   const hasAnswer = Boolean((message.content || "").trim());
+  const streaming =
+    !isUser && isRunning && message.status === "streaming";
   const showAnswer = isUser || Boolean(displayed) || (!thinking && isRunning);
   return (
     <div
-      className={`message-row ${isUser ? "user" : message.role}`}
+      className={`message-row ${isUser ? "user" : message.role}${streaming ? " streaming" : ""}`}
       data-minimap-id={message.id}
       role="article"
       aria-label={isUser ? t("chat.userMessage") : t("chat.assistantMessage")}
@@ -463,13 +465,13 @@ const MessageRow = memo(function MessageRow({
         {!isUser && thinking ? (
           <ThinkingDisclosure
             thinking={thinking}
-            streaming={isRunning && message.status === "streaming"}
+            streaming={streaming}
           />
         ) : null}
         {showAnswer ? (
           <div className="message-bubble">
             {isUser ? (
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              <div className="message-user-text">{message.content}</div>
             ) : (
               <div className="prose-chat">
                 <Markdown source={displayed || (isRunning ? "…" : "")} />

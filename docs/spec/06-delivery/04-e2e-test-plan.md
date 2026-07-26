@@ -707,10 +707,13 @@ Each scenario is documented in this format:
   5) Disable its override in Configuration and refresh model data.
 - **Expected**: The menu always shows the current Thinking state; reasoning
   models expose only their sparse supported levels in canonical order and keep
-  the menu open after selection. The custom action persists `supportsReasoning`
-  and selects the supported level nearest `medium`; explicit `false` removes
-  stale reasoning tags and resets the effective level to `off`; known
-  non-reasoning and legacy providers remain unavailable without a crash.
+  the menu open after selection. Custom providers may persist
+  `supportedThinkingLevels` such as `["off","high"]` from Settings and the
+  Composer must not invent graded options for those sets. The custom action
+  persists `supportsReasoning` and selects the supported level nearest
+  `medium`; explicit `false` removes stale reasoning tags and resets the
+  effective level to `off`; known non-reasoning and legacy providers remain
+  unavailable without a crash.
 - **Specs linked**: `03-runtime/11-provider-model-system.md`,
   `03-runtime/12-provider-config-schema.md`,
   `03-runtime/13-model-catalog-and-selection.md`, ADR 0018
@@ -855,20 +858,42 @@ Each scenario is documented in this format:
 
 ---
 
+#### E2E-059: Transcript message plates follow WorkBuddy density
+
+- **Preconditions**: A session contains at least one short user prompt, one
+  longer user prompt, and a completed assistant answer; light and dark themes
+  available.
+- **Steps**: 1) Open the session in dark theme. 2) Inspect user and assistant
+  rows at rest and on hover. 3) Start a streaming assistant answer. 4) Switch
+  to light theme and repeat. 5) Focus the copy control with the keyboard.
+- **Expected**: User turns are right-aligned soft plates capped near 560px with
+  subtle border/shadow; assistant answers remain transparent full-width prose
+  in the 720px content band. Row spacing is denser (~10px). Copy chips are
+  hidden at rest, appear on hover/focus-within, and stay right-aligned under
+  user turns. Streaming assistant answers show a thin accent left rule without
+  boxing the whole answer. Both themes keep readable contrast on the user
+  plate.
+- **Specs linked**: `04-ux/07-ui-design-system.md`,
+  `04-ux/08-component-spec.md`, `04-ux/10-workbuddy-benchmark-ux.md`
+- **Acceptance**: C (chat stream), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`transcript-style.test.mjs`); full visual scenario Draft
+
 ## 8. Traceability Matrix
+
 
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
 | B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-050, E2E-052, E2E-055 |
-| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-047, E2E-048, E2E-049, E2E-052, E2E-053, E2E-054, E2E-055, E2E-059 |
 | D — Workspace | E2E-012, E2E-013, E2E-047, E2E-049, E2E-057, E2E-058 |
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040, E2E-049 |
 | F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-048, E2E-051, E2E-054, E2E-056 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030, E2E-049 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-053, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -876,7 +901,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051, E2E-052, E2E-053, E2E-054, E2E-055, E2E-056, E2E-057, E2E-058, E2E-059 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -1290,3 +1315,11 @@ This test plan spec is accepted when:
   only B, and tool output/artifacts from A to remain rooted in A.
 - Open a Temporary session and invoke a workspace-required tool; expect the
   normal `WORKSPACE_REQUIRED` result rather than inheritance from B.
+
+
+### US-UI-60 WorkBuddy transcript plates (D101)
+- Open a mixed transcript in light and dark themes.
+- Expect right-aligned compact user plates, transparent full-width assistant
+  prose, denser row spacing, and hover-only copy chips under each turn.
+- While an assistant answer streams, expect a thin accent left rule rather than
+  a boxed frame.

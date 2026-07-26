@@ -513,23 +513,29 @@ Single message render — either user (plaintext) or assistant (markdown streami
 
 ### 8.3 Layout
 
-- Max width: 720px
-- User: bg-secondary background, left-aligned
-- Assistant: bg-primary (transparent), left-aligned, markdown rendered
+- Max content band: 760px thread column; assistant body max 720px
+- User: right-aligned soft plate (`color-mix` on primary ink, subtle border,
+  `radius-lg-plus`), capped at `min(78%, 560px)` so short prompts read as
+  chat turns rather than full-width blocks
+- Assistant: transparent surface, left-aligned, markdown rendered at full
+  content width
 - Thinking: separate lightweight disclosure above the answer with no card
   background or outer border. Its Sparkles/chevron trigger uses secondary text,
   and the expanded markdown is indented by a subtle theme-token left rule. It
   is never concatenated into answer markdown.
-- Gap: space-3 between consecutive messages
+- Hover actions: quiet copy chip under the bubble; right-aligned for user
+  turns, left-aligned for assistant turns; visible on hover/focus-within
+- Gap: 10px vertical padding between consecutive message rows (denser than
+  consumer chat, closer to WorkBuddy task transcript)
 - Font: text-base (14px) for body; text-sm (13px) mono for code
 
 ### 8.4 States
 
 | State | Appearance |
 |---|---|
-| Streaming | pulsing left border accent; content grows |
+| Streaming | accent left rule on the answer surface; content grows |
 | Thinking streaming | disclosure open; answer bubble omitted until answer text exists |
-| Complete | no pulse; full rendered markdown |
+| Complete | no streaming rule; full rendered markdown |
 | Error | error border; error message inline with retry prompt |
 
 ### 8.5 Accessibility

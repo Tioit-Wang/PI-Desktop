@@ -1,0 +1,55 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+
+const stylesSource = await readFile(
+  new URL("../src/styles/globals.css", import.meta.url),
+  "utf8",
+);
+const transcriptSource = await readFile(
+  new URL("../src/components/ChatTranscript.tsx", import.meta.url),
+  "utf8",
+);
+
+test("user turns keep a compact right-aligned plate", () => {
+  assert.match(stylesSource, /\.message-row\.user \{\s*justify-content:\s*flex-end;/);
+  assert.match(
+    stylesSource,
+    /\.message-row\.user \.message-col \{[\s\S]*?max-width:\s*min\(78%,\s*560px\);[\s\S]*?align-items:\s*flex-end;/,
+  );
+  assert.match(
+    stylesSource,
+    /\.message-row\.user \.message-bubble \{[\s\S]*?max-width:\s*min\(78%,\s*560px\);[\s\S]*?border-radius:\s*var\(--radius-lg-plus\);[\s\S]*?border:\s*1px solid/,
+  );
+});
+
+test("assistant turns stay transparent full-width prose", () => {
+  assert.match(
+    stylesSource,
+    /\.message-row\.assistant \.message-bubble[\s\S]*?background:\s*transparent;/,
+  );
+  assert.match(
+    stylesSource,
+    /\.message-row\.assistant \.message-col[\s\S]*?width:\s*min\(100%,\s*720px\);/,
+  );
+  assert.match(
+    stylesSource,
+    /\.message-row\.assistant\.streaming \.message-bubble \{[\s\S]*?border-left:\s*2px solid/,
+  );
+});
+
+test("transcript density and hover actions are quiet", () => {
+  assert.match(stylesSource, /\.message-row \{[\s\S]*?padding:\s*10px 0;/);
+  assert.match(stylesSource, /\.thread-content \{[\s\S]*?padding:\s*20px 28px 228px;/);
+  assert.match(
+    stylesSource,
+    /\.message-actions \{[\s\S]*?opacity:\s*0;[\s\S]*?\.message-row:hover \.message-actions/,
+  );
+  assert.match(stylesSource, /\.message-row\.user \.message-actions \{[\s\S]*?justify-content:\s*flex-end;/);
+});
+
+test("transcript markup uses the dedicated user text surface and streaming class", () => {
+  assert.match(transcriptSource, /className="message-user-text"/);
+  assert.match(transcriptSource, /streaming \? " streaming" : ""/);
+  assert.match(transcriptSource, /CopyButton text=\{message\.content\}/);
+});
