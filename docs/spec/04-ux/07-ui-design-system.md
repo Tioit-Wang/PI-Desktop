@@ -305,7 +305,19 @@ Light theme: minimal shadows only where layering is insufficient.
 | `elevation-2` | bg-tertiary | bg-tertiary + `shadow-md` | Hover, dropdowns |
 | `elevation-3` | bg-tertiary + border-accent | bg-white + `shadow-lg` | Dialogs, overlays |
 
-Sidebar footer cloud control: `20×20` (`h-5`) rounded-full charts-blue (`#0285ff`), white glyph; Custom + badge in footer band.
+Sidebar footer (D113): a transparent `58px`-high band with no separator. The
+left profile trigger is `44px` high and flexes to fill the available width. It
+contains a `30px` circular user glyph, a two-line identity stack (`Custom` at
+the primary text size and `Local profile` / localized equivalent as muted
+metadata), and a trailing chevron. The Help shortcut is a separate `32px`
+square icon button on the right and opens Settings → Info. Hover and active
+states use semantic sidebar surfaces; neither control adds a persistent card
+fill or cloud/update badge.
+
+The profile menu is `280px` wide, opens `8px` above the footer, and uses the
+standard opaque elevated-menu surface, subtle border, and dialog shadow. Its
+first block repeats the local identity with the same glyph and two-line text,
+followed by a divider and compact Settings / Logs / Theme rows.
 
 Toolbar: traffic lights `{x:16,y:16}` in 46px titlebar.
 

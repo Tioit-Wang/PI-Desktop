@@ -1171,9 +1171,14 @@ This test plan spec is accepted when:
 - Empty hero title is 28px / 34px line-height, weight 400.
 - Window restores ≥1000×700 (target 1200×800) if Stage Manager collapses it.
 
-### US-UI-16 Sidebar footer cloud control
-- On light/dark home shell, sidebar footer shows Custom + a circular blue cloud/update badge (~20px, Codex charts-blue).
-- Badge click remains available (local stand-in opens logs until real update channel lands).
+### US-UI-16 WorkBuddy-inspired local profile footer
+- On the light/dark home shell, the sidebar footer is a transparent 58px band
+  with no separator. It shows a 44px profile trigger containing a 30px circular
+  user glyph, `Custom` + `Local profile` / `本地配置` on two lines, and a
+  trailing chevron.
+- A separate 32px Help shortcut remains visible at the right. Clicking it opens
+  Settings with Info selected; it is not an inert or mislabeled Settings
+  shortcut.
 - Traffic lights sit at Codex `{x:16,y:16}` with 46px toolbar; back/forward nav lives in the drag row after lights.
 
 ### US-UI-17 PI-Desktop home hero logo
@@ -1214,8 +1219,15 @@ This test plan spec is accepted when:
   mode/model controls to be disabled.
 
 ### US-UI-22 Profile footer menu
-- On the sidebar footer, click Custom (profile row).
-- Expect a Codex-style profile menu with Settings, Logs, and Theme cycle; Settings navigates to the settings page.
+- On the sidebar footer, click the `Custom` / `Local profile` trigger.
+- Expect a 280px opaque elevated menu 8px above the footer. It repeats the local
+  identity in a non-interactive header, then shows a divider and Settings,
+  Logs, and Theme actions in that order.
+- Arrow keys wrap through the three actions; Home/End jump to the boundary.
+  Escape closes the menu and restores trigger focus. An outside pointer press
+  closes it without stealing target focus.
+- Settings navigates to the settings page, Logs opens local logs, and Theme
+  cycles the current theme after closing the menu.
 
 ### US-UI-23 Projects page grid
 - Open Projects from the sidebar.
@@ -1361,8 +1373,9 @@ This test plan spec is accepted when:
 - Open a project on empty home (no transcript).
 - Expect no workspace controls attached to the plate; there is no legacy draft
   mark, and the placeholder uses the PI-Desktop copy.
-- Model chip shows the active model ID; footer profile uses gear + Custom and
-  help control.
+- Model chip shows the active model ID; the footer uses the circular local-user
+  glyph, two-line Custom / Local profile identity, disclosure chevron, and
+  separate Help → Settings Info control.
 
 ### US-UI-47 Projects index parity
 - Open Projects destination.

@@ -24,15 +24,17 @@ destination, chat as the home surface, tools and permissions inline.
 |   Project A      |                                |  Terminal        |
 |   Project B      |                                |  Browser         |
 |  Temporary       |                                |  Files           |
-|  Footer: Custom  |  Floating composer (chat)      |                  |
+|  Footer: local   |  Floating composer (chat)      |                  |
 +------------------+--------------------------------+------------------+
 ```
 
 - **Sidebar**: primary navigation — New task, destination entries
   (Projects / Plugins), retained open-project groups, a path-less Temporary
-  sessions group, and the profile footer (Custom → Settings / Logs / Theme,
-  D041/D093). Pull requests and Scheduled are intentionally omitted from the
-  home sidebar. Each retained project is a path-keyed tab/group that can be
+  sessions group, and the WorkBuddy-inspired local profile footer
+  (Custom / Local profile → Settings / Logs / Theme, plus a direct Help
+  shortcut to Settings → Info, D113/D093). Pull requests and Scheduled are
+  intentionally omitted from the home sidebar. Each retained project is a
+  path-keyed tab/group that can be
   collapsed independently. Project and conversation rows expose
   non-destructive pin/archive actions and sortable views. Projects not
   retained in the sidebar remain discoverable through the Projects index.

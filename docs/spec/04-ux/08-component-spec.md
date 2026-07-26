@@ -134,8 +134,9 @@ Expanded (~275px, D034/D070):
 | project-B      [>] [+] … |
 | Temporary sessions   [+] |
 |   • Path-less session   |
-| ─────────────────         |
-| [⚙ Settings] bottom link  |
+|                           |
+| [(user) Custom       v][?]|
+|        Local profile     |
 +---------------------------+
 
 Collapsed (48px):
@@ -162,6 +163,9 @@ Collapsed (48px):
 | Archived row | Hidden by default; visible in the explicit archived view |
 | No retained project | Compact Open project entry; Temporary rows remain available |
 | Empty group | Muted one-line empty state; group create action remains available |
+| Footer idle | Transparent 58px band; profile and Help controls remain visually quiet |
+| Footer hover/focus | Only the targeted control receives the semantic hover/focus treatment |
+| Profile menu open | Profile trigger is active; 280px menu opens 8px above the footer |
 
 ### 3.4 Interactions
 
@@ -185,6 +189,9 @@ Collapsed (48px):
   cards. Directory `+` and overflow actions remain hidden until hover or
   keyboard focus.
 - Sidebar toggle: Topbar hamburger + keyboard shortcut
+- Click the local profile trigger: open or close the identity menu containing
+  Settings, Logs, and Theme
+- Click Help: navigate directly to Settings → Info
 
 ### 3.5 Accessibility
 
@@ -196,6 +203,10 @@ Collapsed (48px):
   `aria-controls`; menu check/radio items expose `aria-checked`
 - Collapsed state: each icon has `aria-label` with session title
 - Keyboard: arrow keys navigate session list
+- The profile trigger exposes `aria-haspopup="menu"` and its expanded state;
+  the menu has a stable accessible relationship to the trigger
+- Help has a localized accessible name that identifies the Settings → Info
+  destination
 
 
 ### 3.6 Brand and icon contract
@@ -234,6 +245,24 @@ controls.
 | Session list | exact-path matches only; no basename grouping |
 | Active group | exactly one group reflects the selected host workspace |
 | Background state | running/error indicator updates by session without replacing the visible transcript |
+
+### 3.9 Local profile footer contract
+
+The expanded sidebar ends with a WorkBuddy-inspired local identity cluster.
+It borrows the compact avatar-and-actions grammar without implying a cloud
+account, subscription, notification feed, or collaboration backend.
+
+| Element | Contract |
+|---|---|
+| Footer band | `58px` high, transparent, no top separator; remains outside the scrollable project/session region |
+| Profile trigger | `44px` high, flexible width, rounded hover target; opens the profile menu |
+| User glyph | `30px` circular local-user glyph; decorative when the text label names the control |
+| Identity copy | Primary `Custom`; secondary `Local profile` or localized `本地配置`; two lines truncate independently |
+| Chevron | Trailing disclosure indicator; reflects the menu's open state without motion when reduced motion is requested |
+| Help shortcut | Separate `32px` square icon target; navigates to Settings → Info and never acts as an inert or mislabeled settings shortcut |
+| Profile menu | `280px` wide, bottom anchored `8px` above the footer; opaque elevated surface |
+| Identity header | Repeats the glyph and two-line local identity; non-interactive |
+| Menu actions | Divider, then Settings, Logs, and Theme in that order; Theme retains its current-value metadata |
 
 ---
 

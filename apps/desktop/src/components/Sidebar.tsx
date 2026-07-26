@@ -28,15 +28,15 @@ import {
   IconChevronRight,
   IconNewSession,
   IconFolder,
-  IconCloudDown,
+  IconFileText,
   IconHelp,
-  IconGear,
   IconMore,
   IconPanel,
   IconPin,
   IconSearch,
   IconSettings,
   IconSliders,
+  IconUser,
   IconX,
 } from "./icons";
 
@@ -149,6 +149,7 @@ export function Sidebar({
   const projectSort = useAppStore((s) => s.projectSort);
   const runningSessions = useAppStore((s) => s.runningSessions);
   const setPage = useAppStore((s) => s.setPage);
+  const setSettingsTab = useAppStore((s) => s.setSettingsTab);
   const settings = useAppStore((s) => s.settings);
   const page = useAppStore((s) => s.page);
   const navBack = useAppStore((s) => s.navBack);
@@ -1119,13 +1120,23 @@ export function Sidebar({
 
         <div className="sidebar-footer no-drag" ref={profileRef}>
           {profileOpen ? (
-            <div className="profile-menu" role="menu" onKeyDown={onMenuKeyDown}>
+            <div id="sidebar-profile-menu" className="profile-menu" role="menu" onKeyDown={onMenuKeyDown}>
+              <div className="profile-menu-identity" role="presentation">
+                <span className="profile-menu-avatar" aria-hidden>
+                  <IconUser size={15} />
+                </span>
+                <span className="profile-menu-copy">
+                  <strong>{t("nav.custom")}</strong>
+                  <small>{t("nav.localProfile")}</small>
+                </span>
+              </div>
+              <div className="profile-menu-divider" role="separator" />
               <button ref={menuFirstItemRef} className="profile-menu-item" role="menuitem" data-nav="settings" onClick={() => { setProfileOpen(false); setPage("settings"); }}>
                 <IconSettings size={15} />
                 <span>{t("nav.settings")}</span>
               </button>
               <button className="profile-menu-item" role="menuitem" onClick={async () => { setProfileOpen(false); try { await (await import("../lib/api")).api.openLogs(); } catch { /* ignore */ } }}>
-                <IconCloudDown size={15} />
+                <IconFileText size={15} />
                 <span>{t("nav.profileLogs")}</span>
               </button>
               <button className="profile-menu-item" role="menuitem" onClick={async () => {
@@ -1146,11 +1157,17 @@ export function Sidebar({
               </button>
             </div>
           ) : null}
-          <button className={`nav-item footer-profile ${page === "settings" || profileOpen ? "active" : ""}`} data-nav="profile" aria-haspopup="menu" aria-expanded={profileOpen} onClick={(event) => { menuTriggerRef.current = event.currentTarget; setProfileOpen((value) => !value); }} title={t("nav.openProfileMenu")}>
-            <IconGear size={15} />
-            <span className="truncate">{t("nav.custom")}</span>
+          <button className={`footer-profile ${profileOpen ? "active" : ""}`} data-nav="profile" aria-haspopup="menu" aria-controls="sidebar-profile-menu" aria-expanded={profileOpen} onClick={(event) => { menuTriggerRef.current = event.currentTarget; setProfileOpen((value) => !value); }} title={t("nav.openProfileMenu")}>
+            <span className="footer-profile-avatar" aria-hidden>
+              <IconUser size={14} />
+            </span>
+            <span className="footer-profile-copy">
+              <span className="footer-profile-name">{t("nav.custom")}</span>
+              <span className="footer-profile-status">{t("nav.localProfile")}</span>
+            </span>
+            <IconChevronDown className={`footer-profile-chevron ${profileOpen ? "open" : ""}`} size={13} aria-hidden />
           </button>
-          <button className="footer-help" title={t("nav.help")} aria-label={t("nav.help")} onClick={() => setPage("settings")}>
+          <button className="footer-help" title={t("nav.help")} aria-label={t("nav.help")} onClick={() => { closeMenus(false); setSettingsTab("about"); setPage("settings"); }}>
             <IconHelp size={14} />
           </button>
         </div>

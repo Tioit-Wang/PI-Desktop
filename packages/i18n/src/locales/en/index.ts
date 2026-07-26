@@ -12,6 +12,7 @@ export const en = {
     recents: "Recents",
     settings: "Settings",
     custom: "Custom",
+    localProfile: "Local profile",
     help: "Help",
     openInPanel: "Open in panel",
     profileLogs: "Logs",

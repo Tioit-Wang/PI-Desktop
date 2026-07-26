@@ -110,6 +110,24 @@ the visible shell context.
 - Sort, archive, restore, pin, and close actions remain keyboard-reachable;
   they cannot exist only as pointer-hover affordances.
 
+### 1.6 Local profile footer
+
+- The `44px` profile trigger toggles the menu; its chevron and
+  `aria-expanded` state change together.
+- The `280px` menu opens `8px` above the transparent footer band. Opening it
+  moves focus to the first actionable row after the non-interactive identity
+  header and divider.
+- `ArrowDown` / `ArrowUp` wrap among Settings, Logs, and Theme. `Home` and
+  `End` move to the first and last action.
+- `Escape` closes the menu and restores focus to the profile trigger. A pointer
+  press outside closes it without stealing focus from the pointer target.
+- Selecting Settings, Logs, or Theme closes the menu before performing the
+  action. Theme applies the next theme value without reopening the menu.
+- The separate `32px` Help button bypasses the profile menu and navigates
+  directly to Settings → Info.
+- Collapsing the sidebar closes the menu and restores the collapsed rail's
+  normal navigation state.
+
 ## 2. Streaming message behavior
 
 ### 2.1 Token rendering

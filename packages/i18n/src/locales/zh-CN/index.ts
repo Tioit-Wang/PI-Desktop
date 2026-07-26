@@ -15,6 +15,7 @@ export const zhCN = {
     recents: "最近",
     settings: "设置",
     custom: "Custom",
+    localProfile: "本地配置",
     help: "帮助",
     openInPanel: "在面板中打开",
     profileLogs: "日志",
