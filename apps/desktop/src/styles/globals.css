@@ -236,6 +236,7 @@ select,
 [contenteditable],
 .selectable,
 .message-bubble,
+.message-user-text,
 .prose-chat,
 .tool-row-content,
 pre,
@@ -1375,9 +1376,17 @@ textarea:disabled {
 }
 
 .message-user-text {
+  /* Preserve hard newlines from the composer (Shift+Enter / pasted blocks). */
   white-space: pre-wrap;
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
   word-break: break-word;
+  line-height: inherit;
+}
+
+.message-user-text br {
+  display: block;
+  content: "";
+  margin: 0;
 }
 
 :root[data-theme="light"] .message-row.user .message-bubble {

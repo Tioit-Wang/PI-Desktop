@@ -25,6 +25,6 @@ test("editing and document-like content explicitly remains selectable", () => {
   );
   assert.match(
     globalStyles,
-    /\.message-bubble[\s\S]*?\.prose-chat[\s\S]*?\.tool-row-content[\s\S]*?pre[\s\S]*?code[\s\S]*?-webkit-user-select:\s*text;[\s\S]*?user-select:\s*text;/,
+    /\.message-bubble[\s\S]*?\.message-user-text[\s\S]*?\.prose-chat[\s\S]*?\.tool-row-content[\s\S]*?pre[\s\S]*?code[\s\S]*?-webkit-user-select:\s*text;[\s\S]*?user-select:\s*text;/,
   );
 });
