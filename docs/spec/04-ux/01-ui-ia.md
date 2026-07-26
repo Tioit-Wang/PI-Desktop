@@ -37,6 +37,10 @@ destination, chat as the home surface, tools and permissions inline.
   non-destructive pin/archive actions and sortable views. Projects not
   retained in the sidebar remain discoverable through the Projects index.
   Collapsible to an icon rail (Cmd/Ctrl+B).
+- **Product identity**: runtime shell copy uses `PI-Desktop`; the home hero,
+  sidebar, and docked composer reuse the canonical `build/icon_1024.png` logo,
+  while New task/session controls use a dedicated message-plus icon. `Codex`
+  remains only an external import source or a design-reference term.
 - **Main pane**: exactly one destination at a time; destinations replace the
   pane (they are pages, not modals).
 - **Titlebar**: hiddenInset traffic lights; back/forward controls traverse

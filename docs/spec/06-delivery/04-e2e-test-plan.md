@@ -575,15 +575,15 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`tools::shell::tests`); scenario Documented
 
-#### E2E-044: Development launch uses PI-Desktop Dock branding
+#### E2E-044: Global PI-Desktop branding (Dock + renderer)
 
-- **Preconditions**: macOS development checkout with generated `build/icon_1024.png`.
-- **Steps**: 1) Run `pnpm dev`. 2) Inspect the running application's Dock icon.
-- **Expected**: The Dock shows the PI-Desktop brand icon, not Electron's default icon; packaged builds continue to use `build/icon.icns`.
-- **Specs linked**: `06-delivery/06-release-runbook.md`
-- **Acceptance**: Quality (development shell matches release branding)
+- **Preconditions**: macOS development checkout with canonical `build/icon_1024.png`; app launched in light and dark themes.
+- **Steps**: 1) Run `pnpm dev` and inspect the Dock icon. 2) On the empty home, inspect the 56px hero mark. 3) Expand and collapse the sidebar; inspect the brand mark + shell name and New task icon. 4) Open a transcript and inspect the docked composer mark. 5) Scan shell copy in composer placeholder and Settings permission/menu-bar strings.
+- **Expected**: Dock and packaged icons use the canonical PI-Desktop asset; home/sidebar/composer reuse `BrandLogo` from `build/icon_1024.png`; New task/session controls use `MessageSquarePlus`; user-visible shell identity is `PI-Desktop`; `Codex` appears only as an external import source or design-reference term.
+- **Specs linked**: `04-ux/01-ui-ia.md`, `04-ux/08-component-spec.md`, `06-delivery/06-release-runbook.md`, `08-meta/decisions-log.md` (D094)
+- **Acceptance**: Quality (development shell and renderer match release branding)
 - **Milestone**: M5
-- **Status**: Unit-covered (`development-branding.test.mjs`); visual scenario Documented
+- **Status**: Unit-covered (`development-branding.test.mjs`, `renderer-branding.test.mjs`); visual scenario Documented
 
 #### E2E-045: Global text selection preserves editing and copying
 

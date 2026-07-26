@@ -392,11 +392,32 @@ textarea:disabled {
   padding: 0 4px 8px;
 }
 
+.sidebar-rail-brand {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  color: var(--ds-text-primary);
+}
+
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--text-base-plus);
   font-weight: var(--font-weight-semibold);
   letter-spacing: var(--tracking-tight);
   color: var(--ds-text-primary);
+}
+
+.brand-logo {
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+  -webkit-user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .message-row.user .message-bubble {
@@ -830,16 +851,13 @@ textarea:disabled {
   justify-content: center;
   color: var(--ds-text-primary);
   /* Icon mass already near gold; keep slightly soft */
-  opacity: 0.5;
+  opacity: 1;
   transition: opacity 120ms ease, transform 180ms ease;
   cursor: default;
   -webkit-user-select: none;
   user-select: none;
 }
 
-.empty-hero-icon:hover {
-  opacity: 0.45;
-}
 
 .empty-hero h1 {
   margin: 0;
@@ -945,21 +963,19 @@ textarea:disabled {
 }
 
 .composer-thread-mark {
+  display: inline-flex;
+  width: 15px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
   flex: 0 0 auto;
   margin-top: 1px;
   color: color-mix(in oklab, var(--ds-text-primary) 38%, transparent);
-  font-size: var(--text-base-plus);
   line-height: var(--leading-normal);
   -webkit-user-select: none;
   user-select: none;
 }
 
-.infinity-mark {
-  display: inline-block;
-  transform: translateY(0.5px);
-  font-weight: var(--font-weight-medium);
-  letter-spacing: var(--tracking-normal);
-}
 
 .composer-input {
   width: 100%;
@@ -2391,7 +2407,6 @@ textarea:disabled {
 
 .composer-dock-home .composer-thread-mark {
   margin-top: 0;
-  font-size: var(--text-lg-plus);
   line-height: var(--leading-compact);
   color: color-mix(in oklab, var(--ds-text-primary) 72%, transparent);
 }
@@ -2422,9 +2437,9 @@ textarea:disabled {
 }
 
 :root[data-theme="light"] .composer-thread-mark {
-  /* Gold infinity ink is near primary (#1a1c1f) */
+  /* Preserve the canonical brand asset rather than tinting a legacy glyph. */
   color: #1a1c1f;
-  opacity: 0.88;
+  opacity: 1;
 }
 
 :root[data-theme="light"] .new-task-btn,
@@ -2648,7 +2663,7 @@ textarea:disabled {
 
 :root[data-theme="dark"] .empty-hero-icon {
   color: var(--gray-0);
-  opacity: 0.55;
+  opacity: 1;
 }
 
 
@@ -3111,7 +3126,7 @@ textarea:disabled {
   flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .settings-nav-label {
@@ -3880,7 +3895,6 @@ textarea:disabled {
 
 .projects-empty-title {
   color: var(--ds-text-primary);
-  font-size: var(--text-base-plus);
   font-weight: var(--font-weight-strong);
 }
 

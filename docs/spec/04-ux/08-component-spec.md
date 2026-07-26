@@ -111,6 +111,10 @@ Global controls bar: project identity, model selection, mode indicator, abort bu
 
 ### 3.1 Purpose
 
+- `BrandLogo` imports canonical `build/icon_1024.png` through Vite. The
+
+- The visible shell name is `PI-Desktop`; Codex is not used as the renderer
+
 Scoped project and session navigation and management. The expanded sidebar
 shows every retained project tab as an independently collapsible group plus
 path-less Temporary sessions; the collapsed state is an icon rail. Retained
@@ -694,8 +698,8 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 | [model: provider/model · mode badge]         |
 | ───────────────────────────                  |
 | textarea (auto-growing, 1 line → max 7)      |
-| placeholder: "Ask Codex to do anything"      |
-| (D046; zh-CN 向 Codex 下达任意指令; home     |
+| placeholder: "Ask PI-Desktop to do anything"      |
+| (D094; zh-CN 向 PI-Desktop 下达任意指令; home     |
 |  variant "Ask anything" when project open,   |
 |  D066)                                       |
 | ───────────────────────────                  |
@@ -880,7 +884,7 @@ Guidance surfaces when key data is absent. Must always provide an **action link*
 | No provider | "No model provider configured" | "Add provider" link → Settings → Configuration → Providers |
 | No project (Agent mode) | "No project open — local tools unavailable" | "Open folder" button → ProjectPicker |
 | No project (Chat mode) | "Open a project for context" (muted warning) | "Open folder" button |
-| Session empty (first message) | "Ask Codex to do anything" placeholder (home variant "Ask anything", D046/D066) | N/A |
+| Session empty (first message) | "Ask PI-Desktop to do anything" placeholder (home variant "Ask anything", D094/D066) | N/A |
 
 ### 15.3 Layout
 

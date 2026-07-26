@@ -1,10 +1,10 @@
 import type { EnglishCatalog } from "../en/index.js";
 
-/** Chinese shell copy aligned to local Codex (zh-CN) desktop chrome. */
+/** Chinese shell copy for the PI-Desktop (zh-CN) desktop chrome. */
 export const zhCN = {
   app: {
     name: "PI-Desktop",
-    shellName: "Codex",
+    shellName: "PI-Desktop",
     tagline: "本地优先的 AI 编程助手",
     starting: "正在启动 PI-Desktop…",
   },
@@ -52,7 +52,7 @@ export const zhCN = {
     emptyTitle: "What should we build?",
     emptyTitleInProject: "What should we build in {{project}}?",
     emptyHint: "配置模型提供方、打开项目，然后发送第一条消息。",
-    placeholder: "向 Codex 下达任意指令",
+    placeholder: "向 PI-Desktop 下达任意指令",
     placeholderHome: "随心输入",
     addFiles: "添加文件等内容",
     attachFiles: "附加文件和文件夹",
@@ -208,16 +208,16 @@ export const zhCN = {
     themeLight: "浅色",
     themeDark: "深色",
     defaultPermissions: "默认权限",
-    defaultPermissionsDesc: "默认情况下，Codex 可以读取和编辑其工作空间中的文件。需要时，它可以请求额外访问权限。",
+    defaultPermissionsDesc: "默认情况下，PI-Desktop 可以读取和编辑其工作空间中的文件。需要时，它可以请求额外访问权限。",
     autoReview: "自动审核",
-    autoReviewDesc: "Codex 可以读取和编辑其工作空间中的文件。Codex 会自动审查额外访问权限请求。自动审查可能会出错。",
+    autoReviewDesc: "PI-Desktop 可以读取和编辑其工作空间中的文件。PI-Desktop 会自动审查额外访问权限请求。自动审查可能会出错。",
     learnMore: "了解更多",
     autoReviewLearnMoreAfter: " 关于高风险的信息。",
     fullAccess: "完全访问权限",
-    fullAccessDesc: "当 Codex 以完整访问权限运行时，它无需你的批准即可编辑你电脑上的任何文件，并运行可访问网络的命令。这会显著增加数据丢失、泄露或意外行为的风险。",
+    fullAccessDesc: "当 PI-Desktop 以完整访问权限运行时，它无需你的批准即可编辑你电脑上的任何文件，并运行可访问网络的命令。这会显著增加数据丢失、泄露或意外行为的风险。",
     fullAccessLearnMoreAfter: " 关于风险升高的信息。",
     showMenuBar: "在菜单栏中显示",
-    showMenuBarDesc: "关闭主窗口后，仍在 macOS 菜单栏中保留 Codex",
+    showMenuBarDesc: "关闭主窗口后，仍在 macOS 菜单栏中保留 PI-Desktop",
     modelIdDesc: "使用当前提供方创建新会话时的默认模型。",
     reasoningSupport: "思考支持",
     reasoningDisabled: "关闭",
@@ -240,7 +240,7 @@ export const zhCN = {
     logs: "日志",
     logsDesc: "打开本地日志目录以便诊断。",
     openLogs: "打开日志",
-    placeholderBody: "此设置分区已按 Codex 布局搭好。对应主机能力就绪后会接入真实控件。",
+    placeholderBody: "此 PI-Desktop 设置分区已按当前布局搭好。对应主机能力就绪后会接入真实控件。",
 
     pets: "宠物",
     appshots: "智能快照",
