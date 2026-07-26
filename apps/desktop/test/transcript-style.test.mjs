@@ -126,6 +126,15 @@ test("regenerate history pager and stable revision family are wired", async () =
   assert.match(transcriptSource, /message-revision-pager/);
   assert.match(transcriptSource, /activateMessageRevision/);
   assert.match(transcriptSource, /chat\.revisionPager/);
+  assert.match(
+    transcriptSource,
+    /const showRevisionPager = isUser && revisionCount > 1;/,
+  );
+  assert.match(
+    transcriptSource,
+    /activateMessageRevision\(message\.id, Math\.max\(1, activeRevision - 1\)\)/,
+  );
+  assert.doesNotMatch(transcriptSource, /showRevisionPagerHere|revisionOwner/);
   assert.match(stylesSource, /\.message-revision-pager/);
   assert.match(storeSource, /revisionRootId \|\| root\.id/);
   assert.match(storeSource, /activateSessionRevision/);

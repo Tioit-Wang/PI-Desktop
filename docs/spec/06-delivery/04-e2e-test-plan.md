@@ -979,8 +979,15 @@ Each scenario is documented in this format:
 #### E2E-062: Regenerate history pager restores prior variants
 
 - **Preconditions**: A session where an assistant answer was regenerated at least once.
-- **Steps**: 1) Observe the root user turn pager. 2) Switch to a previous variant. 3) Switch forward again. 4) Reload the session.
-- **Expected**: Pager shows `current / total` once multiple variants exist. Switching restores the archived assistant/tool branch in place. Reload preserves the active variant and the full revision set.
+- **Steps**: 1) Click Retry/Regenerate on a completed assistant turn. 2)
+  Observe the visible root user bubble while the replacement turn starts and
+  after it completes. 3) Switch to a previous variant. 4) Switch forward
+  again. 5) Reload the session.
+- **Expected**: The root user bubble remains visible and shows the
+  `current / total` pager as soon as multiple variants exist; retry does not
+  move or detach the selector from that bubble. Switching restores the
+  archived assistant/tool branch in place. Reload preserves the active
+  variant and the full revision set.
 - **Specs linked**: `04-ux/08-component-spec.md`, `03-runtime/04-data-storage.md`
 - **Acceptance**: C (chat stream), F (persistence)
 - **Milestone**: M5
@@ -1474,7 +1481,8 @@ This test plan spec is accepted when:
 
 ### US-UI-63 Regenerate history pager (D109)
 - Regenerate an assistant answer twice.
-- Expect a `1/N` pager on the root user turn and the ability to restore earlier variants without losing them.
+- After each retry, expect the visible root user bubble to retain a `1/N` pager
+  and allow restoring earlier variants without losing them.
 
 
 ### US-UI-64 Empty home no composer overlap (D111)

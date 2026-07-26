@@ -539,7 +539,10 @@ Single message render — either user (plaintext) or assistant (markdown streami
   durable transcript to the nearest preceding user prompt and re-runs that turn
   in place instead of appending a duplicate branch. When more than one
   variant exists, a ChatGPT-style `current / total` pager on the root user
-  turn switches archived branches without losing history (D109).
+  turn switches archived branches without losing history (D109). After
+  Retry/Regenerate starts, the root user turn remains in the live transcript
+  and owns the pager whenever `revisionCount > 1`; replacing the assistant/tool
+  tail must not move or detach that pager from the visible user bubble.
 - Assistant meta: optional model badge + token-usage chip under the answer
   (collapsed summary with hover breakdown for input/output/cache/reasoning)
 - Gap: 10px vertical padding between consecutive message rows (denser than
