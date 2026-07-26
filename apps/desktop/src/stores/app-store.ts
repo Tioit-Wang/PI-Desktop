@@ -199,6 +199,8 @@ export type AppState = {
   navIndex: number;
   error?: string | null;
   errorCode?: string | null;
+  /** Whether the current error is worth a one-click retry (agent errors). */
+  errorRetriable?: boolean | null;
   bootstrap: () => Promise<void>;
   refreshSessions: () => Promise<void>;
   selectSession: (id: string, opts?: { record?: boolean }) => Promise<void>;
@@ -211,7 +213,10 @@ export type AppState = {
   }) => Promise<void>;
   sendPrompt: (content: string) => Promise<void>;
   retryAssistantMessage: (messageId: string) => Promise<void>;
+  retryLastPrompt: () => Promise<void>;
+  clearError: () => void;
   activateMessageRevision: (rootUserId: string, revisionIndex: number) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
   abort: () => Promise<void>;
   openProject: () => Promise<void>;
   activateProject: (path: string) => Promise<ProjectWorkspace | null>;
@@ -377,6 +382,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   composerPrefill: null,
   error: null,
   errorCode: null,
+  errorRetriable: null,
 
   bootstrap: async () => {
     try {
@@ -620,6 +626,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       isRunning: true,
       error: null,
       errorCode: null,
+      errorRetriable: null,
       runningSessions: { ...s.runningSessions, [startedIn]: true },
     }));
     try {
@@ -677,6 +684,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       isRunning: true,
       error: null,
       errorCode: null,
+      errorRetriable: null,
       runningSessions: { ...s.runningSessions, [sessionId]: true },
     }));
 
@@ -711,6 +719,53 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  retryLastPrompt: async () => {
+    // Re-send the newest user prompt after a failed turn (error banner
+    // "Retry"). Same branch semantics as retryAssistantMessage, anchored on
+    // the last user message so it also works when the turn died before any
+    // assistant output.
+    const state = get();
+    if (state.isRunning) return;
+    const sessionId = state.activeSessionId;
+    if (!sessionId) return;
+    let userIndex = -1;
+    for (let i = state.messages.length - 1; i >= 0; i -= 1) {
+      const candidate = state.messages[i];
+      if (candidate.role === "user" && candidate.content.trim()) {
+        userIndex = i;
+        break;
+      }
+    }
+    if (userIndex < 0) return;
+    const prompt = state.messages[userIndex].content;
+    const kept = state.messages.slice(0, userIndex);
+    set((s) => ({
+      messages: kept,
+      isRunning: true,
+      error: null,
+      errorCode: null,
+      errorRetriable: null,
+      runningSessions: { ...s.runningSessions, [sessionId]: true },
+    }));
+    try {
+      await api.prompt({
+        sessionId,
+        content: prompt,
+        truncateBefore: userIndex,
+      });
+    } catch (e) {
+      set((s) => ({
+        isRunning: s.activeSessionId === sessionId ? false : s.isRunning,
+        runningSessions: { ...s.runningSessions, [sessionId]: false },
+        error: e instanceof Error ? e.message : String(e),
+        errorCode: (e as { code?: string })?.code ?? null,
+        errorRetriable: false,
+      }));
+    }
+  },
+
+  clearError: () => set({ error: null, errorCode: null, errorRetriable: null }),
+
   activateMessageRevision: async (rootUserId, revisionIndex) => {
     const state = get();
     if (state.isRunning) return;
@@ -744,14 +799,113 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  deleteMessage: async (messageId) => {
+    const state = get();
+    const sessionId = state.activeSessionId;
+    if (!sessionId || state.isRunning) return;
+    const index = state.messages.findIndex((message) => message.id === messageId);
+    if (index < 0) return;
+    const target = state.messages[index];
+    // A prompt owns its exchange: deleting a user turn also drops the tool
+    // and assistant tail up to the next user turn, so no orphaned replies
+    // remain (retry resolves answers via the nearest preceding prompt).
+    let end = index + 1;
+    if (target.role === "user") {
+      while (end < state.messages.length && state.messages[end].role !== "user") {
+        end += 1;
+      }
+    }
+    const previous = state.messages;
+    const next = [...previous.slice(0, index), ...previous.slice(end)];
+    set({ messages: next, error: null, errorCode: null });
+    try {
+      await api.replaceSessionMessages(sessionId, next);
+    } catch (e) {
+      set((s) => ({
+        messages: s.activeSessionId === sessionId ? previous : s.messages,
+        error: e instanceof Error ? e.message : String(e),
+        errorCode: (e as { code?: string })?.code ?? null,
+      }));
+    }
+  },
+
   abort: async () => {
     const sessionId = get().activeSessionId;
     if (!sessionId) return;
-    await api.abort(sessionId);
+    try {
+      await api.abort(sessionId);
+    } catch {
+      // The run may have already ended host-side; still settle the UI below.
+    }
+    const state = get();
+    if (state.activeSessionId !== sessionId) {
+      set((s) => ({
+        runningSessions: { ...s.runningSessions, [sessionId]: false },
+      }));
+      return;
+    }
+    const messages = state.messages;
+    let lastUserIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i -= 1) {
+      if (messages[i].role === "user") {
+        lastUserIndex = i;
+        break;
+      }
+    }
+    const tail = lastUserIndex >= 0 ? messages.slice(lastUserIndex + 1) : [];
+    const replyStarted = tail.some(
+      (message) =>
+        message.role === "tool" ||
+        (message.role === "assistant" &&
+          Boolean(
+            (message.content || "").trim() ||
+              (typeof message.thinking === "string" && message.thinking.trim()),
+          )),
+    );
+    if (lastUserIndex >= 0 && !replyStarted) {
+      // Nothing came back yet — undo the send: pull the prompt into the
+      // composer and drop the turn from the transcript.
+      const prompt = messages[lastUserIndex].content;
+      const kept = messages.slice(0, lastUserIndex);
+      set((s) => ({
+        messages: kept,
+        composerPrefill: prompt,
+        isRunning: false,
+        runningSessions: { ...s.runningSessions, [sessionId]: false },
+      }));
+      try {
+        await api.replaceSessionMessages(sessionId, kept);
+      } catch {
+        // Best effort — the local transcript already reflects the undo.
+      }
+      return;
+    }
+    // A partial reply exists: settle it in place. Streaming assistant text
+    // becomes an aborted-but-kept answer; still-running tools close out.
+    const settled = messages.map((message) => {
+      if (message.role === "assistant" && message.status === "streaming") {
+        return { ...message, status: "aborted" as const };
+      }
+      if (message.role === "tool" && message.toolStatus === "running") {
+        return {
+          ...message,
+          toolStatus: "error" as const,
+          status: "aborted" as const,
+          toolCompletedAt: message.toolCompletedAt ?? new Date().toISOString(),
+        };
+      }
+      return message;
+    });
     set((s) => ({
+      messages: settled,
       isRunning: false,
       runningSessions: { ...s.runningSessions, [sessionId]: false },
     }));
+    try {
+      await api.replaceSessionMessages(sessionId, settled);
+    } catch {
+      // Best effort — the host may persist its own copy of the turn.
+    }
   },
 
   activateProject: async (path) => {
@@ -1200,6 +1354,20 @@ export const useAppStore = create<AppState>((set, get) => ({
         break;
       case "message_end":
         set((s) => {
+          // Failed turns with no output resolve to an empty error/aborted
+          // bubble; remove it instead of leaving a blank row (main skips
+          // persisting it for the same reason).
+          if (
+            event.message.role === "assistant" &&
+            (event.message.status === "error" ||
+              event.message.status === "aborted") &&
+            !event.message.content.trim() &&
+            !(event.message.thinking || "").trim()
+          ) {
+            return {
+              messages: s.messages.filter((m) => m.id !== event.message.id),
+            };
+          }
           const exists = s.messages.some((m) => m.id === event.message.id);
           return {
             messages: exists
@@ -1273,23 +1441,47 @@ export const useAppStore = create<AppState>((set, get) => ({
       case "tool_permission_request":
         set({ permission: event.request });
         break;
-      case "error":
+      case "error": {
+        // A user-initiated stop is not an error; just settle the run state.
+        const aborted = event.error.code === "TURN_ABORTED";
         set((s) => ({
           isRunning: false,
-          error: `${event.error.code}: ${event.error.message}`,
-          errorCode: event.error.code,
-          messages: s.messages.map((message) =>
-            message.role === "tool" && message.toolStatus === "running"
-              ? {
-                  ...message,
-                  toolStatus: "error",
-                  status: "error",
-                  isError: true,
-                }
-              : message,
-          ),
+          ...(aborted
+            ? {}
+            : {
+                error: `${event.error.code}: ${event.error.message}`,
+                errorCode: event.error.code,
+                errorRetriable: event.error.retriable === true,
+              }),
+          messages: s.messages
+            // A turn that died before producing text leaves an empty
+            // error/aborted bubble — drop it (main skips persisting it too).
+            .filter(
+              (message) =>
+                !(
+                  message.role === "assistant" &&
+                  (message.status === "error" ||
+                    message.status === "aborted") &&
+                  !message.content.trim() &&
+                  !(message.thinking || "").trim()
+                ),
+            )
+            .map((message) =>
+              message.role === "tool" && message.toolStatus === "running"
+                ? {
+                    ...message,
+                    toolStatus: "error",
+                    status: "error",
+                    isError: true,
+                  }
+                : message.role === "assistant" &&
+                    message.status === "streaming"
+                  ? { ...message, status: aborted ? "aborted" : "error" }
+                  : message,
+            ),
         }));
         break;
+      }
       default:
         break;
     }

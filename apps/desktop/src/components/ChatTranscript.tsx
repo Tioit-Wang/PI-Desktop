@@ -34,6 +34,7 @@ import {
   IconReview,
   IconSparkles,
   IconTerminal,
+  IconTrash,
   IconWrench,
 } from "./icons";
 import { useAppStore } from "../stores/app-store";
@@ -506,9 +507,11 @@ const MessageRow = memo(function MessageRow({
   const { t } = useTranslation();
   const retryAssistantMessage = useAppStore((s) => s.retryAssistantMessage);
   const activateMessageRevision = useAppStore((s) => s.activateMessageRevision);
+  const deleteMessage = useAppStore((s) => s.deleteMessage);
   const isUser = message.role === "user";
   const copyLabel = t("chat.copy");
   const retryLabel = t("chat.retry");
+  const deleteLabel = t("chat.deleteMessage");
   const displayed = useTypewriter(message);
   const thinking = thinkingText(message);
   const hasAnswer = Boolean((message.content || "").trim());
@@ -539,14 +542,7 @@ const MessageRow = memo(function MessageRow({
           <div className="message-bubble">
             {isUser ? (
               <div className="message-user-text selectable">
-                {String(message.content || "")
-                  .split("\n")
-                  .map((line, index, lines) => (
-                    <span key={`user-line-${index}`}>
-                      {line}
-                      {index < lines.length - 1 ? <br /> : null}
-                    </span>
-                  ))}
+                {String(message.content || "")}
               </div>
             ) : (
               <div className="prose-chat">
@@ -606,6 +602,17 @@ const MessageRow = memo(function MessageRow({
               >
                 <IconReview size={13} />
                 <span>{retryLabel}</span>
+              </button>
+            ) : null}
+            {!streaming ? (
+              <button
+                className="copy-btn danger"
+                title={deleteLabel}
+                aria-label={deleteLabel}
+                disabled={isRunning}
+                onClick={() => void deleteMessage(message.id)}
+              >
+                <IconTrash size={13} />
               </button>
             ) : null}
           </div>

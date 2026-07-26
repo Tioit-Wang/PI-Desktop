@@ -421,17 +421,22 @@ textarea:disabled {
   user-select: none;
 }
 
+/*
+  User bubble. The wrap constraint lives on the column alone — the bubble
+  fills up to 100% of it. Stacking percentage max-widths on both (78% × 78%)
+  is what previously wrapped short prompts at ~60% of the thread width.
+*/
 .message-row.user .message-bubble {
   width: fit-content;
-  max-width: min(78%, 560px);
+  max-width: 100%;
   border-radius: var(--radius-lg-plus);
-  background: color-mix(in oklab, var(--ds-text-primary) 7%, transparent);
-  border: 1px solid color-mix(in oklab, var(--ds-text-primary) 5%, transparent);
-  padding: 10px 14px;
+  border-bottom-right-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--ds-accent) 11%, var(--ds-bg-primary));
+  border: 1px solid color-mix(in oklab, var(--ds-accent) 14%, transparent);
+  padding: 9px 14px;
   color: var(--ds-text-primary);
   font-size: var(--text-base);
   line-height: var(--leading-chat);
-  box-shadow: 0 1px 0 color-mix(in oklab, var(--ds-text-primary) 3%, transparent);
 }
 
 .message-row.assistant {
@@ -1282,8 +1287,7 @@ textarea:disabled {
 
 .message-row.user .message-col {
   width: fit-content;
-  max-width: min(78%, 560px);
-  min-width: min(100%, 12ch);
+  max-width: min(82%, 600px);
   align-items: flex-end;
 }
 
@@ -1339,6 +1343,11 @@ textarea:disabled {
 
 .copy-btn.copied {
   color: var(--ds-text-secondary);
+}
+
+.copy-btn.danger:hover {
+  background: color-mix(in oklab, var(--ds-error) 10%, transparent);
+  color: var(--ds-error);
 }
 
 .message-meta {
@@ -1407,20 +1416,10 @@ textarea:disabled {
 
 .message-user-text {
   /* Preserve hard newlines; wrap long tokens without splitting every CJK glyph. */
-  display: block;
-  width: fit-content;
-  max-width: 100%;
   white-space: pre-wrap;
   overflow-wrap: break-word;
   word-break: normal;
-  line-break: strict;
   line-height: inherit;
-}
-
-:root[data-theme="light"] .message-row.user .message-bubble {
-  background: color-mix(in oklab, #1a1c1f 5.5%, transparent);
-  border-color: color-mix(in oklab, #1a1c1f 6%, transparent);
-  box-shadow: 0 1px 0 color-mix(in oklab, #1a1c1f 3%, transparent);
 }
 
 .message-row.assistant .message-bubble,

@@ -15,11 +15,13 @@ test("user turns keep a compact right-aligned plate", () => {
   assert.match(stylesSource, /\.message-row\.user \{\s*justify-content:\s*flex-end;/);
   assert.match(
     stylesSource,
-    /\.message-row\.user \.message-col \{[\s\S]*?max-width:\s*min\(78%,\s*560px\);[\s\S]*?align-items:\s*flex-end;/,
+    /\.message-row\.user \.message-col \{[\s\S]*?max-width:\s*min\(82%,\s*600px\);[\s\S]*?align-items:\s*flex-end;/,
   );
+  // The wrap constraint lives on the column alone; the bubble fills it.
+  // Stacked percentage max-widths previously wrapped prompts at ~60% width.
   assert.match(
     stylesSource,
-    /\.message-row\.user \.message-bubble \{[\s\S]*?max-width:\s*min\(78%,\s*560px\);[\s\S]*?border-radius:\s*var\(--radius-lg-plus\);[\s\S]*?border:\s*1px solid/,
+    /\.message-row\.user \.message-bubble \{[\s\S]*?max-width:\s*100%;[\s\S]*?border-radius:\s*var\(--radius-lg-plus\);[\s\S]*?border:\s*1px solid/,
   );
 });
 
@@ -57,9 +59,35 @@ test("transcript markup uses the dedicated user text surface and streaming class
 test("user plaintext preserves hard newlines without forced mid-word breaks", () => {
   assert.match(
     stylesSource,
-    /\.message-user-text \{\s*\/\* Preserve hard newlines; wrap long tokens without splitting every CJK glyph\. \*\/\s*display:\s*block;\s*width:\s*fit-content;\s*max-width:\s*100%;\s*white-space:\s*pre-wrap;\s*overflow-wrap:\s*break-word;\s*word-break:\s*normal;\s*line-break:\s*strict;/,
+    /\.message-user-text \{\s*\/\* Preserve hard newlines; wrap long tokens without splitting every CJK glyph\. \*\/\s*white-space:\s*pre-wrap;\s*overflow-wrap:\s*break-word;\s*word-break:\s*normal;/,
   );
   assert.doesNotMatch(stylesSource, /\.message-user-text br \{/);
+  // Newlines come from `white-space: pre-wrap`; no manual <br> splitting.
+  assert.doesNotMatch(transcriptSource, /user-line-/);
+});
+
+test("stopping a turn undoes an unanswered prompt or settles the partial reply", async () => {
+  const storeSource = await readFile(
+    new URL("../src/stores/app-store.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(storeSource, /composerPrefill:\s*prompt/);
+  assert.match(storeSource, /replyStarted/);
+  assert.match(storeSource, /status:\s*"aborted" as const/);
+  assert.match(storeSource, /replaceSessionMessages\(sessionId,\s*kept\)/);
+  assert.match(storeSource, /replaceSessionMessages\(sessionId,\s*settled\)/);
+});
+
+test("messages can be deleted and a user turn takes its reply with it", async () => {
+  const storeSource = await readFile(
+    new URL("../src/stores/app-store.ts", import.meta.url),
+    "utf8",
+  );
+  assert.match(storeSource, /deleteMessage:\s*async \(messageId\)/);
+  assert.match(storeSource, /replaceSessionMessages\(sessionId,\s*next\)/);
+  assert.match(transcriptSource, /deleteMessage\(message\.id\)/);
+  assert.match(transcriptSource, /chat\.deleteMessage/);
+  assert.match(stylesSource, /\.copy-btn\.danger:hover/);
 });
 
 test("assistant meta chips and retry action are wired", () => {

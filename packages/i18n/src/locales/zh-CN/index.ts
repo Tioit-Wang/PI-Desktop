@@ -67,6 +67,7 @@ export const zhCN = {
     copy: "复制",
     copied: "已复制",
     retry: "重新生成",
+    deleteMessage: "删除消息",
     revisions: "回复版本",
     revisionPrev: "上一版本",
     revisionNext: "下一版本",

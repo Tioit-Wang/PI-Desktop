@@ -64,6 +64,7 @@ export const en = {
     copy: "Copy",
     copied: "Copied",
     retry: "Regenerate",
+    deleteMessage: "Delete message",
     revisions: "Response versions",
     revisionPrev: "Previous version",
     revisionNext: "Next version",

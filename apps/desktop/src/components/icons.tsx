@@ -58,6 +58,7 @@ import {
   Star,
   Sun,
   Terminal,
+  Trash2,
   TriangleAlert,
   UserRound,
   Webhook,
@@ -136,6 +137,7 @@ export const IconGear = icon(Settings);
 export const IconPin = icon(Pin);
 export const IconMore = icon(MoreHorizontal);
 export const IconX = icon(X);
+export const IconTrash = icon(Trash2);
 export const IconStar = icon(Star);
 /* Toast status glyphs (see ToastHost) */
 export const IconCircleCheck = icon(CircleCheck);
