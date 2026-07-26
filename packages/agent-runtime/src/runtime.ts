@@ -138,6 +138,10 @@ export type AgentRuntimeOptions = {
   history?: UiMessage[];
   /** Plugin agent tools to expose to the model this session. */
   pluginTools?: PluginToolDef[];
+  /** Absolute per-session scratch directory for temporary files (D101).
+   * Advertised to the model in the system prompt; host-core enforces it as
+   * a second containment root. */
+  scratchDir?: string;
   onEvent: (envelope: AgentEventEnvelope) => void;
 };
 
@@ -209,6 +213,7 @@ export class DesktopAgentRuntime {
   private onEvent: (envelope: AgentEventEnvelope) => void;
   private currentAssistant?: UiMessage;
   private pluginTools: PluginToolDef[];
+  private scratchDir?: string;
 
   constructor(opts: AgentRuntimeOptions) {
     this.sessionId = opts.sessionId;
@@ -218,6 +223,7 @@ export class DesktopAgentRuntime {
     this.host = opts.host;
     this.onEvent = opts.onEvent;
     this.pluginTools = opts.pluginTools ?? [];
+    this.scratchDir = opts.scratchDir;
 
     const model = this.buildModel();
     const tools = this.buildTools();
@@ -263,6 +269,13 @@ export class DesktopAgentRuntime {
             process.platform === "win32"
               ? "Shell commands run in Git Bash (POSIX bash on Windows). Always write bash/POSIX syntax with forward-slash paths — never cmd.exe or PowerShell syntax."
               : "Shell commands run in bash. Write bash/POSIX syntax.",
+            // Session scratch directory (D101): temp files must not dirty
+            // the user's workspace or its git status.
+            ...(this.scratchDir
+              ? [
+                  `Your scratch directory for this session is \`${this.scratchDir}\` (in Bash: $PI_SCRATCH_DIR). Write ALL temporary and intermediate files there using absolute paths — one-off scripts, downloaded data, drafts, experiment output — never into the workspace. Only write into the workspace when the file is a deliverable the user asked for. Scratch files persist across turns of this session and are cleaned up automatically when the session is deleted.`,
+                ]
+              : []),
           ].join("\n\n"),
         model,
         tools,
@@ -399,13 +412,33 @@ export class DesktopAgentRuntime {
   }
 
   private buildTools(): AgentTool[] {
+    // With a scratch dir provisioned, file tools accept absolute paths into
+    // it as a second root (D101); keep the wording in sync with host-core.
+    const scratchPathHint = this.scratchDir
+      ? " `path` is workspace-relative, or an absolute path inside the session scratch directory."
+      : "";
+    const describe = (toolName: string): string => {
+      switch (toolName) {
+        case "BrowserPreview":
+          return "Open a workspace HTML file in PI-Desktop's built-in browser panel. `path` is workspace-relative (e.g. \"demo/index.html\"). The preview live-reloads on later edits to the file or its sibling assets, so call once per page.";
+        case "Read":
+          return `Read a file.${scratchPathHint}`;
+        case "Write":
+          return `Create or overwrite a file. Deliverables go into the workspace; temporary/intermediate files go into the scratch directory.${scratchPathHint}`;
+        case "Edit":
+          return `Replace text in a file (first occurrence of old_string).${scratchPathHint}`;
+        case "Bash":
+          return this.scratchDir
+            ? "Run a non-interactive shell command in the workspace root. $PI_SCRATCH_DIR points at the session scratch directory for temporary files."
+            : "Run a non-interactive shell command in the workspace root.";
+        default:
+          return `${toolName} tool via PI-Desktop host-core`;
+      }
+    };
     const exec = (toolName: string): AgentTool => ({
       name: toolName,
       label: toolName,
-      description:
-        toolName === "BrowserPreview"
-          ? "Open a workspace HTML file in PI-Desktop's built-in browser panel. `path` is workspace-relative (e.g. \"demo/index.html\"). The preview live-reloads on later edits to the file or its sibling assets, so call once per page."
-          : `${toolName} tool via PI-Desktop host-core`,
+      description: describe(toolName),
       parameters: Type.Object(
         toolName === "Read" || toolName === "BrowserPreview"
           ? { path: Type.String() }

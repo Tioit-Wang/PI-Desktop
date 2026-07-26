@@ -142,6 +142,10 @@ async function handle(method: string, params: any): Promise<unknown> {
           thinkingLevel,
           history,
           pluginTools,
+          scratchDir:
+            typeof params.scratchDir === "string" && params.scratchDir
+              ? params.scratchDir
+              : undefined,
           onEvent: (envelope: AgentEventEnvelope) => {
             notify("agent.event", envelope);
           },

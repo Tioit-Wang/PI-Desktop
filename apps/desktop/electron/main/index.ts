@@ -2217,6 +2217,10 @@ function registerIpc() {
           content: req.content,
           mode: session.mode || settings.defaultMode || "agent",
           thinkingLevel,
+          // Per-session scratch dir for temp files (D101). Same layout as
+          // host-core computes from its data dir; host-core is the enforcing
+          // side, this only tells the model where scratch lives.
+          scratchDir: join(dataDir, "scratch", req.sessionId),
           provider: {
             id: provider.id,
             name: provider.name,
