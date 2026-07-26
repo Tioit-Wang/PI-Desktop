@@ -132,8 +132,9 @@ jobs:
           # Widen to dist/* once Windows/Linux are in scope.
           files: |
             dist/*.dmg
-            dist/*.zip
-            dist/*.blockmap
+            dist/*.dmg.blockmap
+            dist/*-mac.zip
+            dist/*-mac.zip.blockmap
             dist/latest-mac.yml
           generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}
