@@ -425,10 +425,26 @@ The composer renders only controls connected to the active pi session:
 - The model trigger shows the active model ID. Its menu selects a configured
   provider/default-model pair for the active session and links to Configuration.
 - Both controls are disabled while the active session is running.
-- File, photo, appshot, and reasoning-effort controls remain hidden until their
-  payload and capability contracts are implemented end to end.
+- File, photo, and appshot controls remain hidden until their payload contracts
+  are implemented end to end.
+- Thinking level appears inside the model menu only when the exact selected
+  provider/model advertises reasoning. It uses the model's sparse supported
+  level set in canonical order; changing provider clamps or resets the durable
+  session value before the next turn.
 - Local and branch context are non-interactive status labels; the project name
   remains an action because it opens the project picker.
+
+## 8.3 Thinking disclosure
+
+- Assistant thinking renders before the final answer in a native disclosure,
+  using the inset surface, subtle border, secondary text, and normal focus
+  ring tokens.
+- The disclosure is open while a thinking-only response is streaming and may
+  be toggled independently afterward.
+- Thinking never enters the answer bubble, answer copy action, transcript
+  minimap excerpt, or searchable answer text.
+- A thinking-only stream opens the transcript surface without an empty answer
+  bubble or a duplicate Working indicator.
 
 
 ## 9. Z-index layers

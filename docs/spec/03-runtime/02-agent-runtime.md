@@ -57,21 +57,44 @@ interface AgentRuntime {
 
 1. load the durable session and reject a missing session
 2. resolve that session's mode/provider/model (app defaults are legacy fallback)
-3. validate model/secret availability
-4. reject if session busy
-5. persist user message
-6. start pi turn with the resolved session configuration
-7. stream normalized events to UI
-8. on tool calls, delegate to Rust host bridge
-9. finalize and persist
+3. resolve reasoning capability for that exact provider/model and clamp the
+   durable session thinking level to the nearest supported value
+4. validate model/secret availability
+5. reject if session busy
+6. persist user message
+7. start pi turn with the resolved session configuration and effective
+   thinking level
+8. stream normalized answer and thinking events to UI
+9. on tool calls, delegate to Rust host bridge
+10. finalize and persist answer/thinking blocks independently
 
 ## 5b. Mode defaults
 
 - Default product mode: **Agent**
 - Chat mode is available as a safer read-only profile
 - Mode is session-scoped and persisted with session metadata
+- Thinking level is session-scoped and persisted with session metadata
 - Composer configuration is mutable only while the session is idle
-- Changing mode/provider/model recreates the pi runtime before the next turn
+- Changing mode/provider/model/thinking level applies to the next turn and
+  recreates the pi runtime when any runtime-affecting configuration changes
+
+## 5c. Thinking capability and stream contract
+
+- Canonical levels are `off`, `minimal`, `low`, `medium`, `high`, `xhigh`,
+  and `max`.
+- An explicit provider `supportsReasoning` override wins over pi's generated
+  model catalog. Otherwise capability is resolved from the exact selected
+  `(vendorKey, modelId)`.
+- Unsupported requested levels use pi's nearest-supported-level rule: scan
+  upward first, then downward. A non-reasoning provider always resolves to
+  `off`.
+- The effective level is passed to the pi `Agent`; provider-specific request
+  serialization remains pi-ai's responsibility.
+- Pi `thinking` blocks become `UiMessage.thinking` and
+  `message_update.deltaThinking`. They never append to `content` or
+  `deltaText`.
+- Restored assistant history reconstructs separate text and thinking blocks
+  before the next turn.
 
 ## 6. Providers & models
 
@@ -93,6 +116,7 @@ MVP UI always includes at least:
 
 Runtime responsibilities:
 - resolve `(providerId, modelId)`
+- resolve model reasoning capability and effective thinking level
 - fetch secrets via host (never cache raw secrets in logs)
 - translate vendor failures into provider AppError codes
 - stream tokens/events to orchestrator
@@ -140,8 +164,5 @@ Implemented: streaming turns over the OpenAI-compatible protocol path
 mapped to `PROVIDER_UNAUTHORIZED` / `PROVIDER_RATE_LIMITED` /
 `STREAM_FAILED` / `TURN_ABORTED` where detectable.
 
-Tracked gaps (post-MVP backlog): native Anthropic/Google protocol adapters
-(DB `protocol` field is stored but the runtime currently always uses the
-OpenAI-compatible path); session-scoped mode binding (mode is app-scoped via
-`settings.defaultMode`); persisted turn/tool-call tables; richer system
-prompt composition (§7).
+Tracked gaps (post-MVP backlog): richer system prompt composition (§7) and
+provider/model catalog discovery beyond the currently wired paths.

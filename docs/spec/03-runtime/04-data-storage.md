@@ -1,4 +1,4 @@
-# 04. Data Storage (Schema v2)
+# 04. Data Storage (Schema v3)
 
 ## 0. Ownership decision
 
@@ -12,7 +12,7 @@
 
 ## 1. Goals
 
-Local-first, recoverable after restart, sensitive data isolated — plus, for v2:
+Local-first, recoverable after restart, sensitive data isolated — plus, for v3:
 
 1. **Lossless transcripts** — store the runtime message shape (content blocks),
    not the UI projection; UI shapes are derived at the RPC boundary.
@@ -59,7 +59,7 @@ PRAGMA trusted_schema = ON;       -- required by the FTS triggers (§4.8); the D
 PRAGMA auto_vacuum = INCREMENTAL; -- set at creation, before any table
 ```
 
-- Schema version lives in `PRAGMA user_version` (v2 = `2`). The v1 `meta`
+- Schema version lives in `PRAGMA user_version` (v3 = `3`). The v1 `meta`
   table is gone.
 - host-core is the **single writer**; statements use `prepare_cached`; every
   multi-row write runs in one transaction.
@@ -179,6 +179,9 @@ CREATE TABLE sessions (
   provider_id TEXT,                            -- loose ref, see below
   model_id    TEXT,
   mode        TEXT NOT NULL DEFAULT 'agent',   -- chat | agent
+  thinking_level TEXT NOT NULL DEFAULT 'off'
+                CHECK (thinking_level IN ('off', 'minimal', 'low', 'medium',
+                                          'high', 'xhigh', 'max')),
   source      TEXT,                            -- import origin: claude-code | codex | opencode | pi
   pinned      INTEGER NOT NULL DEFAULT 0,
   last_seq    INTEGER NOT NULL DEFAULT 0,      -- message ordinal allocator
@@ -192,6 +195,9 @@ CREATE INDEX idx_sessions_project ON sessions(project_id) WHERE project_id IS NO
 - `provider_id`/`model_id` are **loose references** (no FK), like on `turns`:
   selection is `(providerId, modelId)` per spec 13 with custom ids always
   allowed, and built-in runtimes (e.g. `pi`) never exist in `providers`.
+- `thinking_level` is the durable session selector. New and v2-migrated
+  sessions default to `off`; capability resolution may clamp the effective
+  request without rewriting the stored preference.
 
 - `project_id` normalizes v1's free-text `project_path` (grouping, badges,
   hover-`+` new-session-in-project all become indexed lookups).
@@ -269,6 +275,9 @@ type Block =
 
 - Tool results are stored **post-truncation** (16-tool-result-limits); full
   raw output is not a DB concern.
+- Assistant thinking is stored only in `thinking` blocks. The derived `text`
+  column contains final answer text, so transcript search and answer previews
+  do not expose or mix reasoning.
 - `meta_json` on assistant rows carries per-response usage/model for the cost
   chip; `turns` holds the summable rollup — no `json_each` at query time.
 - Ordering: `seq` is allocated O(1) inside the insert transaction via
@@ -472,7 +481,11 @@ turn's tail and the boot sweep marks that turn `aborted`.
      `auto_vacuum=INCREMENTAL`), rename file to `pi.sqlite`
   4. Electron side: once host exposes `scheduled.*`, main imports
      `scheduled-tasks.json` via RPC and renames it `.imported.bak`
-- Fresh installs run the full v2 DDL directly.
+- **v2 → v3** (additive, one transaction): add
+  `sessions.thinking_level TEXT NOT NULL DEFAULT 'off'` with the canonical
+  seven-value check constraint, then set `user_version = 3`. Existing
+  transcripts and session bindings are unchanged.
+- Fresh installs run the full v3 DDL directly.
 
 ## 8. Retention & maintenance
 
@@ -517,3 +530,7 @@ anything the host filters, joins, sums, or indexes.
 6. FTS finds CJK and ASCII substrings across sessions; deleting a session
    removes its index entries
 7. Plugin uninstall clears `kv(plugin:<id>)` in one statement
+8. A session's thinking level survives restart; a v2 database opens at v3
+   with every existing session set to `off`
+9. Assistant thinking blocks round-trip independently from final answer text;
+   the derived search text excludes thinking content

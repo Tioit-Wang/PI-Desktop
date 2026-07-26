@@ -338,7 +338,8 @@ responses, lightweight tool activity rows, and permission cards for a session.
 ```text
 +----+-------------------------------------+
 |map | [User MessageBubble]                |
-|rail| [Assistant MessageBubble]           |
+|rail| [Thinking disclosure]               |
+|    | [Assistant MessageBubble]           |
 |    |   [ToolCallRow]                     |
 |    |   [PermissionCard] (interrupt)      |
 |    | [Assistant MessageBubble (resume)]  |
@@ -352,6 +353,7 @@ responses, lightweight tool activity rows, and permission cards for a session.
 | State | Behavior |
 |---|---|
 | Streaming | New tokens append; auto-scroll only while pinned to bottom |
+| Thinking-only streaming | Transcript opens; disclosure stays open; no empty answer bubble or duplicate Working row |
 | Idle | Scrollable; no auto-scroll |
 | Permission pending | PermissionCard inserted inline; transcript continues after resolution |
 | Error | Error MessageBubble with actionable retry link |
@@ -360,6 +362,8 @@ responses, lightweight tool activity rows, and permission cards for a session.
 
 - Scroll: user scroll pauses auto-scroll; "scroll to bottom" floating button appears
 - Hover message: copy action appears
+- Toggle Thinking disclosure: expand/collapse reasoning independently from the
+  final answer; streaming reopens it while reasoning is arriving
 - Hover code block: copy button appears
 - Hover or focus a minimap marker: show the localized sender and a bounded
   plaintext preview; nearby markers magnify horizontally without reflowing the
@@ -374,6 +378,8 @@ responses, lightweight tool activity rows, and permission cards for a session.
 - `role="log"` container
 - `aria-live="polite"` for new content announcements
 - Each message: `role="article"` with `aria-label` describing sender
+- Thinking uses native `details`/`summary`; the localized summary label
+  distinguishes Show thinking from Hide thinking
 - The minimap is a localized navigation landmark; every marker is a button
   labeled with its message sender
 - The marker nearest the reading position exposes `aria-current="true"` and
@@ -410,6 +416,9 @@ Single message render — either user (plaintext) or assistant (markdown streami
 
 ```text
 +------------------------------------------+
+| [Thinking ▾]                             |
+|   separate reasoning markdown (optional) |
+| ──────────────────────────────────────── |
 | [markdown rendered content]              |
 |   code blocks: mono, bg-inset           |
 |   inline code: mono, bg-inset           |
@@ -422,6 +431,8 @@ Single message render — either user (plaintext) or assistant (markdown streami
 - Max width: 720px
 - User: bg-secondary background, left-aligned
 - Assistant: bg-primary (transparent), left-aligned, markdown rendered
+- Thinking: separate inset disclosure above the answer; subtle border and
+  secondary text. It is never concatenated into answer markdown.
 - Gap: space-3 between consecutive messages
 - Font: text-base (14px) for body; text-sm (13px) mono for code
 
@@ -430,6 +441,7 @@ Single message render — either user (plaintext) or assistant (markdown streami
 | State | Appearance |
 |---|---|
 | Streaming | pulsing left border accent; content grows |
+| Thinking streaming | disclosure open; answer bubble omitted until answer text exists |
 | Complete | no pulse; full rendered markdown |
 | Error | error border; error message inline with retry prompt |
 
@@ -437,13 +449,14 @@ Single message render — either user (plaintext) or assistant (markdown streami
 
 - User: `aria-label="User message"`
 - Assistant: `aria-label="Assistant message"`
+- Thinking summary exposes localized Show/Hide thinking labels
 - Timestamps: `aria-label` with full time string, visual shows relative time
 
 ### 8.6 MVP constraints
 
 - No message reactions/annotations
 - No edit user message (deferred)
-- No "copy message" button (deferred)
+- Copy assistant answer excludes thinking text
 
 ### 8.7 Markdown & code rendering (implemented)
 
@@ -674,6 +687,12 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 - Chat / Agent and provider/model changes update the active session, not the
   app default. They are disabled while a turn runs.
 - The model menu lists only enabled, runnable providers with a default model.
+- For the exact active provider/model, the same menu shows Thinking only when
+  reasoning is supported. It lists only the model's supported levels in
+  canonical order and persists selection with the complete session config.
+- Switching provider preserves an available level, otherwise uses the nearest
+  supported level (upward first, then downward); a non-reasoning provider
+  persists `off`.
 
 ### 11.6 Accessibility
 
@@ -686,8 +705,6 @@ Input area at the bottom of MainChat for composing and sending prompts. Supports
 
 - No file attachment (deferred)
 - No image/appshot attachment stubs
-- No reasoning-effort selector until pi model capabilities drive the available
-  levels and the selection reaches the runtime
 - No slash-command autocomplete in composer (command palette is separate)
 - No voice input
 

@@ -1,4 +1,14 @@
 export type Mode = "chat" | "agent";
+export const THINKING_LEVELS = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+] as const;
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number];
 export type Risk = "low" | "medium" | "high";
 export type PermissionDecision = "allow-once" | "allow-session" | "deny";
 
@@ -8,6 +18,8 @@ export type UiMessage = {
   id: string;
   role: UiMessageRole;
   content: string;
+  /** Model reasoning kept separate from the answer text. */
+  thinking?: string;
   createdAt: string;
   status?: "streaming" | "complete" | "error" | "aborted";
   toolName?: string;
@@ -27,6 +39,10 @@ export type SessionSummary = {
   modelId?: string;
   providerId?: string;
   mode: Mode;
+  thinkingLevel: ThinkingLevel;
+  /** Effective capability for this session's exact provider/model pair. */
+  supportsReasoning?: boolean;
+  supportedThinkingLevels?: ThinkingLevel[];
   updatedAt: string;
   createdAt: string;
 };
@@ -79,7 +95,12 @@ export type AgentEvent =
   | { type: "turn_start" }
   | { type: "turn_end" }
   | { type: "message_start"; message: UiMessage }
-  | { type: "message_update"; message: UiMessage; deltaText?: string }
+  | {
+      type: "message_update";
+      message: UiMessage;
+      deltaText?: string;
+      deltaThinking?: string;
+    }
   | { type: "message_end"; message: UiMessage }
   | { type: "tool_start"; toolCallId: string; toolName: string; args: unknown }
   | { type: "tool_update"; toolCallId: string; partialResult?: unknown }
@@ -139,6 +160,9 @@ export type ProviderPublic = {
   hasSecret: boolean;
   defaultModelId?: string;
   apiStyle?: string;
+  /** Effective capability for the provider's current default model. */
+  supportsReasoning: boolean;
+  supportedThinkingLevels: ThinkingLevel[];
   createdAt: string;
   updatedAt: string;
 };
@@ -153,6 +177,8 @@ export type ProviderCreateInput = {
   defaultModelId?: string;
   secretValue?: string;
   apiStyle?: string;
+  /** Explicit override for custom model catalogs. */
+  supportsReasoning?: boolean;
 };
 
 export type ProviderUpdateInput = Partial<ProviderCreateInput> & {
@@ -165,6 +191,8 @@ export type ModelInfo = {
   displayName: string;
   providerId: string;
   contextWindow?: number;
+  capabilities: Array<"text" | "tools" | "vision" | "reasoning" | "json">;
+  supportedThinkingLevels?: ThinkingLevel[];
   source: "bundled" | "discovered" | "user";
 };
 

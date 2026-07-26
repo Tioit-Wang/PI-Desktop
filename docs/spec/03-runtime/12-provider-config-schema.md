@@ -61,6 +61,18 @@ Tables (canonical DDL in [04-data-storage](04-data-storage.md) §4.3–4.4, §4.
 }
 ```
 
+`compatibility.supportsReasoning` is optional and tri-state at runtime:
+
+- omitted: infer from pi's catalog for the exact selected model
+- `true`: explicitly enable reasoning for custom/compatible models absent
+  from the catalog
+- `false`: explicitly disable reasoning and remove stale catalog-derived
+  reasoning capability
+
+The public provider shape is enriched in Electron main with the effective
+`supportsReasoning` and `supportedThinkingLevels` for its selected/default
+model. The raw secret and internal compatibility JSON remain hidden.
+
 ## 3. Built-in vendor presets
 
 Presets only prefill form defaults; they are not a closed world.
@@ -163,7 +175,9 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 
 ### `providers.listModels`
 - in: `{ id, query?: string, source?: "cache"|"live"|"all" }`
-- out: `{ models: ModelCatalogItem[] }`
+- out: `{ models: ModelCatalogItem[] }`; each model carries effective
+  `reasoning` capability and `supportedThinkingLevels`. Explicit provider
+  `false` removes any stale catalog/cache reasoning tag.
 
 ### `providers.refreshModels`
 - in: `{ id }`
@@ -181,6 +195,8 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 5. secretValue max length enforced (e.g. 8KB)
 6. modelId must be non-empty trimmed string; allow `/`, `.`, `:`, `-`
 7. unknown protocol on older clients => provider shown disabled with warning, not crash
+8. `supportsReasoning`, when present, must be boolean; omission preserves an
+   existing override on update and keeps catalog inference on create
 
 ## 11. Secret ref format
 
@@ -189,4 +205,3 @@ secret:provider:<providerId>:api_key
 ```
 
 Future multi-secret providers may add suffixes (`:client_secret`, etc.).
-

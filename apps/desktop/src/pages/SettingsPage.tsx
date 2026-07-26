@@ -310,6 +310,7 @@ export function SettingsPage() {
   const [baseUrl, setBaseUrl] = useState("https://api.oj.ink/v1");
   const [modelId, setModelId] = useState("mimo-v2.5");
   const [apiKey, setApiKey] = useState("");
+  const [supportsReasoning, setSupportsReasoning] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const navItems: NavItem[] = useMemo(
@@ -512,6 +513,18 @@ export function SettingsPage() {
                       className="font-mono text-sm-plus"
                     />
                   </Field>
+                  <Field label={t("settings.reasoningSupport")}>
+                    <Select
+                      value={supportsReasoning ? "yes" : "no"}
+                      onChange={(e) =>
+                        setSupportsReasoning(e.target.value === "yes")
+                      }
+                      className="settings-pill-select"
+                    >
+                      <option value="no">{t("settings.reasoningDisabled")}</option>
+                      <option value="yes">{t("settings.reasoningEnabled")}</option>
+                    </Select>
+                  </Field>
                 </div>
                 <div className="settings-panel-actions">
                   <Button
@@ -530,6 +543,7 @@ export function SettingsPage() {
                           defaultModelId: modelId,
                           secretValue: apiKey || undefined,
                           apiStyle: "chat_completions",
+                          supportsReasoning,
                         });
                         await api.setSettings({
                           ...(settings as any),
@@ -569,6 +583,27 @@ export function SettingsPage() {
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={async () => {
+                              await api.updateProvider({
+                                id: p.id,
+                                supportsReasoning: !p.supportsReasoning,
+                              });
+                              await refreshProviders();
+                              showToast(
+                                p.supportsReasoning
+                                  ? t("settings.reasoningDisabled")
+                                  : t("settings.reasoningEnabled"),
+                                { variant: "success" },
+                              );
+                            }}
+                          >
+                            {p.supportsReasoning
+                              ? t("settings.reasoningDisable")
+                              : t("settings.reasoningEnable")}
+                          </Button>
                           {settings?.defaultProviderId === p.id ? (
                             <Badge tone="success">{t("settings.default")}</Badge>
                           ) : (

@@ -50,8 +50,11 @@ Each session stores:
 
 - `providerId`
 - `modelId`
+- `thinkingLevel` (`off|minimal|low|medium|high|xhigh|max`)
 
-Changing model mid-session affects subsequent turns only.
+Changing model or thinking level mid-session affects subsequent turns only.
+The stored thinking preference survives restart; the effective request level
+is capability-clamped for the selected model at execution time.
 
 ## 5. Capability warnings
 
@@ -98,6 +101,9 @@ type ModelCatalogItem = {
   maxOutputTokens?: number
   deprecated?: boolean
   notes?: string
+  supportedThinkingLevels?: Array<
+    "off" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max"
+  >
 }
 ```
 
@@ -135,6 +141,22 @@ Session-level:
 
 Warnings are non-blocking unless execution is impossible.
 
+### 11.1 Reasoning capability resolution
+
+1. An explicit provider `supportsReasoning: false` is authoritative and
+   yields only `off`, including when cached model capabilities say reasoning.
+2. An explicit `true` enables the conservative custom-provider levels when
+   the model is absent from pi's catalog.
+3. Without an override, resolve pi catalog metadata for the exact
+   `(vendorKey, modelId)`.
+4. The Composer renders the selector only when the effective model supports
+   reasoning and lists only `supportedThinkingLevels`.
+5. If a stored/requested level is unavailable, choose the nearest supported
+   level by scanning upward first and then downward. Non-reasoning models
+   always resolve to `off`.
+6. Changing to a non-reasoning provider persists `off`; no unsupported level
+   leaks into the next request.
+
 ## 12. Refresh strategy
 
 - manual refresh button in settings/model picker
@@ -157,4 +179,6 @@ Warnings are non-blocking unless execution is impossible.
 - [ ] refresh merges into cache and picker (never destructively replaces)
 - [ ] capability badges visible
 - [ ] session model change applies to next turn only
-
+- [ ] reasoning selector is capability-gated and sparse level sets clamp the
+      same way in Composer, Electron main, and the pi sidecar
+- [ ] explicit reasoning disable removes stale catalog capability

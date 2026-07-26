@@ -18,11 +18,18 @@ import {
   IPC,
   IPC_WHITELIST,
   PROTOCOL_VERSION,
+  THINKING_LEVELS,
   err,
   ok,
   type AgentEventEnvelope,
   type Result,
+  type ThinkingLevel,
 } from "@pi-desktop/shared";
+import {
+  clampThinkingLevel,
+  resolveThinkingCapabilities,
+  type ThinkingCapabilities,
+} from "@pi-desktop/agent-runtime";
 import { HostProcess } from "./host-process";
 import { AgentSidecar } from "./agent-sidecar";
 import { PluginRuntime } from "./plugin-runtime";
@@ -54,6 +61,89 @@ const logger = new Logger(
   dataDir,
   process.env.NODE_ENV === "production" ? "info" : "debug",
 );
+
+type RuntimeProvider = {
+  id: string;
+  name: string;
+  vendorKey?: string;
+  baseUrl?: string;
+  modelId?: string;
+  defaultModelId?: string;
+  apiKey?: string;
+  authKind?: string;
+  hasSecret?: boolean;
+  enabled?: boolean;
+  supportsReasoning?: boolean;
+  supportedThinkingLevels?: ThinkingLevel[];
+};
+
+type RuntimeSession = {
+  providerId?: string;
+  modelId?: string;
+};
+
+function enrichProvider<T extends RuntimeProvider>(
+  provider: T,
+  selectedModelId?: string,
+): T & ThinkingCapabilities {
+  const modelId =
+    selectedModelId || provider.modelId || provider.defaultModelId || "";
+  const capabilities = resolveThinkingCapabilities({
+    vendorKey: provider.vendorKey || "custom",
+    modelId,
+    supportsReasoning: provider.supportsReasoning,
+  });
+  return {
+    ...provider,
+    ...capabilities,
+  };
+}
+
+function normalizeThinkingLevel(value: unknown): ThinkingLevel {
+  return typeof value === "string" &&
+    (THINKING_LEVELS as readonly string[]).includes(value)
+    ? (value as ThinkingLevel)
+    : "off";
+}
+
+function enrichProviderList<T extends RuntimeProvider>(result: { providers: T[] }) {
+  return {
+    ...result,
+    providers: result.providers.map((provider) => enrichProvider(provider)),
+  };
+}
+
+function enrichSession<T extends RuntimeSession>(
+  session: T,
+  providers: readonly RuntimeProvider[],
+): T & ThinkingCapabilities {
+  const provider = providers.find((candidate) => candidate.id === session.providerId);
+  if (!provider || !session.modelId) {
+    return {
+      ...session,
+      supportsReasoning: false,
+      supportedThinkingLevels: ["off"],
+    };
+  }
+  const capabilities = resolveThinkingCapabilities({
+    vendorKey: provider.vendorKey || "custom",
+    modelId: session.modelId,
+    supportsReasoning: provider.supportsReasoning,
+  });
+  return {
+    ...session,
+    ...capabilities,
+  };
+}
+
+async function listRuntimeProviders(includeDisabled = true) {
+  if (!host) throw new Error("host unavailable");
+  const result = await host.call<{ providers: RuntimeProvider[] }>(
+    "providers.list",
+    { includeDisabled },
+  );
+  return result.providers;
+}
 
 function applyDevelopmentBranding() {
   if (process.platform !== "darwin" || app.isPackaged || !app.dock) return;
@@ -996,20 +1086,35 @@ function registerIpc() {
 
   handle(IPC.invoke.sessionList, async () => {
     if (!host) throw new Error("host unavailable");
-    return host.call("session.list");
+    const [result, providers] = await Promise.all([
+      host.call<{ sessions: RuntimeSession[] }>("session.list"),
+      listRuntimeProviders(),
+    ]);
+    return {
+      ...result,
+      sessions: result.sessions.map((session) => enrichSession(session, providers)),
+    };
   });
   handle(IPC.invoke.sessionCreate, async (input = {}) => {
     if (!host) throw new Error("host unavailable");
-    const res = await host.call<{ session?: { id?: string } }>(
+    const res = await host.call<{ session?: (RuntimeSession & { id?: string }) | null }>(
       "session.create",
       input,
     );
     logger.app("info", "session created", { sessionId: res.session?.id });
-    return res;
+    if (!res.session) return res;
+    const providers = await listRuntimeProviders();
+    return { ...res, session: enrichSession(res.session, providers) };
   });
   handle(IPC.invoke.sessionGet, async (id: string) => {
     if (!host) throw new Error("host unavailable");
-    return host.call("session.get", { id });
+    const [result, providers] = await Promise.all([
+      host.call<{ session?: RuntimeSession | null }>("session.get", { id }),
+      listRuntimeProviders(),
+    ]);
+    return result.session
+      ? { ...result, session: enrichSession(result.session, providers) }
+      : result;
   });
   handle(IPC.invoke.sessionDelete, async (id: string) => {
     if (!host) throw new Error("host unavailable");
@@ -1036,10 +1141,17 @@ function registerIpc() {
         mode: "chat" | "agent";
         providerId?: string;
         modelId?: string;
+        thinkingLevel?: ThinkingLevel;
       },
     ) => {
       if (!host) throw new Error("host unavailable");
-      return host.call("session.configure", { id, ...config });
+      const result = await host.call<{ session?: RuntimeSession | null }>(
+        "session.configure",
+        { id, ...config },
+      );
+      if (!result.session) return result;
+      const providers = await listRuntimeProviders();
+      return { ...result, session: enrichSession(result.session, providers) };
     },
   );
 
@@ -1102,16 +1214,25 @@ function registerIpc() {
   });
 
   handle(IPC.invoke.providersList, async () => {
-    if (!host) throw new Error("host unavailable");
-    return host.call("providers.list", { includeDisabled: true });
+    return enrichProviderList({ providers: await listRuntimeProviders() });
   });
   handle(IPC.invoke.providersCreate, async (input: unknown) => {
     if (!host) throw new Error("host unavailable");
-    return host.call("providers.create", input);
+    const result = await host.call<{ provider: RuntimeProvider }>(
+      "providers.create",
+      input,
+    );
+    return { ...result, provider: enrichProvider(result.provider) };
   });
   handle(IPC.invoke.providersUpdate, async (input: unknown) => {
     if (!host) throw new Error("host unavailable");
-    return host.call("providers.update", input);
+    const result = await host.call<{ provider?: RuntimeProvider | null }>(
+      "providers.update",
+      input,
+    );
+    return result.provider
+      ? { ...result, provider: enrichProvider(result.provider) }
+      : result;
   });
   handle(IPC.invoke.providersDelete, async (id: string) => {
     if (!host) throw new Error("host unavailable");
@@ -1169,7 +1290,42 @@ function registerIpc() {
   });
   handle(IPC.invoke.providersListModels, async (providerId?: string) => {
     if (!host) throw new Error("host unavailable");
-    return host.call("providers.listModels", { providerId });
+    const providerResult = await host.call<{ providers: RuntimeProvider[] }>(
+      "providers.list",
+      { includeDisabled: true },
+    );
+    const providerById = new Map(
+      providerResult.providers.map((provider) => [provider.id, provider]),
+    );
+    const result = await host.call<{
+      models: Array<{
+        modelId: string;
+        displayName: string;
+        providerId: string;
+        capabilities?: string[];
+        supportedThinkingLevels?: ThinkingLevel[];
+        source: string;
+      }>;
+    }>("providers.listModels", { providerId });
+    return {
+      ...result,
+      models: result.models.map((model) => {
+        const provider = providerById.get(model.providerId);
+        const thinking = resolveThinkingCapabilities({
+          vendorKey: provider?.vendorKey || "custom",
+          modelId: model.modelId,
+          supportsReasoning: provider?.supportsReasoning,
+        });
+        const capabilities = new Set(model.capabilities ?? ["text"]);
+        if (thinking.supportsReasoning) capabilities.add("reasoning");
+        else capabilities.delete("reasoning");
+        return {
+          ...model,
+          capabilities: [...capabilities],
+          supportedThinkingLevels: thinking.supportedThinkingLevels,
+        };
+      }),
+    };
   });
 
   // Secret material never crosses to the renderer: set/delete/has only.
@@ -1364,9 +1520,10 @@ function registerIpc() {
         errorCode: ErrorCodes.NOT_FOUND,
       });
     }
-    const providers = await host.call<{ providers: any[] }>("providers.list", {
-      includeDisabled: false,
-    });
+    const providers = await host.call<{ providers: RuntimeProvider[] }>(
+      "providers.list",
+      { includeDisabled: false },
+    );
     const provider =
       providers.providers.find((p) => p.id === session.providerId) ||
       providers.providers.find((p) => p.id === settings.defaultProviderId) ||
@@ -1387,13 +1544,20 @@ function registerIpc() {
     }
     const modelId =
       (provider.id === session.providerId ? session.modelId : undefined) ||
-      settings.defaultModelId ||
+      (provider.id === settings.defaultProviderId
+        ? settings.defaultModelId
+        : undefined) ||
       provider.defaultModelId;
     if (!modelId) {
       throw Object.assign(new Error("No model selected for provider"), {
         errorCode: ErrorCodes.MODEL_NOT_CONFIGURED,
       });
     }
+    const thinkingCapabilities = enrichProvider(provider, modelId);
+    const thinkingLevel = clampThinkingLevel(
+      thinkingCapabilities,
+      normalizeThinkingLevel(session.thinkingLevel),
+    );
 
     // Open a durable turn row, then persist the user message under it.
     const turn = await host
@@ -1437,13 +1601,18 @@ function registerIpc() {
           sessionId: req.sessionId,
           content: req.content,
           mode: session.mode || settings.defaultMode || "agent",
+          thinkingLevel,
           provider: {
             id: provider.id,
             name: provider.name,
+            vendorKey: provider.vendorKey,
             baseUrl: provider.baseUrl,
             modelId,
             apiKey: secret.value || "",
             authKind: provider.authKind,
+            supportsReasoning: thinkingCapabilities.supportsReasoning,
+            supportedThinkingLevels:
+              thinkingCapabilities.supportedThinkingLevels,
           },
           // Registered plugin agent tools join the model's toolset; execution
           // round-trips host -> main (plugins.execute) -> plugin JS.

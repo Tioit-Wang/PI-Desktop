@@ -1,4 +1,4 @@
-export const PROTOCOL_VERSION = 1 as const;
+export const PROTOCOL_VERSION = 2 as const;
 export const APP_NAME = "PI-Desktop";
 export const APP_VERSION = "0.1.0";
 

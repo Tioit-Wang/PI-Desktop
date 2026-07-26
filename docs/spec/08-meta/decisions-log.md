@@ -127,7 +127,13 @@ Gold source: local Codex electron captures; latest row wins where rows conflict.
 | D091 | Composer runtime configuration | **Mode and provider/model controls update the active session and are read from that session by the pi prompt path; controls without an end-to-end runtime implementation are not rendered.** | Prevent decorative effort/attachment controls and keep every visible composer action operational |
 | D092 | Responsive settings content | **The settings content fills the width available after the fixed 275px rail and pane gutters, resizing through CSS flex layout with the native window. This supersedes only D070's fixed 720px content band and the corresponding visual-metric retention in D090.** | Use wide desktop windows efficiently without adding renderer resize state or changing the compact settings directory |
 
-## G. Still deferred
+## G. Thinking-mode decision
+
+| ID | Topic | Decision | Rationale |
+|---|---|---|---|
+| D096 | End-to-end thinking mode | **Thinking level is session-scoped with canonical values `off|minimal|low|medium|high|xhigh|max`; capability resolution and nearest-level clamping drive the Composer and pi request; thinking streams and persists separately from final answer text; schema v3 and protocol v2 carry the new fields.** | Restore reasoning controls only after model capability, persistence, IPC, sidecar, pi runtime, event, storage, and transcript paths are all operational |
+
+## H. Still deferred
 
 1. Exact marketplace domain / provider IDs
 2. Private marketplace auth mechanism
@@ -138,7 +144,7 @@ Gold source: local Codex electron captures; latest row wins where rows conflict.
 The full open list lives in [open-questions.md](open-questions.md); this
 section mirrors only marketplace/catalog items still blocking nothing.
 
-## G. Decision rules going forward
+## I. Decision rules going forward
 
 - Architecture-boundary changes require a new ADR
 - Implementation defaults can be updated in this log + related specs

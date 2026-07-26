@@ -78,7 +78,7 @@ Params:
 
 ```ts
 type HandshakeParams = {
-  protocolVersion: 1
+  protocolVersion: 2
   client: "electron-main"
   clientVersion: string
   locale: string // default "en"
@@ -89,7 +89,7 @@ Result:
 
 ```ts
 type HandshakeResult = {
-  protocolVersion: 1
+  protocolVersion: 2
   host: "rust-host-core"
   hostVersion: string
   features: string[]
@@ -130,17 +130,30 @@ Rules:
 
 ### Sessions
 - `session.list`
-- `session.create`
+- `session.create` — accepts optional `thinkingLevel`; missing/null defaults
+  to `off`
 - `session.get`
 - `session.delete`
 - `session.rename`
-- `session.configure` — atomically persists `mode`, `providerId`, and
-  `modelId` for the next pi turn; invalid modes return `INVALID_PARAMS`
+- `session.configure` — atomically persists `mode`, `providerId`, `modelId`,
+  and optional `thinkingLevel` for the next pi turn; omitting/null
+  `thinkingLevel` preserves the current value; invalid modes or levels return
+  `INVALID_PARAMS`
 - `session.appendMessage`
 - `session.updateTurn`
 - `session.import` — atomically imports one converted session; a non-empty
   project path is normalized and upserted into `projects` before the session
   references it; returns `{ imported, skipped }`
+
+Canonical thinking levels at the host boundary are:
+
+```text
+off | minimal | low | medium | high | xhigh | max
+```
+
+Session summaries/details always return `thinkingLevel`. Assistant messages
+may return `thinking`; host storage maps it to a canonical content block rather
+than appending it to answer `content`.
 
 ### Tools
 - `tools.list`

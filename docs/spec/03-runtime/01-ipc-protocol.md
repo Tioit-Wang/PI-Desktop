@@ -72,16 +72,22 @@ type AgentPromptResponse = {
 };
 ```
 
-Prompt execution resolves `mode`, `providerId`, and `modelId` from the durable
+Prompt execution resolves `mode`, `providerId`, `modelId`, and `thinkingLevel`
+from the durable
 session record. The renderer changes those values through
 `pi-desktop/session/configure` while the session is idle:
 
 ```ts
+type ThinkingLevel =
+  | "off" | "minimal" | "low" | "medium"
+  | "high" | "xhigh" | "max";
+
 type SessionConfigureRequest = {
   id: string;
   mode: "chat" | "agent";
   providerId?: string;
   modelId?: string;
+  thinkingLevel: ThinkingLevel;
 };
 ```
 
@@ -128,7 +134,8 @@ type AgentEvent =
  | { type: "turn_start" }
  | { type: "turn_end" }
  | { type: "message_start"; message: UiMessage }
- | { type: "message_update"; message: UiMessage; deltaText?: string }
+ | { type: "message_update"; message: UiMessage;
+     deltaText?: string; deltaThinking?: string }
  | { type: "message_end"; message: UiMessage }
  | { type: "tool_start"; toolCallId: string; toolName: string; args: unknown }
  | { type: "tool_update"; toolCallId: string; partialResult?: unknown }
@@ -149,14 +156,33 @@ type SessionSummary = {
  title: string;
  projectPath?: string;
  modelId?: string;
+ providerId?: string;
+ mode: "chat" | "agent";
+ thinkingLevel: ThinkingLevel;
+ supportsReasoning?: boolean;
+ supportedThinkingLevels?: ThinkingLevel[];
  updatedAt: string;
  createdAt: string;
+};
+
+type UiMessage = {
+ id: string;
+ role: "user" | "assistant" | "system" | "tool";
+ content: string;
+ thinking?: string; // assistant reasoning, never folded into content
+ createdAt: string;
+ // status/tool fields omitted here
 };
 
 type SessionDetail = SessionSummary & {
  messages: UiMessage[];
 };
 ```
+
+Electron main enriches session list/get/create/configure results with effective
+reasoning capability for that session's exact `(providerId, modelId)`. Missing
+provider/model metadata yields `supportsReasoning: false` and `off`; the Rust
+host remains authoritative only for the durable `thinkingLevel`.
 
 Minimal interface:
 
@@ -170,6 +196,10 @@ Minimal interface:
 
 Import candidates carry `projectPath: string | null`. A successful import
 refreshes both sessions and the durable Projects index.
+
+Protocol version 2 adds `thinkingLevel`, `UiMessage.thinking`, and
+`message_update.deltaThinking`. A v1 peer must fail the version check instead
+of silently discarding these fields.
 
 ## 8. Settings / Secrets API
 

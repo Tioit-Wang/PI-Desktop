@@ -174,7 +174,22 @@ type SelectedModelRef = {
   providerId: string
   modelId: string
 }
+
+type ThinkingLevel =
+  | "off"
+  | "minimal"
+  | "low"
+  | "medium"
+  | "high"
+  | "xhigh"
+  | "max"
 ```
+
+`compatibility.supportsReasoning` is an explicit override, not merely a UI
+hint. `false` disables reasoning even when the model id matches pi's catalog;
+`true` enables the conservative default level set for a custom model missing
+from the catalog. If omitted, the runtime infers capability from the exact
+selected `(vendorKey, modelId)`.
 
 ## 8. Secrets
 
@@ -209,6 +224,7 @@ type ModelDescriptor = {
   maxOutputTokens?: number
   deprecated?: boolean
   tags?: string[]
+  supportedThinkingLevels?: ThinkingLevel[]
 }
 ```
 
@@ -248,9 +264,12 @@ When starting a turn with `(providerId, modelId)`:
    - user-defined model override
    - catalog cache
    - otherwise accept raw modelId if provider allows free-form ids
-5. build runtime provider adapter request for pi-ai (merge baseUrl/headers/auth)
-6. execute stream with abort handle
-7. translate vendor errors into shared `AppError` codes (§15)
+5. resolve reasoning capability from the explicit provider override or pi
+   catalog for the exact model; clamp the session thinking level upward first,
+   then downward, or to `off` when unsupported
+6. build runtime provider adapter request for pi-ai (merge baseUrl/headers/auth)
+7. execute stream with abort handle and separate answer/thinking events
+8. translate vendor errors into shared `AppError` codes (§15)
 
 If the model is not in the catalog, still allow it when the user explicitly
 enters a model id and the provider accepts unknown ids.
@@ -335,6 +354,9 @@ This is the **universal escape hatch** guaranteeing market coverage beyond nativ
 5. Deleting a provider blocks new turns that reference it; historical sessions keep the ids for audit/display.
 6. Export settings never includes raw secrets.
 7. Import settings can recreate provider shells and prompt for secrets.
+8. Reasoning capability is model-specific unless the provider has an explicit
+   compatibility override; provider defaults must not override a session's
+   selected model during turn resolution.
 
 ## 18. Validation rules
 
@@ -355,6 +377,8 @@ This is the **universal escape hatch** guaranteeing market coverage beyond nativ
 - [ ] Catalog refresh populates models for at least one native and one compatible provider, without destroying existing providers
 - [ ] Connection test returns structured success/failure without secret leakage
 - [ ] Session can switch model between turns
+- [ ] Reasoning-capable models expose only supported thinking levels and the
+      selected level reaches pi; unsupported providers resolve to `off`
 - [ ] Missing key/model blocks run with stable, actionable error codes
 - [ ] At least one local provider path (Ollama or LM Studio style) documented and testable
 - [ ] No product hard-limit like “only 3 vendors / 10 models”

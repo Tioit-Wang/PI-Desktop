@@ -326,8 +326,11 @@ function AppShell() {
 
   const showComposer = page === "chat";
   const hasTranscript = messages.some((m) => {
-    if (m.role === "assistant" && !(m.content || "").trim()) return false;
-    return Boolean((m.content || "").trim()) || m.role === "tool";
+    const hasContent = Boolean((m.content || "").trim());
+    const hasThinking =
+      typeof m.thinking === "string" && Boolean(m.thinking.trim());
+    if (m.role === "assistant") return hasContent || hasThinking;
+    return hasContent || m.role === "tool";
   });
 
   // Codex settings is a full-window page (no app sidebar / main titlebar chrome).

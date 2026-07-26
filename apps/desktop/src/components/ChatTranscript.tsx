@@ -311,6 +311,51 @@ function WorkingIndicator() {
   );
 }
 
+function thinkingText(message: UiMessage): string {
+  if (typeof message.thinking !== "string") return "";
+  return message.thinking.trim() ? message.thinking : "";
+}
+
+/**
+ * Reasoning is intentionally rendered in its own disclosure. Keeping it out
+ * of the answer bubble means streamed thought cannot alter answer markdown,
+ * copy actions, or the conversation minimap semantics.
+ */
+function ThinkingDisclosure({
+  thinking,
+  streaming,
+}: {
+  thinking: string;
+  streaming: boolean;
+}) {
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(streaming);
+
+  useEffect(() => {
+    setOpen(streaming);
+  }, [streaming]);
+
+  return (
+    <details
+      className="mb-3 max-w-full rounded-md-plus border border-border-subtle bg-bg-inset px-3 py-2 text-text-secondary"
+      open={open}
+      onToggle={(event) => setOpen(event.currentTarget.open)}
+    >
+      <summary
+        className="cursor-pointer select-none text-sm-plus font-medium text-text-secondary"
+        aria-label={t(open ? "chat.thinkingHide" : "chat.thinkingShow")}
+      >
+        {t("chat.thinking", { defaultValue: "Thinking" })}
+      </summary>
+      <div className="mt-2 border-t border-border-subtle pt-2">
+        <div className="prose-chat text-text-secondary">
+          <Markdown source={thinking} />
+        </div>
+      </div>
+    </details>
+  );
+}
+
 /* Typewriter reveal for streaming assistant messages: incoming chunks
  * accumulate in message.content (the buffer); we surface it a few characters
  * per animation frame, speeding up with backlog so the display never trails
@@ -384,6 +429,9 @@ const MessageRow = memo(function MessageRow({
   const isUser = message.role === "user";
   const copyLabel = t("chat.copy");
   const displayed = useTypewriter(message);
+  const thinking = thinkingText(message);
+  const hasAnswer = Boolean((message.content || "").trim());
+  const showAnswer = isUser || Boolean(displayed) || (!thinking && isRunning);
   return (
     <div
       className={`message-row ${isUser ? "user" : message.role}`}
@@ -392,16 +440,24 @@ const MessageRow = memo(function MessageRow({
       aria-label={isUser ? t("chat.userMessage") : t("chat.assistantMessage")}
     >
       <div className="message-col">
-        <div className="message-bubble">
-          {isUser ? (
-            <div className="whitespace-pre-wrap">{message.content}</div>
-          ) : (
-            <div className="prose-chat">
-              <Markdown source={displayed || (isRunning ? "…" : "")} />
-            </div>
-          )}
-        </div>
-        {(message.content || "").trim() ? (
+        {!isUser && thinking ? (
+          <ThinkingDisclosure
+            thinking={thinking}
+            streaming={isRunning && message.status === "streaming"}
+          />
+        ) : null}
+        {showAnswer ? (
+          <div className="message-bubble">
+            {isUser ? (
+              <div className="whitespace-pre-wrap">{message.content}</div>
+            ) : (
+              <div className="prose-chat">
+                <Markdown source={displayed || (isRunning ? "…" : "")} />
+              </div>
+            )}
+          </div>
+        ) : null}
+        {hasAnswer ? (
           <div className="message-actions">
             <CopyButton text={message.content} label={copyLabel} />
           </div>
@@ -457,7 +513,12 @@ export function ChatTranscript({
   }, [scrollToBottom]);
 
   const visible = messages.filter((message) => {
-    if (message.role === "assistant" && !(message.content || "").trim()) return false;
+    if (
+      message.role === "assistant" &&
+      !(message.content || "").trim() &&
+      !thinkingText(message)
+    )
+      return false;
     return true;
   });
   const minimapMessages = visible.filter(
@@ -493,7 +554,10 @@ export function ChatTranscript({
   const assistantIsAnswering =
     lastVisibleMessage?.role === "assistant" &&
     lastVisibleMessage.status === "streaming" &&
-    Boolean(lastVisibleMessage.content.trim());
+    Boolean(
+      (lastVisibleMessage.content || "").trim() ||
+        thinkingText(lastVisibleMessage),
+    );
   const showWorking =
     isRunning && !activeToolGroup && !assistantIsAnswering;
 

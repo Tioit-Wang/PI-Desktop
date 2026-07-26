@@ -35,7 +35,7 @@
 |---|---|---|---|
 | **Unit** | Single module, no IPC | Many | Vitest / Rust #[test] |
 | **Integration** | IPC contract, host↔renderer, host↔sidecar | Moderate | Vitest + IPC mocks or live Electron |
-| **E2E** | Full user journey through the desktop app | ~38 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
+| **E2E** | Full user journey through the desktop app | ~44 functional + US-UI visual catalog | protocol smoke + Electron probes now; Playwright later |
 
 **Strategy**: document all E2E scenarios now; write unit/integration tests alongside code; automate E2E after M5.
 
@@ -599,6 +599,101 @@ Each scenario is documented in this format:
 - **Milestone**: M5
 - **Status**: Unit-covered (`user-select.test.mjs`); scenario Documented
 
+#### E2E-046: Thinking selector follows exact model capability
+
+- **Preconditions**: One catalogued reasoning model, one non-reasoning model,
+  and a custom provider with an explicit reasoning override.
+- **Steps**: 1) Select each provider/model in turn. 2) Open the model menu. 3)
+  Toggle the custom override from enabled to disabled. 4) Refresh model data.
+- **Expected**: Thinking appears only for the exact selected reasoning model;
+  levels match its sparse supported set in canonical order; explicit `false`
+  removes stale reasoning tags and resets the effective level to `off`; old
+  providers with missing capability fields load as non-reasoning without a
+  crash.
+- **Specs linked**: `03-runtime/11-provider-model-system.md`,
+  `03-runtime/12-provider-config-schema.md`,
+  `03-runtime/13-model-catalog-and-selection.md`, ADR 0018
+- **Acceptance**: B (model config), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`thinking-ui.test.mjs`, agent-runtime capability tests); full UI scenario Draft
+
+#### E2E-047: Thinking level persists with the session
+
+- **Preconditions**: A reasoning-capable session is idle.
+- **Steps**: 1) Select `high`. 2) Change Chat/Agent mode without changing the
+  thinking level. 3) Restart the app and reopen the session. 4) Switch to
+  another session and back.
+- **Expected**: Every configuration update sends the complete session config;
+  `high` survives mode change, session switches, host reload, and app restart.
+  A v2 database migrates the same field to `off` without transcript loss.
+- **Specs linked**: `03-runtime/04-data-storage.md`,
+  `03-runtime/06-host-rpc-protocol.md`, `04-ux/08-component-spec.md`, ADR 0018
+- **Acceptance**: F (persistence)
+- **Milestone**: M5
+- **Status**: Unit-covered (host schema/session tests, `thinking-ui.test.mjs`); full restart scenario Draft
+
+#### E2E-048: Thinking level reaches the pi request
+
+- **Preconditions**: Instrumented reasoning-capable provider with a sparse
+  level set and request capture; one session configured above and below gaps.
+- **Steps**: 1) Select each available level and run a prompt. 2) Seed an
+  unsupported stored level and run again. 3) repeat with reasoning disabled.
+- **Expected**: Main resolves capability using the session's actual model id;
+  Composer, main, sidecar, and pi use the same upward-first/downward-second
+  clamp; pi receives the effective level; disabled reasoning receives `off`.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/02-agent-runtime.md`, `03-runtime/13-model-catalog-and-selection.md`, ADR 0018
+- **Acceptance**: B (model config), C (chat and stream)
+- **Milestone**: M5
+- **Status**: Unit-covered (agent-runtime prompt/clamp tests); integration scenario Draft
+
+#### E2E-049: Thinking streams separately from the answer
+
+- **Preconditions**: Provider emits thinking deltas before and between answer
+  deltas.
+- **Steps**: 1) Start a turn. 2) Observe a thinking-only phase. 3) Let the
+  answer complete. 4) toggle the disclosure and use Copy answer.
+- **Expected**: The transcript opens during thinking-only streaming; one open
+  Thinking disclosure updates without an empty answer bubble or duplicate
+  Working indicator; final answer markdown renders separately; Copy answer
+  contains no thinking text.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `04-ux/07-ui-design-system.md`, `04-ux/08-component-spec.md`, ADR 0018
+- **Acceptance**: C (chat and stream), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`thinking-ui.test.mjs`, agent-runtime event tests); full streaming scenario Draft
+
+#### E2E-046: Stored thinking reloads losslessly
+
+- **Preconditions**: A completed assistant message contains both reasoning and
+  final answer blocks; another contains reasoning only.
+- **Steps**: 1) Complete both turns. 2) Restart the host/app. 3) Reopen the
+  session. 4) inspect search results and answer copy.
+- **Expected**: Host returns the same separate `thinking` and `content`
+  values after reload/import/replace round-trips; both messages remain
+  visible; search and answer copy exclude reasoning.
+- **Specs linked**: `03-runtime/04-data-storage.md`,
+  `03-runtime/06-host-rpc-protocol.md`, `04-ux/08-component-spec.md`, ADR 0018
+- **Acceptance**: C (chat and stream), F (persistence)
+- **Milestone**: M5
+- **Status**: Unit-covered (host message/import tests, `thinking-ui.test.mjs`); full reload scenario Draft
+
+#### E2E-047: Unsupported provider transition clamps safely
+
+- **Preconditions**: Session on a reasoning provider at `max`; target
+  providers include non-reasoning and sparse-level variants.
+- **Steps**: 1) Switch to the non-reasoning provider. 2) Run a turn. 3) Switch
+  to sparse variants around the previous level. 4) send malformed/legacy
+  payloads lacking capability or thinking fields.
+- **Expected**: Non-reasoning persists and sends `off`; sparse variants choose
+  the same nearest level everywhere; missing fields fall back safely;
+  malformed thinking is not rendered and never contaminates answer content.
+- **Specs linked**: `03-runtime/01-ipc-protocol.md`,
+  `03-runtime/13-model-catalog-and-selection.md`, `04-ux/08-component-spec.md`, ADR 0018
+- **Acceptance**: B (model config), C (chat and stream), Quality
+- **Milestone**: M5
+- **Status**: Unit-covered (`thinking-ui.test.mjs`, host validation tests); full UI scenario Draft
+
 ---
 
 ## 8. Traceability Matrix
@@ -606,15 +701,15 @@ Each scenario is documented in this format:
 | Acceptance | Scenarios |
 |---|---|
 | A — App startup | E2E-001, E2E-002, E2E-003, E2E-004 |
-| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038 |
-| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040 |
+| B — Model config | E2E-005, E2E-006, E2E-007, E2E-038, E2E-046, E2E-048, E2E-051 |
+| C — Chat & stream | E2E-008, E2E-009, E2E-010, E2E-011, E2E-040, E2E-048, E2E-049, E2E-050, E2E-051 |
 | D — Workspace | E2E-012, E2E-013 |
 | E — Tools & permissions | E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
-| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042 |
+| F — Persistence | E2E-020, E2E-021, E2E-036, E2E-037, E2E-038, E2E-040, E2E-042, E2E-047, E2E-050 |
 | G — Plugins | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026 |
 | H — Diagnostics | E2E-027, E2E-031, E2E-034, E2E-042 |
 | Security | E2E-028, E2E-029, E2E-030 |
-| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045 |
+| Quality | E2E-032, E2E-033, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-049, E2E-051 |
 
 | Milestone | Scenarios |
 |---|---|
@@ -622,7 +717,7 @@ Each scenario is documented in this format:
 | M2 | E2E-004, E2E-005, E2E-006, E2E-007, E2E-008, E2E-009, E2E-010, E2E-011, E2E-020, E2E-021, E2E-027, E2E-031, E2E-036, E2E-037, E2E-042 |
 | M3 | E2E-012, E2E-013, E2E-014, E2E-015, E2E-016, E2E-017, E2E-018, E2E-019, E2E-040 |
 | M4 | E2E-022, E2E-023, E2E-024, E2E-025, E2E-026, E2E-030, E2E-038 |
-| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045 (+ packaging scenarios in release runbook) |
+| M5 | E2E-032, E2E-033, E2E-034, E2E-039, E2E-043, E2E-044, E2E-045, E2E-046, E2E-047, E2E-048, E2E-049, E2E-050, E2E-051 (+ packaging scenarios in release runbook) |
 
 The `US-UI-*` visual scenarios (§UI shell visual scenarios) trace to the
 Codex parity decisions in [decisions-log §D](../08-meta/decisions-log.md)
@@ -755,8 +850,9 @@ This test plan spec is accepted when:
 
 ### US-UI-18 Composer has no inert actions
 - On chat home and a docked thread, inspect every composer control.
-- Expect no file, photo, appshot, or reasoning-effort control while those
-  payloads are unsupported by the pi runtime.
+- Expect no file, photo, or appshot controls while those payloads are
+  unsupported by the pi runtime. Thinking levels appear only for an exact
+  reasoning-capable provider/model and update the durable session.
 - Project name opens the project picker; Local and branch render as status text,
   not clickable buttons.
 

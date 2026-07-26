@@ -9,6 +9,7 @@ import type {
   ProjectWorkspace,
   ProviderPublic,
   SessionSummary,
+  ThinkingLevel,
   ToolPermissionRequest,
   UiMessage,
 } from "@pi-desktop/shared";
@@ -91,6 +92,7 @@ type AppState = {
     mode: "chat" | "agent";
     providerId?: string;
     modelId?: string;
+    thinkingLevel: ThinkingLevel;
   }) => Promise<void>;
   sendPrompt: (content: string) => Promise<void>;
   abort: () => Promise<void>;
@@ -261,13 +263,28 @@ export const useAppStore = create<AppState>((set, get) => ({
       await get().clearProject();
     }
     const settings = get().settings;
+    const defaultProvider = get().providers.find(
+      (provider) => provider.id === settings?.defaultProviderId,
+    );
+    // Older hosts may omit capability metadata; treat those providers as
+    // non-reasoning instead of dereferencing an absent levels array.
+    const defaultThinkingLevels = Array.isArray(
+      defaultProvider?.supportedThinkingLevels,
+    )
+      ? defaultProvider.supportedThinkingLevels
+      : (["off"] as ThinkingLevel[]);
+    const defaultThinkingLevel =
+      defaultThinkingLevels.includes("off")
+        ? "off"
+        : defaultThinkingLevels[0] ?? "off";
     const created = await api.createSession({
       title: untitledTaskTitle(),
       mode: settings?.defaultMode ?? "chat",
       providerId: settings?.defaultProviderId,
       modelId: settings?.defaultModelId,
+      thinkingLevel: defaultThinkingLevel,
       projectPath: requestedProjectPath ?? undefined,
-    } as any);
+    });
     await get().refreshSessions();
     const detail = await api.getSession(created.session.id);
     const entry = { page: "chat" as const, sessionId: created.session.id };
@@ -368,10 +385,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   refreshProviders: async () => {
-    const providers = await api.listProviders();
-    const settings = await api.getSettings();
-    const onboarding = await api.getOnboarding();
-    set({ providers: providers.providers, settings, onboarding });
+    const [providers, sessions, settings, onboarding] = await Promise.all([
+      api.listProviders(),
+      api.listSessions(),
+      api.getSettings(),
+      api.getOnboarding(),
+    ]);
+    set({
+      providers: providers.providers,
+      sessions: sessions.sessions,
+      settings,
+      onboarding,
+    });
   },
 
   refreshPlugins: async () => {

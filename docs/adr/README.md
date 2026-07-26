@@ -31,3 +31,4 @@ Each ADR includes:
 | 0013 | Consolidate settings navigation into four destinations | Accepted |
 | 0014 | Adopt host-owned storage schema v2 | Accepted |
 | 0015 | Make settings content responsive to window width | Accepted |
+| 0018 | Carry thinking mode through the complete session pipeline | Accepted |
