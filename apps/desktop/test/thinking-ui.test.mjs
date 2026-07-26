@@ -18,6 +18,10 @@ const mainSource = await readFile(
   new URL("../electron/main/index.ts", import.meta.url),
   "utf8",
 );
+const settingsSource = await readFile(
+  new URL("../src/pages/SettingsPage.tsx", import.meta.url),
+  "utf8",
+);
 const stylesSource = await readFile(
   new URL("../src/styles/globals.css", import.meta.url),
   "utf8",
@@ -76,4 +80,24 @@ test("transcript keeps assistant thinking in a separate disclosure", () => {
 test("thinking-only assistant streams open the transcript surface", () => {
   assert.match(appSource, /typeof m\.thinking === "string"/);
   assert.match(appSource, /hasContent \|\| hasThinking/);
+});
+
+test("settings exposes thinking mode presets and sparse levels", () => {
+  assert.match(settingsSource, /thinkingMode/);
+  assert.match(settingsSource, /thinkingModeToggle/);
+  assert.match(settingsSource, /thinkingModeGraded/);
+  assert.match(settingsSource, /supportedThinkingLevels/);
+  assert.match(settingsSource, /\["off", "high"\]/);
+  assert.match(settingsSource, /levelsForThinkingMode/);
+});
+
+test("main forwards provider supportedThinkingLevels into capability resolution", () => {
+  assert.match(
+    mainSource,
+    /supportedThinkingLevels:\s*provider\.supportedThinkingLevels/,
+  );
+  assert.match(
+    mainSource,
+    /supportedThinkingLevels:\s*provider\?\.supportedThinkingLevels/,
+  );
 });

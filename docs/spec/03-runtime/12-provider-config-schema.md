@@ -51,7 +51,14 @@ Tables (canonical DDL in [04-data-storage](04-data-storage.md) §4.3–4.4, §4.
         "supportsTools": { "type": "boolean" },
         "supportsVision": { "type": "boolean" },
         "supportsStreaming": { "type": "boolean" },
-        "supportsReasoning": { "type": "boolean" }
+        "supportsReasoning": { "type": "boolean" },
+        "supportedThinkingLevels": {
+          "type": "array",
+          "items": {
+            "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]
+          },
+          "uniqueItems": true
+        }
       }
     },
     "defaultModelId": { "type": "string" },
@@ -68,6 +75,14 @@ Tables (canonical DDL in [04-data-storage](04-data-storage.md) §4.3–4.4, §4.
   from the catalog
 - `false`: explicitly disable reasoning and remove stale catalog-derived
   reasoning capability
+
+`compatibility.supportedThinkingLevels` is an optional sparse override for
+custom/compatible endpoints. Values are canonical thinking levels such as
+`["off","high"]` for boolean-like thinking support. When present and non-empty,
+the declared set is authoritative for that provider even if the model id
+collides with a catalog entry. An empty update clears the override and restores
+catalog/default resolution. Invalid entries are dropped; if nothing remains the
+override is treated as absent.
 
 The public provider shape is enriched in Electron main with the effective
 `supportsReasoning` and `supportedThinkingLevels` for its selected/default
@@ -161,8 +176,10 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 - `ProviderPublic` excludes raw secrets; includes `hasSecret: boolean`
 
 ### `providers.create` / `providers.update`
-- in: provider fields + optional `secretValue`
-- behavior: persist config; if secretValue present, write secret store and set `secretRef`
+- in: provider fields + optional `secretValue` + optional
+  `supportsReasoning` / `supportedThinkingLevels`
+- behavior: persist config; if secretValue present, write secret store and set
+  `secretRef`; thinking fields map into `config_json.compatibility`
 - out: `ProviderPublic`
 
 ### `providers.delete`
@@ -197,6 +214,9 @@ The canonical DDL lives in [04-data-storage](04-data-storage.md) (D086). Summary
 7. unknown protocol on older clients => provider shown disabled with warning, not crash
 8. `supportsReasoning`, when present, must be boolean; omission preserves an
    existing override on update and keeps catalog inference on create
+9. `supportedThinkingLevels`, when present, must be an array of canonical
+   thinking levels; invalid entries are dropped, duplicates collapse, and an
+   empty array clears the override on update
 
 ## 11. Secret ref format
 

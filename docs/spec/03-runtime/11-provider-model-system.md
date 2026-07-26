@@ -152,6 +152,7 @@ type ProviderConfig = {
     supportsVision?: boolean
     supportsStreaming?: boolean
     supportsReasoning?: boolean
+    supportedThinkingLevels?: ThinkingLevel[]
   }
   defaultModelId?: string
   models?: UserModelConfig[]    // optional user-defined models
@@ -190,6 +191,11 @@ hint. `false` disables reasoning even when the model id matches pi's catalog;
 `true` enables the conservative default level set for a custom model missing
 from the catalog. If omitted, the runtime infers capability from the exact
 selected `(vendorKey, modelId)`.
+
+`compatibility.supportedThinkingLevels` is the sparse custom-provider override.
+Settings expose presets for Off / On-off only (`["off","high"]`) / Graded, and
+advanced free-form lists. Composer must render only that resolved set and must
+not invent graded options for boolean-like models such as mimo.
 
 ## 8. Secrets
 

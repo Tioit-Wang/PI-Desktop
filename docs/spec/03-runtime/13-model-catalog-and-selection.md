@@ -145,16 +145,19 @@ Warnings are non-blocking unless execution is impossible.
 
 1. An explicit provider `supportsReasoning: false` is authoritative and
    yields only `off`, including when cached model capabilities say reasoning.
-2. An explicit `true` enables the conservative custom-provider levels when
-   the model is absent from pi's catalog.
-3. Without an override, resolve pi catalog metadata for the exact
+2. An explicit non-empty `supportedThinkingLevels` override is authoritative
+   for custom/compatible providers and wins over catalog level sets, including
+   boolean-like sets such as `["off","high"]`.
+3. An explicit `true` without levels enables the conservative custom-provider
+   graded set when the model is absent from pi's catalog.
+4. Without those overrides, resolve pi catalog metadata for the exact
    `(vendorKey, modelId)`.
-4. The Composer renders the selector only when the effective model supports
-   reasoning and lists only `supportedThinkingLevels`.
-5. If a stored/requested level is unavailable, choose the nearest supported
+5. The Composer renders the selector only when the effective model supports
+   reasoning and lists only the resolved `supportedThinkingLevels`.
+6. If a stored/requested level is unavailable, choose the nearest supported
    level by scanning upward first and then downward. Non-reasoning models
    always resolve to `off`.
-6. Changing to a non-reasoning provider persists `off`; no unsupported level
+7. Changing to a non-reasoning provider persists `off`; no unsupported level
    leaks into the next request.
 
 ## 12. Refresh strategy

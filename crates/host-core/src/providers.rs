@@ -25,6 +25,10 @@ pub struct ProviderPublic {
     /// catalog resolver should infer capability from the selected model.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub supports_reasoning: Option<bool>,
+    /// Optional sparse thinking-level override for custom/compatible models.
+    /// `None` keeps catalog/default level resolution.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supported_thinking_levels: Option<Vec<String>>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -43,6 +47,7 @@ pub struct ProviderCreateInput {
     pub secret_value: Option<String>,
     pub api_style: Option<String>,
     pub supports_reasoning: Option<bool>,
+    pub supported_thinking_levels: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -60,6 +65,7 @@ pub struct ProviderUpdateInput {
     pub secret_value: Option<String>,
     pub api_style: Option<String>,
     pub supports_reasoning: Option<bool>,
+    pub supported_thinking_levels: Option<Vec<String>>,
     pub enabled: Option<bool>,
 }
 
@@ -68,26 +74,150 @@ const PROVIDER_SELECT: &str =
             default_model_id, api_style, config_json, created_at, updated_at
      FROM providers";
 
+const CANONICAL_THINKING_LEVELS: &[&str] = &[
+    "off",
+    "minimal",
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+    "max",
+];
+
+fn config_value(raw: &str) -> Option<serde_json::Value> {
+    serde_json::from_str::<serde_json::Value>(raw).ok()
+}
+
 fn config_reasoning_override(raw: &str) -> Option<bool> {
-    serde_json::from_str::<serde_json::Value>(raw)
-        .ok()
+    config_value(raw)
         .and_then(|v| v.get("compatibility")?.get("supportsReasoning")?.as_bool())
 }
 
-fn config_with_reasoning_override(raw: &str, value: bool) -> Result<String> {
-    let mut config: serde_json::Value = serde_json::from_str(raw)
+fn normalize_thinking_levels(levels: &[String]) -> Vec<String> {
+    let mut out = Vec::new();
+    for level in levels {
+        let trimmed = level.trim();
+        if !CANONICAL_THINKING_LEVELS.iter().any(|candidate| *candidate == trimmed) {
+            continue;
+        }
+        if !out.iter().any(|existing| existing == trimmed) {
+            out.push(trimmed.to_string());
+        }
+    }
+    out
+}
+
+fn config_thinking_levels_override(raw: &str) -> Option<Vec<String>> {
+    let levels = config_value(raw)?
+        .get("compatibility")?
+        .get("supportedThinkingLevels")?
+        .as_array()
+        .cloned()?;
+    let parsed: Vec<String> = levels
+        .into_iter()
+        .filter_map(|value| value.as_str().map(str::to_string))
+        .collect();
+    let normalized = normalize_thinking_levels(&parsed);
+    if normalized.is_empty() {
+        None
+    } else {
+        Some(normalized)
+    }
+}
+
+fn ensure_config_object(raw: &str) -> Result<serde_json::Value> {
+    let config: serde_json::Value = serde_json::from_str(raw)
         .map_err(|e| anyhow::anyhow!("provider config_json is invalid: {e}"))?;
+    if !config.is_object() {
+        return Err(anyhow::anyhow!("provider config_json must be a JSON object"));
+    }
+    Ok(config)
+}
+
+fn compatibility_object(
+    config: &mut serde_json::Value,
+) -> Result<&mut serde_json::Map<String, serde_json::Value>> {
     let object = config
         .as_object_mut()
         .ok_or_else(|| anyhow::anyhow!("provider config_json must be a JSON object"))?;
     let compatibility = object
         .entry("compatibility")
         .or_insert_with(|| serde_json::json!({}));
-    let compatibility = compatibility.as_object_mut().ok_or_else(|| {
+    compatibility.as_object_mut().ok_or_else(|| {
         anyhow::anyhow!("provider config_json.compatibility must be a JSON object")
-    })?;
-    compatibility.insert("supportsReasoning".into(), serde_json::json!(value));
+    })
+}
+
+fn config_with_reasoning_override(raw: &str, value: bool) -> Result<String> {
+    let mut config = ensure_config_object(raw)?;
+    compatibility_object(&mut config)?
+        .insert("supportsReasoning".into(), serde_json::json!(value));
     Ok(config.to_string())
+}
+
+fn config_with_thinking_levels_override(
+    raw: &str,
+    levels: Option<&[String]>,
+) -> Result<String> {
+    let mut config = ensure_config_object(raw)?;
+    let compatibility = compatibility_object(&mut config)?;
+    match levels {
+        Some(levels) => {
+            let normalized = normalize_thinking_levels(levels);
+            if normalized.is_empty() {
+                compatibility.remove("supportedThinkingLevels");
+            } else {
+                compatibility.insert(
+                    "supportedThinkingLevels".into(),
+                    serde_json::json!(normalized),
+                );
+            }
+        }
+        None => {
+            compatibility.remove("supportedThinkingLevels");
+        }
+    }
+    Ok(config.to_string())
+}
+
+fn build_provider_config_json(
+    supports_reasoning: Option<bool>,
+    supported_thinking_levels: Option<&[String]>,
+) -> Result<String> {
+    let mut config = serde_json::json!({});
+    if let Some(value) = supports_reasoning {
+        compatibility_object(&mut config)?
+            .insert("supportsReasoning".into(), serde_json::json!(value));
+    }
+    if let Some(levels) = supported_thinking_levels {
+        let normalized = normalize_thinking_levels(levels);
+        if !normalized.is_empty() {
+            compatibility_object(&mut config)?
+                .insert("supportedThinkingLevels".into(), serde_json::json!(normalized));
+        }
+    }
+    Ok(config.to_string())
+}
+
+fn merge_provider_config_overrides(
+    raw: &str,
+    supports_reasoning: Option<bool>,
+    supported_thinking_levels: Option<Option<Vec<String>>>,
+) -> Result<Option<String>> {
+    if supports_reasoning.is_none() && supported_thinking_levels.is_none() {
+        return Ok(None);
+    }
+    let mut next = raw.to_string();
+    if let Some(value) = supports_reasoning {
+        next = config_with_reasoning_override(&next, value)?;
+    }
+    if let Some(levels) = supported_thinking_levels {
+        next = config_with_thinking_levels_override(
+            &next,
+            levels.as_deref(),
+        )?;
+    }
+    Ok(Some(next))
 }
 
 fn provider_from_row(
@@ -111,6 +241,10 @@ fn provider_from_row(
             .get::<_, String>(11)
             .ok()
             .and_then(|raw| config_reasoning_override(&raw)),
+        supported_thinking_levels: row
+            .get::<_, String>(11)
+            .ok()
+            .and_then(|raw| config_thinking_levels_override(&raw)),
         created_at: ms_to_ts(row.get(12)?),
         updated_at: ms_to_ts(row.get(13)?),
     })
@@ -171,14 +305,10 @@ pub fn create_provider(
     let auth_kind = input
         .auth_kind
         .unwrap_or_else(|| "api_key_and_base_url".into());
-    let config_json = input
-        .supports_reasoning
-        .map(|value| {
-            serde_json::json!({
-                "compatibility": { "supportsReasoning": value }
-            })
-        })
-        .unwrap_or_else(|| serde_json::json!({}));
+    let config_json = build_provider_config_json(
+        input.supports_reasoning,
+        input.supported_thinking_levels.as_deref(),
+    )?;
 
     db.conn()
         .prepare_cached(
@@ -228,16 +358,22 @@ pub fn update_provider(
         upsert_secret_meta(db, &sref, &input.id, &backend)?;
         secret_ref = Some(sref);
     }
-    let config_json = if let Some(value) = input.supports_reasoning {
-        let raw: String = db.conn().query_row(
-            "SELECT config_json FROM providers WHERE id = ?1",
-            params![input.id],
-            |row| row.get(0),
-        )?;
-        Some(config_with_reasoning_override(&raw, value)?)
+    let raw_config: String = db.conn().query_row(
+        "SELECT config_json FROM providers WHERE id = ?1",
+        params![input.id],
+        |row| row.get(0),
+    )?;
+    // `Some(None)` clears an explicit levels override; plain `None` leaves it.
+    let levels_update = if input.supported_thinking_levels.is_some() {
+        Some(input.supported_thinking_levels.clone())
     } else {
         None
     };
+    let config_json = merge_provider_config_overrides(
+        &raw_config,
+        input.supports_reasoning,
+        levels_update,
+    )?;
 
     db.conn()
         .prepare_cached(
@@ -352,10 +488,15 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 supports_reasoning: Some(true),
+                supported_thinking_levels: Some(vec!["off".into(), "high".into()]),
             },
         )
         .unwrap();
         assert_eq!(provider.supports_reasoning, Some(true));
+        assert_eq!(
+            provider.supported_thinking_levels.as_deref(),
+            Some(["off".to_string(), "high".to_string()].as_slice())
+        );
 
         db.conn()
             .execute(
@@ -389,12 +530,17 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 supports_reasoning: Some(false),
+                supported_thinking_levels: Some(vec!["off".into(), "low".into()]),
                 enabled: None,
             },
         )
         .unwrap()
         .unwrap();
         assert_eq!(updated.supports_reasoning, Some(false));
+        assert_eq!(
+            updated.supported_thinking_levels.as_deref(),
+            Some(["off".to_string(), "low".to_string()].as_slice())
+        );
 
         let raw: String = db
             .conn()
@@ -408,6 +554,10 @@ mod tests {
         assert_eq!(config["headers"]["x-demo"], "keep");
         assert_eq!(config["compatibility"]["supportsTools"], true);
         assert_eq!(config["compatibility"]["supportsReasoning"], false);
+        assert_eq!(
+            config["compatibility"]["supportedThinkingLevels"],
+            json!(["off", "low"])
+        );
         assert_eq!(config["custom"]["nested"], 42);
 
         // An update without the field leaves the explicit override intact.
@@ -426,12 +576,17 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 supports_reasoning: None,
+                supported_thinking_levels: None,
                 enabled: None,
             },
         )
         .unwrap()
         .unwrap();
         assert_eq!(unchanged.supports_reasoning, Some(false));
+        assert_eq!(
+            unchanged.supported_thinking_levels.as_deref(),
+            Some(["off".to_string(), "low".to_string()].as_slice())
+        );
     }
 
     #[test]
@@ -451,11 +606,83 @@ mod tests {
                 secret_value: None,
                 api_style: None,
                 supports_reasoning: None,
+                supported_thinking_levels: None,
             },
         )
         .unwrap();
         assert_eq!(provider.supports_reasoning, None);
+        assert_eq!(provider.supported_thinking_levels, None);
         let wire = serde_json::to_value(provider).unwrap();
         assert!(wire.get("supportsReasoning").is_none());
+        assert!(wire.get("supportedThinkingLevels").is_none());
+    }
+
+    #[test]
+    fn thinking_levels_override_normalizes_and_can_clear() {
+        let (_dir, db, secrets) = test_context();
+        let provider = create_provider(
+            &db,
+            &secrets,
+            ProviderCreateInput {
+                name: "Sparse".into(),
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: Some("none".into()),
+                default_model_id: Some("mimo-v2.5".into()),
+                secret_value: None,
+                api_style: None,
+                supports_reasoning: Some(true),
+                supported_thinking_levels: Some(vec![
+                    "high".into(),
+                    "off".into(),
+                    "bogus".into(),
+                    "high".into(),
+                ]),
+            },
+        )
+        .unwrap();
+        // Keep first-seen order after filtering invalid entries.
+        assert_eq!(
+            provider.supported_thinking_levels.as_deref(),
+            Some(["high".to_string(), "off".to_string()].as_slice())
+        );
+
+        let cleared = update_provider(
+            &db,
+            &secrets,
+            ProviderUpdateInput {
+                id: provider.id.clone(),
+                name: None,
+                vendor_key: None,
+                provider_type: None,
+                protocol: None,
+                base_url: None,
+                auth_kind: None,
+                default_model_id: None,
+                secret_value: None,
+                api_style: None,
+                supports_reasoning: None,
+                supported_thinking_levels: Some(vec![]),
+                enabled: None,
+            },
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(cleared.supported_thinking_levels, None);
+
+        let raw: String = db
+            .conn()
+            .query_row(
+                "SELECT config_json FROM providers WHERE id = ?1",
+                params![provider.id],
+                |row| row.get(0),
+            )
+            .unwrap();
+        let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert!(config["compatibility"]
+            .get("supportedThinkingLevels")
+            .is_none());
     }
 }

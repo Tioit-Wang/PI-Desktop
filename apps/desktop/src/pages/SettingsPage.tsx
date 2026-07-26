@@ -1,5 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import type { ThinkingLevel } from "@pi-desktop/shared";
 import { useAppStore } from "../stores/app-store";
 import { api } from "../lib/api";
 import type { ImportCandidate } from "../lib/api";
@@ -294,6 +295,79 @@ function ImportSection() {
   );
 }
 
+
+const CANONICAL_THINKING_LEVELS: readonly ThinkingLevel[] = [
+  "off",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
+
+type ThinkingModePreset = "off" | "toggle" | "graded" | "custom";
+
+function uniqueThinkingLevels(levels: readonly ThinkingLevel[]): ThinkingLevel[] {
+  const out: ThinkingLevel[] = [];
+  for (const level of levels) {
+    if (!CANONICAL_THINKING_LEVELS.includes(level) || out.includes(level)) continue;
+    out.push(level);
+  }
+  return out;
+}
+
+function thinkingModeFromLevels(
+  supportsReasoning: boolean,
+  levels?: readonly ThinkingLevel[] | null,
+): ThinkingModePreset {
+  if (!supportsReasoning) return "off";
+  const normalized = uniqueThinkingLevels(levels ?? []);
+  if (normalized.length === 0) return "graded";
+  if (
+    normalized.length === 2 &&
+    normalized.includes("off") &&
+    normalized.includes("high")
+  ) {
+    return "toggle";
+  }
+  const gradedDefault: ThinkingLevel[] = ["off", "minimal", "low", "medium", "high"];
+  if (
+    normalized.length === gradedDefault.length &&
+    gradedDefault.every((level, index) => normalized[index] === level)
+  ) {
+    return "graded";
+  }
+  return "custom";
+}
+
+function levelsForThinkingMode(mode: ThinkingModePreset): ThinkingLevel[] | undefined {
+  switch (mode) {
+    case "off":
+      return undefined;
+    case "toggle":
+      return ["off", "high"];
+    case "graded":
+      // Omit explicit list so runtime uses the conservative default graded set.
+      return undefined;
+    case "custom":
+      return undefined;
+  }
+}
+
+function formatThinkingLevels(levels?: readonly ThinkingLevel[] | null): string {
+  if (!levels || levels.length === 0) return "";
+  return levels.join(",");
+}
+
+function parseThinkingLevelsInput(raw: string): ThinkingLevel[] {
+  const parts = raw
+    .split(/[\s,|/]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  return uniqueThinkingLevels(parts as ThinkingLevel[]);
+}
+
 export function SettingsPage() {
   const { t } = useTranslation();
   const tab = useAppStore((s) => s.settingsTab);
@@ -310,8 +384,10 @@ export function SettingsPage() {
   const [baseUrl, setBaseUrl] = useState("https://api.oj.ink/v1");
   const [modelId, setModelId] = useState("mimo-v2.5");
   const [apiKey, setApiKey] = useState("");
-  const [supportsReasoning, setSupportsReasoning] = useState(false);
+  const [thinkingMode, setThinkingMode] = useState<ThinkingModePreset>("off");
+  const [customThinkingLevels, setCustomThinkingLevels] = useState("off,high");
   const [saving, setSaving] = useState(false);
+  const supportsReasoning = thinkingMode !== "off";
 
   const navItems: NavItem[] = useMemo(
     () => [
@@ -513,18 +589,36 @@ export function SettingsPage() {
                       className="font-mono text-sm-plus"
                     />
                   </Field>
-                  <Field label={t("settings.reasoningSupport")}>
+                  <Field
+                    label={t("settings.thinkingMode")}
+                    hint={t("settings.thinkingModeDesc")}
+                  >
                     <Select
-                      value={supportsReasoning ? "yes" : "no"}
+                      value={thinkingMode}
                       onChange={(e) =>
-                        setSupportsReasoning(e.target.value === "yes")
+                        setThinkingMode(e.target.value as ThinkingModePreset)
                       }
                       className="settings-pill-select"
                     >
-                      <option value="no">{t("settings.reasoningDisabled")}</option>
-                      <option value="yes">{t("settings.reasoningEnabled")}</option>
+                      <option value="off">{t("settings.thinkingModeOff")}</option>
+                      <option value="toggle">{t("settings.thinkingModeToggle")}</option>
+                      <option value="graded">{t("settings.thinkingModeGraded")}</option>
+                      <option value="custom">{t("settings.thinkingModeCustom")}</option>
                     </Select>
                   </Field>
+                  {thinkingMode === "custom" ? (
+                    <Field
+                      label={t("settings.thinkingLevels")}
+                      hint={t("settings.thinkingLevelsDesc")}
+                    >
+                      <Input
+                        value={customThinkingLevels}
+                        onChange={(e) => setCustomThinkingLevels(e.target.value)}
+                        className="font-mono text-sm-plus"
+                        placeholder='off,high'
+                      />
+                    </Field>
+                  ) : null}
                 </div>
                 <div className="settings-panel-actions">
                   <Button
@@ -533,6 +627,10 @@ export function SettingsPage() {
                     onClick={async () => {
                       setSaving(true);
                       try {
+                        const selectedLevels =
+                          thinkingMode === "custom"
+                            ? parseThinkingLevelsInput(customThinkingLevels)
+                            : levelsForThinkingMode(thinkingMode);
                         const created = await api.createProvider({
                           name,
                           vendorKey: "custom",
@@ -544,6 +642,7 @@ export function SettingsPage() {
                           secretValue: apiKey || undefined,
                           apiStyle: "chat_completions",
                           supportsReasoning,
+                          ...(selectedLevels ? { supportedThinkingLevels: selectedLevels } : {}),
                         });
                         await api.setSettings({
                           ...(settings as any),
@@ -580,30 +679,83 @@ export function SettingsPage() {
                           <div className="truncate text-md-plus font-medium">{p.name}</div>
                           <div className="truncate font-mono text-xs-plus text-text-muted">
                             {p.baseUrl || "—"} · {p.defaultModelId || t("settings.noModel")}
+                            {p.supportsReasoning
+                              ? ` · ${t("settings.thinkingMode")}: ${
+                                  thinkingModeFromLevels(
+                                    p.supportsReasoning,
+                                    p.supportedThinkingLevels,
+                                  ) === "toggle"
+                                    ? t("settings.thinkingModeToggle")
+                                    : thinkingModeFromLevels(
+                                          p.supportsReasoning,
+                                          p.supportedThinkingLevels,
+                                        ) === "graded"
+                                      ? t("settings.thinkingModeGraded")
+                                      : formatThinkingLevels(p.supportedThinkingLevels) ||
+                                        t("settings.thinkingModeCustom")
+                                }`
+                              : ` · ${t("settings.thinkingModeOff")}`}
                           </div>
                         </div>
                         <div className="flex shrink-0 items-center gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={async () => {
-                              await api.updateProvider({
-                                id: p.id,
-                                supportsReasoning: !p.supportsReasoning,
-                              });
-                              await refreshProviders();
-                              showToast(
-                                p.supportsReasoning
-                                  ? t("settings.reasoningDisabled")
-                                  : t("settings.reasoningEnabled"),
-                                { variant: "success" },
-                              );
+                          <Select
+                            className="settings-pill-select"
+                            aria-label={t("settings.thinkingMode")}
+                            value={thinkingModeFromLevels(
+                              p.supportsReasoning,
+                              p.supportedThinkingLevels,
+                            )}
+                            onChange={async (e) => {
+                              const mode = e.target.value as ThinkingModePreset;
+                              try {
+                                await api.updateProvider({
+                                  id: p.id,
+                                  supportsReasoning: mode !== "off",
+                                  // Empty array clears an explicit sparse override.
+                                  supportedThinkingLevels:
+                                    mode === "toggle"
+                                      ? ["off", "high"]
+                                      : mode === "custom"
+                                        ? p.supportedThinkingLevels &&
+                                          p.supportedThinkingLevels.length > 0
+                                          ? [...p.supportedThinkingLevels]
+                                          : ["off", "high"]
+                                        : [],
+                                });
+                                await refreshProviders();
+                                showToast(
+                                  mode === "off"
+                                    ? t("settings.thinkingModeOff")
+                                    : mode === "toggle"
+                                      ? t("settings.thinkingModeToggle")
+                                      : mode === "graded"
+                                        ? t("settings.thinkingModeGraded")
+                                        : t("settings.thinkingModeCustom"),
+                                  { variant: "success" },
+                                );
+                              } catch (error) {
+                                showToast(
+                                  error instanceof Error ? error.message : String(error),
+                                  { variant: "error" },
+                                );
+                              }
                             }}
                           >
-                            {p.supportsReasoning
-                              ? t("settings.reasoningDisable")
-                              : t("settings.reasoningEnable")}
-                          </Button>
+                            <option value="off">{t("settings.thinkingModeOff")}</option>
+                            <option value="toggle">{t("settings.thinkingModeToggle")}</option>
+                            <option value="graded">{t("settings.thinkingModeGraded")}</option>
+                            {thinkingModeFromLevels(
+                              p.supportsReasoning,
+                              p.supportedThinkingLevels,
+                            ) === "custom" ? (
+                              <option value="custom">
+                                {t("settings.thinkingModeCustom")}
+                                {formatThinkingLevels(p.supportedThinkingLevels)
+                                  ? ` (${formatThinkingLevels(p.supportedThinkingLevels)})`
+                                  : ""}
+                              </option>
+                            ) : null}
+                          </Select>
                           {settings?.defaultProviderId === p.id ? (
                             <Badge tone="success">{t("settings.default")}</Badge>
                           ) : (

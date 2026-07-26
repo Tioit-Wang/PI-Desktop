@@ -60,6 +60,35 @@ describe("resolveThinkingCapabilities", () => {
     });
   });
 
+
+  it("honors an explicit sparse supportedThinkingLevels override", () => {
+    expect(
+      resolveThinkingCapabilities({
+        vendorKey: "custom",
+        modelId: "mimo-v2.5",
+        supportsReasoning: true,
+        supportedThinkingLevels: ["high", "off", "bogus" as ThinkingLevel, "high"],
+      }),
+    ).toEqual({
+      supportsReasoning: true,
+      // Keep declared order after filtering invalid entries, ensuring off is present.
+      supportedThinkingLevels: ["high", "off"],
+    });
+  });
+
+  it("lets sparse levels win over a catalogued model id collision", () => {
+    expect(
+      resolveThinkingCapabilities({
+        vendorKey: "openai",
+        modelId: "gpt-5.1",
+        supportsReasoning: true,
+        supportedThinkingLevels: ["off", "high"],
+      }),
+    ).toEqual({
+      supportsReasoning: true,
+      supportedThinkingLevels: ["off", "high"],
+    });
+  });
   it("clamps sparse capability lists using the nearest supported level", () => {
     const capabilities: ModelCapabilities = {
       supportsReasoning: true,

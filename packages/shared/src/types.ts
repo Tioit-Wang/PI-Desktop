@@ -179,6 +179,12 @@ export type ProviderCreateInput = {
   apiStyle?: string;
   /** Explicit override for custom model catalogs. */
   supportsReasoning?: boolean;
+  /**
+   * Optional sparse override for custom/compatible models.
+   * Values are canonical ThinkingLevel entries such as ["off","high"].
+   * When omitted, capability resolution falls back to catalog/default sets.
+   */
+  supportedThinkingLevels?: ThinkingLevel[];
 };
 
 export type ProviderUpdateInput = Partial<ProviderCreateInput> & {

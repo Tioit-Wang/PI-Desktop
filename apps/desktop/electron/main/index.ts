@@ -81,7 +81,9 @@ type RuntimeProvider = {
   authKind?: string;
   hasSecret?: boolean;
   enabled?: boolean;
+  /** Host may return an explicit override; effective values are enriched below. */
   supportsReasoning?: boolean;
+  /** Optional sparse override from provider config_json.compatibility. */
   supportedThinkingLevels?: ThinkingLevel[];
 };
 
@@ -100,6 +102,7 @@ function enrichProvider<T extends RuntimeProvider>(
     vendorKey: provider.vendorKey || "custom",
     modelId,
     supportsReasoning: provider.supportsReasoning,
+    supportedThinkingLevels: provider.supportedThinkingLevels,
   });
   return {
     ...provider,
@@ -137,6 +140,7 @@ function enrichSession<T extends RuntimeSession>(
     vendorKey: provider.vendorKey || "custom",
     modelId: session.modelId,
     supportsReasoning: provider.supportsReasoning,
+    supportedThinkingLevels: provider.supportedThinkingLevels,
   });
   return {
     ...session,
@@ -1323,6 +1327,7 @@ function registerIpc() {
           vendorKey: provider?.vendorKey || "custom",
           modelId: model.modelId,
           supportsReasoning: provider?.supportsReasoning,
+          supportedThinkingLevels: provider?.supportedThinkingLevels,
         });
         const capabilities = new Set(model.capabilities ?? ["text"]);
         if (thinking.supportsReasoning) capabilities.add("reasoning");
@@ -1479,6 +1484,7 @@ function registerIpc() {
     ptys.dispose(String(input?.termId ?? ""));
     return { ok: true };
   });
+
 
   handle(IPC.invoke.pullsList, async () => {
     if (!host) throw new Error("host unavailable");

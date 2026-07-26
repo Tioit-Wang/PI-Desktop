@@ -53,7 +53,8 @@ an end-to-end runtime implementation.
 - Reasoning selection survives restart and applies to the next turn in that
   session.
 - Sparse model capability sets, including models that cannot fully disable
-  reasoning, resolve consistently across UI, main, and sidecar.
+  reasoning and boolean-like custom sets such as `["off","high"]`, resolve
+  consistently across Settings, Composer, main, and sidecar.
 - Thinking-only stream updates can open the transcript without creating an
   empty answer bubble.
 - Search and answer-copy behavior exclude thinking text.
