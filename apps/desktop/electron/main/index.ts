@@ -9,11 +9,12 @@ import {
   Notification as SystemNotification,
   screen,
   shell,
+  Tray,
 } from "electron";
 import { dirname, join, resolve } from "node:path";
 import { execFileSync } from "node:child_process";
 import { homedir } from "node:os";
-import { existsSync, mkdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import {
   APP_ID,
   APP_NAME,
@@ -42,6 +43,7 @@ import {
   type AgentEventEnvelope,
   type AppMenuCommand,
   type AppNotification,
+  type CloseBehavior,
   type CommandShellCatalog,
   type CommandShellId,
   type GlobalPermissionMode,
@@ -77,6 +79,7 @@ import {
   type UserSubagentDocument,
 } from "@pi-desktop/agent-runtime";
 import { isTemplateName, scaffold } from "@pi-desktop/plugin-devkit";
+import { en, zhCN, resolveLocale } from "@pi-desktop/i18n";
 import { HostProcess } from "./host-process";
 import { PersistenceOutbox } from "./persistence-outbox";
 import { AgentSidecar } from "./agent-sidecar";
@@ -162,6 +165,13 @@ let sidecar: AgentSidecar | null = null;
 let quitting = false;
 let shutdownComplete = false;
 let shutdownPromise: Promise<void> | null = null;
+// Windows/Linux system-tray presence. When set, closing the main window
+// hides it to the tray instead of quitting the app (close-to-tray).
+let tray: Tray | null = null;
+// User-chosen close behavior on Windows/Linux; "ask" prompts on first close.
+let closeBehavior: CloseBehavior = "ask";
+let closePromptOpen = false;
+let allowWindowClose = false;
 const pluginPanels = new PluginPanelHost(async (pluginId, channel, payload) =>
   plugins.invokePanelBridge(pluginId, channel, payload),
 );
@@ -790,6 +800,44 @@ function applyDevelopmentBranding() {
   app.dock.setIcon(icon);
 }
 
+/** Restores a tray-hidden or minimized main window, or recreates it. */
+function revealMainWindow() {
+  const window = mainWindow;
+  if (!window || window.isDestroyed()) {
+    void ensureWindow();
+    return;
+  }
+  if (window.isMinimized()) window.restore();
+  window.show();
+  window.focus();
+}
+
+/**
+ * Windows/Linux tray icon for close-to-tray: closing the main window hides
+ * it to the tray (the app keeps running in the background) and the tray
+ * restores it. macOS keeps the native Dock lifecycle and gets no tray.
+ */
+function createTrayIcon() {
+  if (process.platform === "darwin" || tray) return;
+  const iconPath = join(app.getAppPath(), "build", "icon.png");
+  const icon = nativeImage.createFromPath(iconPath).resize({ width: 16, height: 16 });
+  if (icon.isEmpty()) {
+    logger.app("lifecycle", "warn", "tray icon missing", { data: { iconPath } });
+    return;
+  }
+  const labels = resolveLocale(app.getLocale()) === "zh-CN" ? zhCN : en;
+  tray = new Tray(icon);
+  tray.setToolTip(APP_NAME);
+  tray.on("click", revealMainWindow);
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: labels.tray.open, click: revealMainWindow },
+      { type: "separator" },
+      { label: labels.tray.quit, click: () => app.quit() },
+    ]),
+  );
+}
+
 function sendToRenderer(channel: string, payload: unknown) {
   if (!IPC_WHITELIST.has(channel)) return;
   const window = mainWindow;
@@ -1125,6 +1173,61 @@ function writeWindowState(state: WindowState) {
   }
 }
 
+function closeBehaviorPath() {
+  return join(dataDir, "close-behavior.json");
+}
+
+function readCloseBehavior(): CloseBehavior | null {
+  try {
+    const raw = JSON.parse(readFileSync(closeBehaviorPath(), "utf8"));
+    return raw === "ask" || raw === "tray" || raw === "quit" ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCloseBehavior(behavior: CloseBehavior) {
+  try {
+    mkdirSync(dataDir, { recursive: true });
+    writeFileSync(closeBehaviorPath(), JSON.stringify(behavior), "utf8");
+  } catch {
+    // best-effort persistence
+  }
+}
+
+/** Applies a close-behavior choice and reconciles the tray icon with it. */
+function applyCloseBehavior(next: CloseBehavior) {
+  closeBehavior = next;
+  writeCloseBehavior(next);
+  if (next === "tray") createTrayIcon();
+  else if (tray) {
+    tray.destroy();
+    tray = null;
+  }
+}
+
+/**
+ * First-close prompt on Windows/Linux: asks whether closing the window
+ * should hide the app to the tray or exit it. The choice is persisted and
+ * can be changed later in Settings. Returns null when the user cancels.
+ */
+async function askCloseBehavior(
+  window: BrowserWindow,
+): Promise<"tray" | "quit" | null> {
+  const labels = resolveLocale(app.getLocale()) === "zh-CN" ? zhCN : en;
+  const { response } = await dialog.showMessageBox(window, {
+    type: "question",
+    title: labels.tray.askTitle,
+    message: labels.tray.askTitle,
+    detail: labels.tray.askBody,
+    buttons: [labels.common.cancel, labels.tray.closeToTray, labels.tray.quit],
+    defaultId: 1,
+    cancelId: 0,
+    noLink: true,
+  });
+  return response === 1 ? "tray" : response === 2 ? "quit" : null;
+}
+
 function workPanelMinimumWindowWidth() {
   return WINDOW_MIN_WIDTH + workPanelReservation.width;
 }
@@ -1399,7 +1502,17 @@ async function createWindow() {
   };
 
   const ensureStableBounds = (force = false) => {
-    if (!isLiveWindow() || boundsGuard || captureViewportOverride) return;
+    if (
+      !isLiveWindow() ||
+      boundsGuard ||
+      captureViewportOverride ||
+      // Never fight the user's own state: a minimized window stays
+      // minimized and a tray-hidden window stays hidden.
+      window.isMinimized() ||
+      !window.isVisible()
+    ) {
+      return;
+    }
     const electronBounds = window.getBounds();
     const cg = readCgBounds();
     if (!cg && cgHelperAvailable) missingCgStreak += 1;
@@ -1501,12 +1614,45 @@ async function createWindow() {
   };
   window.on("resize", scheduleStateSave);
   window.on("move", scheduleStateSave);
-  window.on("close", () => {
+  window.on("close", (event) => {
     if (saveTimer) {
       clearTimeout(saveTimer);
       saveTimer = null;
     }
     persistNormalWindowState();
+    // Windows/Linux close-behavior: "tray" hides the window and keeps the
+    // app running under the tray icon, "ask" prompts on the first close,
+    // and "quit" (plus macOS and explicit-quit closes) falls through to the
+    // default close.
+    if (process.platform === "darwin" || quitting || allowWindowClose) return;
+    event.preventDefault();
+    void (async () => {
+      if (closeBehavior === "ask") {
+        if (closePromptOpen) return;
+        closePromptOpen = true;
+        try {
+          const choice = await askCloseBehavior(window);
+          if (!choice) return; // canceled: keep the window open
+          applyCloseBehavior(choice);
+        } finally {
+          closePromptOpen = false;
+        }
+      }
+      if (closeBehavior === "tray") {
+        createTrayIcon();
+        // The tray is the only way back to a hidden window; if the icon
+        // could not be created, fall back to a real close instead of
+        // leaving the app invisible.
+        if (tray) window.hide();
+        else {
+          allowWindowClose = true;
+          window.close();
+        }
+      } else {
+        allowWindowClose = true;
+        window.close();
+      }
+    })();
   });
 
   const boundsWatchdog = setInterval(() => {
@@ -4788,6 +4934,24 @@ function registerIpc() {
     },
   );
 
+  // Close-behavior preference (Windows/Linux): read/write the choice the
+  // settings UI and the first-close prompt share.
+  handle(IPC.invoke.closeBehaviorGet, async () => ({
+    behavior: closeBehavior,
+    supported: process.platform !== "darwin",
+  }));
+
+  handle(IPC.invoke.closeBehaviorSet, async (input: unknown = {}) => {
+    const behavior = (input as { behavior?: unknown })?.behavior;
+    if (behavior !== "ask" && behavior !== "tray" && behavior !== "quit") {
+      throw Object.assign(new Error("invalid close behavior"), {
+        errorCode: ErrorCodes.INVALID_ARGUMENT,
+      });
+    }
+    applyCloseBehavior(behavior);
+    return { behavior };
+  });
+
   ipcMain.handle(IPC.invoke.menuRendererReady, async (event) =>
     wrap(async () => {
       const window = BrowserWindow.fromWebContents(event.sender);
@@ -5922,6 +6086,9 @@ app.whenReady().then(async () => {
     }
   }
   await ensureWindow();
+  const storedBehavior = readCloseBehavior();
+  if (storedBehavior) closeBehavior = storedBehavior;
+  if (closeBehavior === "tray") createTrayIcon();
   // createWindow awaits the initial load (loadFile resolves on
   // did-finish-load), so the page is up; give React a beat to mount its
   // event subscriptions before pushing the boot outcome.
@@ -6017,7 +6184,11 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+  // With a tray present the app owns a background surface: a window closed
+  // or destroyed for any reason must not take the whole app down — the
+  // tray click recreates it. Without a tray, closing the last window
+  // (Windows/Linux) exits the app as before.
+  if (process.platform !== "darwin" && !tray) app.quit();
 });
 
 app.on("before-quit", (event) => {
@@ -6027,6 +6198,8 @@ app.on("before-quit", (event) => {
 
   quitting = true;
   shutdownPromise = (async () => {
+    tray?.destroy();
+    tray = null;
     const hostShutdown = host?.dispose();
     const pluginPanelShutdown = pluginPanels.closeAll();
     updater.dispose();

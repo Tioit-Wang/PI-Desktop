@@ -66,6 +66,7 @@ import type {
   PlansPendingResult,
   UpdateState,
   WindowControlAction,
+  CloseBehavior,
 } from "@pi-desktop/shared";
 import {
   defaultCommandShellForPlatform,
@@ -582,6 +583,14 @@ export const api = {
     ),
   windowControl: (action: WindowControlAction) =>
     invoke<{ maximized: boolean }>(IPC.invoke.windowControl, { action }),
+  getCloseBehavior: () =>
+    invoke<{ behavior: CloseBehavior; supported: boolean }>(
+      IPC.invoke.closeBehaviorGet,
+    ),
+  setCloseBehavior: (behavior: CloseBehavior) =>
+    invoke<{ behavior: CloseBehavior }>(IPC.invoke.closeBehaviorSet, {
+      behavior,
+    }),
   menuRendererReady: () =>
     invoke<{ ready: boolean }>(IPC.invoke.menuRendererReady),
   nativeMenuAction: (action: NativeMenuAction) =>
