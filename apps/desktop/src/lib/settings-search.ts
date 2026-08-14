@@ -44,7 +44,6 @@ export const SETTINGS_NAV: SettingsNavEntry[] = [
       "settings.theme",
       "settings.language",
       "settings.closeBehaviorTitle",
-      "settings.closeBehaviorAsk",
       "settings.closeBehaviorTray",
       "settings.closeBehaviorQuit",
       "settings.defaultsTitle",
