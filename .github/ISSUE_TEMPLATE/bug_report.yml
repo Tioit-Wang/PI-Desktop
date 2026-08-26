@@ -1,66 +1,61 @@
-name: Bug report
-description: Report something that is not working as expected. Please include reproduction steps.
-title: "[Bug]: "
-labels: ["bug", "needs-triage"]
+name: Bug report / Bug 反馈
+description: Report something not working as expected. 报告产品行为异常。
+title: "[Bug] "
+labels: ["bug"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a bug. To help us fix it quickly, please describe what happened, what you expected, and how to reproduce it. Remove anything that does not apply.
+        Bug 反馈 · Bug report
+        请简短描述问题并提供复现步骤。Keep it short; include reproduction steps.
   - type: textarea
-    id: summary
+    id: description
     attributes:
-      label: Description
-      description: What is broken and what impact does it have?
-      placeholder: "Concise description of the bug…"
+      label: 问题描述 / Description
+      description: 什么坏了、影响是什么？What is broken and its impact?
       render: markdown
     validations:
       required: true
   - type: textarea
-    id: repro
+    id: reproduce
     attributes:
-      label: Steps to reproduce
-      description: Exact steps from a clean state.
+      label: 复现步骤 / Steps to reproduce
+      description: 从干净状态开始。From a clean state.
       placeholder: |-
-        1. Open the app…
-        2. Do…
-        3. Observe…
+        1. ...
+        2. ...
       render: bash
     validations:
       required: true
   - type: textarea
     id: expected
     attributes:
-      label: Expected behaviour
-      description: What should have happened.
-      placeholder: "Describe the expected result…"
+      label: 期望 / Expected
+      description: 应该发生什么。What should happen?
       render: markdown
     validations:
       required: true
   - type: textarea
     id: actual
     attributes:
-      label: Actual behaviour
-      description: What actually happened instead.
-      placeholder: "Describe the observed result, including any error text…"
+      label: 实际 / Actual
+      description: 实际发生了什么。What actually happened?
       render: markdown
     validations:
       required: true
   - type: checkboxes
     id: environment
     attributes:
-      label: Environment
-      description: Select the applicable options.
+      label: 环境 / Environment
+      description: 可选。Optional。
       options:
-        - label: macOS (Apple Silicon)
-        - label: Windows (x64)
-        - label: Linux (x64)
-        - label: Latest packaged build / release
-        - label: Reproducible on a fresh session / clean project
+        - label: "macOS (Apple Silicon)"
+        - label: "Windows (x64)"
+        - label: "Linux (x64)"
+        - label: 最新发布版 / Latest release
   - type: textarea
     id: logs
     attributes:
-      label: Logs / error output / screenshots
-      description: Paste logs or stack traces, and drag and drop images that show the problem.
-      placeholder: "Logs, stack traces, or `![alt](url)` images…"
+      label: 日志 / 截图 · Logs / screenshots
+      description: 可选。Optional。
       render: shell

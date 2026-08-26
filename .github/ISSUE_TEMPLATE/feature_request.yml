@@ -1,62 +1,40 @@
-name: Feature request
-description: Suggest an enhancement, a new capability, or ask a question about the product.
-title: "[Feature]: "
+name: Feature request / 功能请求
+description: Suggest an enhancement or ask a question. 建议新功能或提出问题。
+title: "[Feature] "
 labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for taking the time to propose an idea. Please fill in as much as you can — the clearer the problem and the proposed behaviour, the faster a maintainer can act.
-  - type: dropdown
-    id: request-type
-    attributes:
-      label: Request type
-      description: Which kind of request is this?
-      multiple: false
-      options:
-        - Feature request
-        - Enhancement to existing behaviour
-        - Question / guidance
-        - Design or UX proposal
-        - Other
-    validations:
-      required: true
+        功能请求 · Feature request
+        请简洁清晰地描述，多谢！ Please keep it concise and clear.
   - type: textarea
     id: problem
     attributes:
-      label: Problem / context
-      description: What need or gap is this addressing? What are you trying to achieve?
-      placeholder: "Describe the situation or question in a few sentences…"
+      label: 问题 / Problem
+      description: 你想解决什么问题？What do you want to achieve?
+      placeholder: "…"
       render: markdown
     validations:
       required: true
   - type: textarea
     id: solution
     attributes:
-      label: Proposed solution
-      description: The behaviour you would like to see, in concrete terms.
-      placeholder: "What should happen, and for whom…"
+      label: 方案 / Proposed solution
+      description: 你期望的行为是怎样的？What behaviour do you expect?
       render: markdown
     validations:
       required: true
   - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives considered
-      description: Any workarounds, existing features, or related issues you have tried.
-      placeholder: "Optional"
-      render: markdown
-  - type: textarea
     id: suggestion
     attributes:
-      label: Suggestions & trade-offs
-      description: Edge cases, scope boundaries, or notes for the implementer.
-      placeholder: "Optional"
+      label: 补充建议 / Notes
+      description: 可选。Optional。
       render: markdown
   - type: textarea
     id: attachments
     attributes:
-      label: Screenshots / mockups / images
-      description: Drag and drop images here to illustrate the idea. You can also paste the markdown image links.
-      placeholder: "Drag & drop images, or paste `![alt](url)` links"
+      label: 截图 / Screenshots
+      description: 可拖拽图片。Drag & drop images here。
+      placeholder: "![alt](url)"
       render: markdown

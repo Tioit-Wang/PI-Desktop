@@ -1,9 +1,4 @@
-# Controls the issue picker behaviour for this repository.
-# See: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
+# Issue 选择器行为配置 / Issue picker behaviour for this repository.
+# 仅允许使用模板提交；禁止空白 issue。Only templates allowed; no blank issues.
 
 blank_issues_enabled: false
-
-contact_links:
-  - name: Discussions
-    url: https://github.com/vastsa/PI-Desktop/discussions
-    about: Prefer to ask a question or start a conversation? Use Discussions instead of opening an issue.
