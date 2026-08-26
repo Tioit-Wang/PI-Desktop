@@ -7,34 +7,19 @@ body:
     attributes:
       value: |
         功能请求 · Feature request
-        请简洁清晰地描述，多谢！ Please keep it concise and clear.
+        请描述你的需求，可附上草图。Describe your need; a sketch is optional.
   - type: textarea
-    id: problem
+    id: requirement
     attributes:
-      label: 问题 / Problem
-      description: 你想解决什么问题？What do you want to achieve?
-      placeholder: "…"
+      label: 需求 / Requirement
+      description: 你希望有什么功能或改进？What feature or change do you want?
       render: markdown
     validations:
       required: true
   - type: textarea
-    id: solution
+    id: sketch
     attributes:
-      label: 方案 / Proposed solution
-      description: 你期望的行为是怎样的？What behaviour do you expect?
-      render: markdown
-    validations:
-      required: true
-  - type: textarea
-    id: suggestion
-    attributes:
-      label: 补充建议 / Notes
-      description: 可选。Optional。
-      render: markdown
-  - type: textarea
-    id: attachments
-    attributes:
-      label: 截图 / Screenshots
-      description: 可拖拽图片。Drag & drop images here。
-      placeholder: "![alt](url)"
+      label: 草图 / Sketch
+      description: 选填，可绘制示意或拖拽图片。Optional; sketch or drag & drop an image.
+      placeholder: "![草图草图](url)"
       render: markdown

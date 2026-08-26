@@ -7,12 +7,13 @@ body:
     attributes:
       value: |
         Bug 反馈 · Bug report
-        请简短描述问题并提供复现步骤。Keep it short; include reproduction steps.
+        请描述问题，可附上复现步骤与截图。Describe the issue; steps and screenshots are optional.
   - type: textarea
     id: description
     attributes:
       label: 问题描述 / Description
       description: 什么坏了、影响是什么？What is broken and its impact?
+      placeholder: "示例：打开设置页时崩溃，无法进入模型配置。Example: App crashes when opening Settings → Model config."
       render: markdown
     validations:
       required: true
@@ -20,42 +21,18 @@ body:
     id: reproduce
     attributes:
       label: 复现步骤 / Steps to reproduce
-      description: 从干净状态开始。From a clean state.
+      description: 选填。Steps are optional.
       placeholder: |-
-        1. ...
-        2. ...
+        示例 / Example:
+        1. 打开应用 / Open the app
+        2. 进入设置 → 模型配置 / Open Settings → Model config
+        3. 点击“添加服务” / Click “Add service”
+        4. 应用崩溃 / App crashes
       render: bash
-    validations:
-      required: true
   - type: textarea
-    id: expected
+    id: screenshots
     attributes:
-      label: 期望 / Expected
-      description: 应该发生什么。What should happen?
+      label: 截图 / Screenshots
+      description: 选填，可拖拽图片。Optional; drag & drop images.
+      placeholder: "![截图](url)"
       render: markdown
-    validations:
-      required: true
-  - type: textarea
-    id: actual
-    attributes:
-      label: 实际 / Actual
-      description: 实际发生了什么。What actually happened?
-      render: markdown
-    validations:
-      required: true
-  - type: checkboxes
-    id: environment
-    attributes:
-      label: 环境 / Environment
-      description: 可选。Optional。
-      options:
-        - label: "macOS (Apple Silicon)"
-        - label: "Windows (x64)"
-        - label: "Linux (x64)"
-        - label: 最新发布版 / Latest release
-  - type: textarea
-    id: logs
-    attributes:
-      label: 日志 / 截图 · Logs / screenshots
-      description: 可选。Optional。
-      render: shell
