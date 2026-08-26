@@ -1,0 +1,66 @@
+name: Bug report
+description: Report something that is not working as expected. Please include reproduction steps.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. To help us fix it quickly, please describe what happened, what you expected, and how to reproduce it. Remove anything that does not apply.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Description
+      description: What is broken and what impact does it have?
+      placeholder: "Concise description of the bug…"
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Exact steps from a clean state.
+      placeholder: |-
+        1. Open the app…
+        2. Do…
+        3. Observe…
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should have happened.
+      placeholder: "Describe the expected result…"
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened instead.
+      placeholder: "Describe the observed result, including any error text…"
+      render: markdown
+    validations:
+      required: true
+  - type: checkboxes
+    id: environment
+    attributes:
+      label: Environment
+      description: Select the applicable options.
+      options:
+        - label: macOS (Apple Silicon)
+        - label: Windows (x64)
+        - label: Linux (x64)
+        - label: Latest packaged build / release
+        - label: Reproducible on a fresh session / clean project
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / error output / screenshots
+      description: Paste logs or stack traces, and drag and drop images that show the problem.
+      placeholder: "Logs, stack traces, or `![alt](url)` images…"
+      render: shell

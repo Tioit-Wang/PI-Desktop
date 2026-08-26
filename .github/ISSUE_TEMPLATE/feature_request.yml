@@ -1,0 +1,62 @@
+name: Feature request
+description: Suggest an enhancement, a new capability, or ask a question about the product.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to propose an idea. Please fill in as much as you can — the clearer the problem and the proposed behaviour, the faster a maintainer can act.
+  - type: dropdown
+    id: request-type
+    attributes:
+      label: Request type
+      description: Which kind of request is this?
+      multiple: false
+      options:
+        - Feature request
+        - Enhancement to existing behaviour
+        - Question / guidance
+        - Design or UX proposal
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / context
+      description: What need or gap is this addressing? What are you trying to achieve?
+      placeholder: "Describe the situation or question in a few sentences…"
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: The behaviour you would like to see, in concrete terms.
+      placeholder: "What should happen, and for whom…"
+      render: markdown
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any workarounds, existing features, or related issues you have tried.
+      placeholder: "Optional"
+      render: markdown
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggestions & trade-offs
+      description: Edge cases, scope boundaries, or notes for the implementer.
+      placeholder: "Optional"
+      render: markdown
+  - type: textarea
+    id: attachments
+    attributes:
+      label: Screenshots / mockups / images
+      description: Drag and drop images here to illustrate the idea. You can also paste the markdown image links.
+      placeholder: "Drag & drop images, or paste `![alt](url)` links"
+      render: markdown
