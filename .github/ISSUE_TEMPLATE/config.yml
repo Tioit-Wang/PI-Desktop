@@ -1,0 +1,9 @@
+# Controls the issue picker behaviour for this repository.
+# See: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository
+
+blank_issues_enabled: false
+
+contact_links:
+  - name: Discussions
+    url: https://github.com/vastsa/PI-Desktop/discussions
+    about: Prefer to ask a question or start a conversation? Use Discussions instead of opening an issue.
