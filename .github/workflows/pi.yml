@@ -3,8 +3,12 @@
 # Only people with write access to this repository can start a run. Anyone else
 # is ignored: no comment, no failing job, nothing to react to.
 #
-# The agent runs with every Pi tool and no turn budget, so `timeout-minutes` is
-# the only bound on a run.
+# Analysis is read-only on purpose: the agent can read the whole repository and
+# that is all. Add `bash`, `edit` and `write` to `allowed_tools` (plus
+# `contents: write`, already granted below) when a mention should change code.
+#
+# There is no turn budget: `timeout-minutes` is the only bound on a run, and the
+# tracking comment reports progress every ~30s while it works.
 name: Pi
 
 on:
@@ -39,3 +43,4 @@ jobs:
           base_url: https://platform.aimom.net/v1
           api_style: openai-completions
           api_key: ${{ secrets.AIMOM_API_KEY }}
+          allowed_tools: read,grep,find,ls
