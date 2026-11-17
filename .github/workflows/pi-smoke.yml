@@ -1,0 +1,31 @@
+# Temporary cross-repo smoke test: does the published pi-agent-action run from
+# another repository with its own AIMOM_API_KEY secret?
+name: pi-smoke
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  pi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: Tioit-Wang/pi-agent-action@v1
+        with:
+          provider: deepseek
+          model: deepseek-v4.1-flash
+          base_url: https://platform.aimom.net/v1
+          api_key: ${{ secrets.AIMOM_API_KEY }}
+          no_tools: "true"
+          max_turns: "1"
+          prompt: |
+            Reply with the single word: ok
