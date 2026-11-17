@@ -1,0 +1,41 @@
+# Reply to `@pi` mentions with the Pi agent.
+#
+# Read-only on purpose: the agent can read the repository and answer, but it
+# cannot run commands, edit files or push. Add `bash`/`edit`/`write` to
+# allowed_tools and grant `contents: write` when you want it to implement changes.
+name: Pi
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened]
+
+jobs:
+  pi:
+    if: |
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@pi')) ||
+      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@pi')) ||
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@pi'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: Tioit-Wang/pi-agent-action@v1
+        with:
+          provider: deepseek
+          model: deepseek-v4.1-flash
+          base_url: https://platform.aimom.net/v1
+          api_style: openai-completions
+          api_key: ${{ secrets.AIMOM_API_KEY }}
+          allowed_tools: read,grep,find,ls
+          max_turns: "15"
